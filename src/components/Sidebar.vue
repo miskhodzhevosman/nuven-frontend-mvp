@@ -48,7 +48,7 @@
         </span>
       </router-link>
 
-      <router-link to="/projects" class="nav-item">
+      <router-link to="/crm" class="nav-item">
         <span class="nav-item-left">
           <ProjectsIcon />
           Проекты
