@@ -1,9 +1,9 @@
 <template>
   <div>
-    <h1>Dashboard</h1>
+    <!-- <h1>Dashboard</h1> -->
 
     <div class="cards">
-      <StatsCard title="Users" :value="120" />
+      <StatsCard label="Users" :value="120" />
       <StatsCard title="Revenue" :value="5400" />
       <StatsCard title="Orders" :value="32" />
     </div>
@@ -19,4 +19,5 @@ import StatsCard from '@/components/StatsCard.vue'
   display: flex;
   gap: 10px;
 }
+h1 {color: #f3f4f6;}
 </style>
