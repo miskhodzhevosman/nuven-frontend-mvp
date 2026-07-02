@@ -3,13 +3,13 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import FinanceView from '@/views/FinanceView.vue'
-import CrmView from '@/views/CRMView.vue'
+import ProjectsView from '@/views/ProjectsView.vue'
 
 const routes = [
   { path: '/', component: DashboardView },
   { path: '/settings', component: SettingsView },
   { path: '/finance', component: FinanceView },
-  { path: '/crm', component: CrmView }
+  { path: '/projects', component: ProjectsView }
 ]
 
 export default createRouter({
