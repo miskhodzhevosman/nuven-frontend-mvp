@@ -4,12 +4,16 @@ import DashboardView from '@/views/DashboardView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import FinanceView from '@/views/FinanceView.vue'
 import ProjectsView from '@/views/ProjectsView.vue'
+import ProductsView from '@/views/ProductsView.vue'
+import FactoryView from '@/views/FactoryView.vue'
 
 const routes = [
   { path: '/', component: DashboardView },
   { path: '/settings', component: SettingsView },
   { path: '/finance', component: FinanceView },
-  { path: '/projects', component: ProjectsView }
+  { path: '/projects', component: ProjectsView },
+  { path: '/products', component: ProductsView },
+  { path: '/factory', component: FactoryView }
 ]
 
 export default createRouter({

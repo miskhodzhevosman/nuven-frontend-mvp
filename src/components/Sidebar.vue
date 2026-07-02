@@ -55,6 +55,22 @@
         </span>
       </router-link>
 
+      <div class="nav-category">Поставки</div>
+
+      <router-link to="/products" class="nav-item">
+        <span class="nav-item-left">
+          <CrmIcon />
+          Товары
+        </span>
+      </router-link>
+
+      <router-link to="/factory" class="nav-item">
+        <span class="nav-item-left">
+          <CrmIcon />
+          Фабрики
+        </span>
+      </router-link>
+
       <div class="nav-category">ФИНАНСЫ</div>
 
       <router-link to="/payments" class="nav-item">

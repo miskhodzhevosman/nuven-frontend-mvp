@@ -1,7 +1,6 @@
 <template>
   <div>
-    <!-- <h1>Dashboard</h1> -->
-
+    <h3>Дашборд</h3>
     <div class="cards">
     </div>
   </div>
@@ -15,5 +14,5 @@
   display: flex;
   gap: 10px;
 }
-h1 {color: #f3f4f6;}
+h3 {color: #f3f4f6;}
 </style>

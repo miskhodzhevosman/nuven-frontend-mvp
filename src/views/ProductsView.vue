@@ -1,10 +1,6 @@
 <template>
-  <h3>Проекты</h3>
+    <h3>Товары</h3>
 </template>
-
-<script setup>
-
-</script>
 
 <style scoped>
 h3 {color: #f3f4f6;}

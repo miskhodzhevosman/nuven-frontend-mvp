@@ -1,25 +1,7 @@
 <template>
   <div>
-    <div class="stats-grid">
-      <StatsCard
-        label="Выручка"
-        :value="report.revenue"
-      />
-
-      <StatsCard
-        label="Валовая прибыль"
-        :value="report.gross_profit"
-      />
-
-      <StatsCard
-        label="Чистая прибыль"
-        :value="report.net_profit"
-      />
-    </div>
-
-    <div>
-      <PnLTable :data="pnlData" />
-    </div>
+    <h3>Финансы и P&L</h3>
+    
   </div>
 </template>
 
@@ -38,5 +20,5 @@
   display: flex;
   gap: 10px;
 }
-h1 {color: #f3f4f6;}
+h3 {color: #f3f4f6;}
 </style>
