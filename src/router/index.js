@@ -7,6 +7,7 @@ import ProjectsView from '@/views/ProjectsView.vue'
 import ProductsView from '@/views/ProductsView.vue'
 import FactoryView from '@/views/FactoryView.vue'
 import ProjectDetailsView from '@/views/ProjectDetailsView.vue'
+import ClientPaymentsView from '@/views/ClientPaymentsView.vue'
 
 const routes = [
   { path: '/', component: DashboardView },
@@ -19,7 +20,8 @@ const routes = [
     path: '/projects/:id',
     name: 'project-details',
     component: ProjectDetailsView
-  }
+  },
+  { path: '/client-payments', name: 'client-payments', component: ClientPaymentsView },
 ]
 
 export default createRouter({

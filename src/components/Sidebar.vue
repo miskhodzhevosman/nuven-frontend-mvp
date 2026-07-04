@@ -60,7 +60,7 @@
 
       <div class="nav-category">ФИНАНСЫ</div>
 
-      <router-link to="/payments" class="nav-item">
+      <router-link to="/client-payments" class="nav-item">
         <span class="nav-item-left">
           <PaymentsIcon />
           Оплаты
