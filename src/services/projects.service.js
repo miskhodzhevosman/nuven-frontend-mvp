@@ -38,7 +38,7 @@ export const projectsService = {
   },
 
   async getProjectExpenseTransactions(projectId) {
-    const { data } = await api.get(`/finance/projects/${projectId}/expense-transactions/`)
+    const { data } = await api.get(`/finance/projects/${projectId}/report/`)
     return data
   },
 

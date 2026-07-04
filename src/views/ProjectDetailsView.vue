@@ -1,349 +1,204 @@
 <template>
-  <div class="project-details-page">
-    <div class="page-header">
-      <div>
-        <button class="back-btn" @click="goBack">← Назад к проектам</button>
-        <h1>{{ projectInfo?.name || 'Проект' }}</h1>
-      </div>
+  <div class="page">
+
+    <!-- HEADER -->
+    <header class="page__header">
+      <button class="btn btn--ghost" @click="goBack">
+        ← Назад
+      </button>
+
+      <h1 class="title">
+        {{ project?.name || 'Проект' }}
+      </h1>
+
+      <button class="btn btn--primary" @click="openEditProject">
+        Редактировать проект
+      </button>
+    </header>
+
+    <div v-if="loading" class="loader">
+      Загрузка...
     </div>
 
-    <div v-if="store.detailsLoading" class="loading-state">
-      Загрузка проекта...
-    </div>
+    <div v-else-if="project" class="grid">
 
-    <template v-else-if="projectInfo">
-      <!-- Информация о проекте -->
+      <!-- ================= PROJECT INFO ================= -->
       <section class="card">
-        <div class="section-header">
-          <h2>Информация о проекте</h2>
-
-          <button class="primary-btn" @click="openEditProjectModal">
-            Редактировать проект
-          </button>
-        </div>
+        <h2>Информация</h2>
 
         <div class="info-grid">
-          <div class="info-item">
-            <span class="label">Статус</span>
-            <span class="value">{{ projectInfo.status_name || '—' }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Клиент</span>
-            <span class="value">{{ projectInfo.client_name || '—' }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Менеджер</span>
-            <span class="value">{{ projectInfo.manager_name || '—' }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">География</span>
-            <span class="value">{{ projectInfo.geography || '—' }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Создан</span>
-            <span class="value">{{ formatDate(projectInfo.created_at) }}</span>
-          </div>
+          <div><span>Статус</span> {{ project.status }}</div>
+          <div><span>Клиент</span> {{ project.client }}</div>
+          <div><span>Менеджер</span> {{ project.tech_manager }}</div>
+          <div><span>География</span> {{ project.geography }}</div>
+          <div><span>Создан</span> {{ project.created_at }}</div>
         </div>
       </section>
 
-      <!-- Экономика -->
+      <!-- ================= FINANCE ================= -->
       <section class="card">
-        <h2>Экономика проекта</h2>
+        <h2>Финансы</h2>
 
-        <table class="economy-table">
+        <div class="finance-grid" v-if="finance">
+
+          <div class="kpi">
+            <h3>План</h3>
+            <p>Выручка: {{ planned.revenue }}</p>
+            <p>COGS: {{ planned.cogs }}</p>
+            <p>Маржа: {{ planned.margin }}</p>
+          </div>
+
+          <div class="kpi">
+            <h3>Факт</h3>
+            <p>Оплаты клиента: {{ fact.client_received }}</p>
+            <p>Фабрики: {{ fact.factory_paid }}</p>
+            <p>Расходы: {{ fact.project_expenses }}</p>
+          </div>
+
+          <div class="kpi">
+            <h3>Cashflow</h3>
+            <p>Дебиторка: {{ cashflow.accounts_receivable }}</p>
+            <p>Кредиторка: {{ cashflow.accounts_payable }}</p>
+          </div>
+
+          <div class="kpi kpi--highlight">
+            <h3>Чистая прибыль</h3>
+            <p class="big">{{ netProfit }}</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= ITEMS ================= -->
+      <section class="card full">
+        <div class="card__header">
+          <h2>Позиции</h2>
+          <button class="btn btn--primary" @click="openCreateItem">
+            + Добавить
+          </button>
+        </div>
+
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Товар</th>
+            <th>Кол-во</th>
+            <th>Сумма</th>
+            <th></th>
+          </tr>
+          </thead>
+
           <tbody>
-            <tr>
-              <td>Выручка</td>
-              <td>{{ formatMoney(finance?.revenue) }}</td>
-            </tr>
-            <tr>
-              <td>Себестоимость</td>
-              <td>{{ formatMoney(finance?.cost_price) }}</td>
-            </tr>
-            <tr>
-              <td>Валовая прибыль</td>
-              <td>{{ formatMoney(finance?.gross_profit) }}</td>
-            </tr>
-            <tr>
-              <td>Маржа</td>
-              <td>{{ finance?.margin ?? '—' }}{{ finance?.margin !== undefined ? '%' : '' }}</td>
-            </tr>
-            <tr>
-              <td>Получено от клиента</td>
-              <td>{{ formatMoney(finance?.received_from_client) }}</td>
-            </tr>
-            <tr>
-              <td>Дебиторика</td>
-              <td>{{ formatMoney(finance?.accounts_receivable) }}</td>
-            </tr>
-            <tr>
-              <td>Оплачено фабрикам</td>
-              <td>{{ formatMoney(finance?.paid_to_factories) }}</td>
-            </tr>
-            <tr>
-              <td>Кредиторика</td>
-              <td>{{ formatMoney(finance?.accounts_payable) }}</td>
-            </tr>
+          <tr v-for="item in items" :key="item.id">
+            <td>{{ item.nomenclature }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ calcItemSum(item) }}</td>
+            <td class="actions">
+              <button class="btn btn--small" @click="openEditItem(item)">✏</button>
+              <button class="btn btn--small btn--danger" @click="deleteItem(item.id)">🗑</button>
+            </td>
+          </tr>
           </tbody>
         </table>
       </section>
 
-      <!-- Доступ -->
-      <section class="card">
-        <h2>Доступ к проекту</h2>
-        <div class="access-row">
-          {{ projectInfo.manager_name || '—' }}
-        </div>
-      </section>
-
-      <!-- Позиции -->
-      <section class="card">
-        <div class="section-header">
-          <h2>Позиции</h2>
-
-          <button class="primary-btn" @click="openCreateItemModal">
-            + Добавить позицию
-          </button>
-        </div>
-
-        <Table
-          :columns="itemsColumns"
-          :rows="store.currentProjectItemsRows"
-          :loading="store.detailsLoading"
-          row-key="id"
-        >
-          <template #cell-nomenclature_name="{ value }">
-            {{ value || '—' }}
-          </template>
-
-          <template #cell-quantity="{ value }">
-            {{ value || '—' }}
-          </template>
-
-          <template #cell-total_amount="{ value }">
-            {{ formatMoney(value) }}
-          </template>
-
-          <template #actions="{ row }">
-            <div class="actions">
-              <button class="secondary-btn" @click="openEditItemModal(row)">
-                Редактировать
-              </button>
-
-              <button
-                class="danger-btn"
-                :disabled="store.deletingProjectItemId === row.id"
-                @click="handleDeleteItem(row)"
-              >
-                {{ store.deletingProjectItemId === row.id ? 'Удаление...' : 'Удалить' }}
-              </button>
-            </div>
-          </template>
-        </Table>
-      </section>
-    </template>
-
-    <div v-else class="empty-state">
-      Проект не найден
     </div>
 
-    <!-- ===================== -->
-    <!-- МОДАЛКА РЕДАКТИРОВАНИЯ ПРОЕКТА -->
-    <!-- ===================== -->
-    <div v-if="showProjectModal" class="modal-overlay" @click.self="closeProjectModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>Редактировать проект</h2>
-          <button class="icon-btn" @click="closeProjectModal">✕</button>
+    <!-- ================= PROJECT MODAL ================= -->
+    <div v-if="showProjectModal" class="modal">
+      <div class="modal__card">
+        <h3>Проект</h3>
+
+        <input v-model="projectForm.name" placeholder="Название" />
+        <input v-model="projectForm.geography" placeholder="География" />
+
+        <select v-model="projectForm.client">
+          <option v-for="c in clients" :key="c.id" :value="c.id">
+            {{ c.name }}
+          </option>
+        </select>
+
+        <select v-model="projectForm.tech_manager">
+          <option v-for="m in managers" :key="m.id" :value="m.id">
+            {{ m.full_name }}
+          </option>
+        </select>
+
+        <div class="modal__actions">
+          <button class="btn btn--primary" @click="saveProject">Сохранить</button>
+          <button class="btn btn--ghost" @click="closeProjectModal">Отмена</button>
         </div>
-
-        <form class="project-form" @submit.prevent="handleUpdateProject">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="project-name">Название проекта *</label>
-              <input
-                id="project-name"
-                v-model="projectForm.name"
-                type="text"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="project-geography">География</label>
-              <input
-                id="project-geography"
-                v-model="projectForm.geography"
-                type="text"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="project-client">Клиент *</label>
-              <select id="project-client" v-model="projectForm.client" required>
-                <option disabled value="">Выберите клиента</option>
-                <option
-                  v-for="client in store.clients"
-                  :key="client.id"
-                  :value="client.id"
-                >
-                  {{ client.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="project-manager">Тех. менеджер *</label>
-              <select id="project-manager" v-model="projectForm.tech_manager" required>
-                <option disabled value="">Выберите менеджера</option>
-                <option
-                  v-for="manager in store.managers"
-                  :key="manager.id"
-                  :value="manager.id"
-                >
-                  {{ manager.full_name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="project-status">Статус *</label>
-              <select id="project-status" v-model="projectForm.status" required>
-                <option disabled value="">Выберите статус</option>
-                <option
-                  v-for="status in store.statuses"
-                  :key="status.id"
-                  :value="status.id"
-                >
-                  {{ status.name }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <div v-if="projectError" class="form-error">
-            {{ projectError }}
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="secondary-btn" @click="closeProjectModal">
-              Отмена
-            </button>
-
-            <button type="submit" class="primary-btn" :disabled="store.saving">
-              {{ store.saving ? 'Сохранение...' : 'Сохранить' }}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
 
-    <!-- ===================== -->
-    <!-- МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ПОЗИЦИИ -->
-    <!-- ===================== -->
-    <div v-if="showItemModal" class="modal-overlay" @click.self="closeItemModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>{{ isEditItemMode ? 'Редактировать позицию' : 'Добавить позицию' }}</h2>
-          <button class="icon-btn" @click="closeItemModal">✕</button>
+    <!-- ================= ITEM MODAL ================= -->
+    <div v-if="showItemModal" class="modal">
+      <div class="modal__card">
+        <h3>Позиция</h3>
+
+        <select v-model="itemForm.nomenclature">
+          <option v-for="n in nomenclatures" :key="n.id" :value="n.id">
+            {{ n.name }}
+          </option>
+        </select>
+
+        <input v-model="itemForm.quantity" placeholder="Количество" />
+        <input v-model="itemForm.fixed_cost_price" placeholder="Себестоимость" />
+        <input v-model="itemForm.fixed_sale_price" placeholder="Цена продажи" />
+
+        <div class="modal__actions">
+          <button class="btn btn--primary" @click="saveItem">Сохранить</button>
+          <button class="btn btn--ghost" @click="closeItemModal">Отмена</button>
         </div>
-
-        <form class="project-form" @submit.prevent="handleSubmitItem">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="item-nomenclature">Товар *</label>
-              <select id="item-nomenclature" v-model="itemForm.nomenclature" required>
-                <option disabled value="">Выберите товар</option>
-                <option
-                  v-for="item in store.nomenclatures"
-                  :key="item.id"
-                  :value="item.id"
-                >
-                  {{ item.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="item-quantity">Количество *</label>
-              <input
-                id="item-quantity"
-                v-model="itemForm.quantity"
-                type="text"
-                required
-                placeholder="Например 10"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="item-cost-price">Себестоимость</label>
-              <input
-                id="item-cost-price"
-                v-model="itemForm.fixed_cost_price"
-                type="text"
-                placeholder="Например 1000"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="item-sale-price">Продажная цена</label>
-              <input
-                id="item-sale-price"
-                v-model="itemForm.fixed_sale_price"
-                type="text"
-                placeholder="Например 1500"
-              />
-            </div>
-          </div>
-
-          <div v-if="itemError" class="form-error">
-            {{ itemError }}
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="secondary-btn" @click="closeItemModal">
-              Отмена
-            </button>
-
-            <button type="submit" class="primary-btn" :disabled="store.saving">
-              {{ store.saving ? 'Сохранение...' : (isEditItemMode ? 'Сохранить' : 'Добавить') }}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Table from '@/components/Table.vue'
 import { useProjectsStore } from '@/stores/projects'
 
+const store = useProjectsStore()
 const route = useRoute()
 const router = useRouter()
-const store = useProjectsStore()
 
-const projectId = computed(() => Number(route.params.id))
-const projectInfo = computed(() => store.currentProjectInfo)
+const projectId = Number(route.params.id)
+
+const loading = ref(false)
+
+const project = computed(() => store.currentProject)
 const finance = computed(() => store.currentProjectFinance)
+const items = computed(() => store.currentProjectItems)
 
-const itemsColumns = [
-  { key: 'nomenclature_name', label: 'Товар' },
-  { key: 'quantity', label: 'Кол-во' },
-  { key: 'total_amount', label: 'Сумма' },
-]
+const planned = computed(() => finance.value?.planned || {})
+const fact = computed(() => finance.value?.fact || {})
+const cashflow = computed(() => finance.value?.cashflow || {})
+const netProfit = computed(() => finance.value?.net_profit ?? 0)
 
-/* =========================
-   РЕДАКТИРОВАНИЕ ПРОЕКТА
-========================= */
+const clients = computed(() => store.clients)
+const managers = computed(() => store.managers)
+const nomenclatures = computed(() => store.nomenclatures)
+
+/* ===================== */
+/* LOAD */
+/* ===================== */
+onMounted(async () => {
+  loading.value = true
+  await store.initProjectDetails(projectId)
+  loading.value = false
+})
+
+function goBack() {
+  router.push('/projects')
+}
+
+/* ===================== */
+/* PROJECT EDIT */
+/* ===================== */
 const showProjectModal = ref(false)
-const projectError = ref('')
 
 const projectForm = reactive({
   name: '',
@@ -353,98 +208,62 @@ const projectForm = reactive({
   status: '',
 })
 
-function openEditProjectModal() {
-  if (!projectInfo.value) return
-
-  projectError.value = ''
-
-  projectForm.name = projectInfo.value.name || ''
-  projectForm.geography = projectInfo.value.geography || ''
-  projectForm.client = projectInfo.value.client ?? ''
-  projectForm.tech_manager = projectInfo.value.tech_manager ?? ''
-  projectForm.status = projectInfo.value.status ?? ''
-
+function openEditProject() {
+  Object.assign(projectForm, store.currentProject)
   showProjectModal.value = true
 }
 
 function closeProjectModal() {
   showProjectModal.value = false
-  projectError.value = ''
 }
 
-async function handleUpdateProject() {
-  projectError.value = ''
+async function saveProject() {
+  await store.updateProject(projectId, {
+    name: projectForm.name,
+    geography: projectForm.geography,
+    client: Number(projectForm.client),
+    tech_manager: Number(projectForm.tech_manager),
+    status: Number(projectForm.status),
+  })
 
-  try {
-    const payload = {
-      name: projectForm.name.trim(),
-      geography: projectForm.geography.trim(),
-      client: Number(projectForm.client),
-      tech_manager: Number(projectForm.tech_manager),
-      status: Number(projectForm.status),
-    }
-
-    if (!payload.name) {
-      projectError.value = 'Введите название проекта'
-      return
-    }
-
-    await store.updateProject(projectId.value, payload)
-    closeProjectModal()
-  } catch (error) {
-    projectError.value =
-      error?.response?.data?.detail || 'Не удалось сохранить проект'
-  }
+  closeProjectModal()
 }
 
-/* =========================
-   CRUD ПОЗИЦИЙ ПРОЕКТА
-========================= */
+/* ===================== */
+/* ITEMS */
+/* ===================== */
 const showItemModal = ref(false)
-const itemError = ref('')
 const editingItemId = ref(null)
 
 const itemForm = reactive({
+  nomenclature: '',
   quantity: '',
   fixed_cost_price: '',
   fixed_sale_price: '',
-  project: '',
-  nomenclature: '',
+  project: projectId,
 })
 
-const isEditItemMode = computed(() => editingItemId.value !== null)
-
-function getInitialItemForm() {
-  return {
+function openCreateItem() {
+  editingItemId.value = null
+  Object.assign(itemForm, {
+    nomenclature: '',
     quantity: '',
     fixed_cost_price: '',
     fixed_sale_price: '',
-    project: projectId.value,
-    nomenclature: '',
-  }
-}
-
-function resetItemForm() {
-  Object.assign(itemForm, getInitialItemForm())
-  editingItemId.value = null
-  itemError.value = ''
-}
-
-function openCreateItemModal() {
-  resetItemForm()
+    project: projectId,
+  })
   showItemModal.value = true
 }
 
-function openEditItemModal(row) {
-  itemError.value = ''
-  editingItemId.value = row.id
+function openEditItem(item) {
+  editingItemId.value = item.id
 
   Object.assign(itemForm, {
-    quantity: row.quantity ?? '',
-    fixed_cost_price: row.fixed_cost_price ?? '',
-    fixed_sale_price: row.fixed_sale_price ?? '',
-    project: row.project ?? projectId.value,
-    nomenclature: row.nomenclature ?? '',
+    nomenclature: item.nomenclature,
+    quantity: item.quantity,
+    fixed_cost_price: item.fixed_cost_price,
+    fixed_sale_price: item.fixed_sale_price,
+    project: projectId,
   })
 
   showItemModal.value = true
@@ -452,320 +271,178 @@ function openEditItemModal(row) {
 
 function closeItemModal() {
   showItemModal.value = false
-  resetItemForm()
 }
 
-function normalizeItemPayload() {
-  return {
-    quantity: itemForm.quantity === '' ? '' : String(itemForm.quantity),
-    fixed_cost_price:
-      itemForm.fixed_cost_price === '' ? '' : String(itemForm.fixed_cost_price),
-    fixed_sale_price:
-      itemForm.fixed_sale_price === '' ? '' : String(itemForm.fixed_sale_price),
-    project: Number(projectId.value),
+async function saveItem() {
+  const payload = {
     nomenclature: Number(itemForm.nomenclature),
+    quantity: itemForm.quantity,
+    fixed_cost_price: itemForm.fixed_cost_price,
+    fixed_sale_price: itemForm.fixed_sale_price,
+    project: projectId,
   }
-}
 
-async function handleSubmitItem() {
-  itemError.value = ''
-
-  try {
-    const payload = normalizeItemPayload()
-
-    if (!payload.nomenclature && payload.nomenclature !== 0) {
-      itemError.value = 'Выберите товар'
-      return
-    }
-
-    if (!payload.quantity) {
-      itemError.value = 'Укажите количество'
-      return
-    }
-
-    if (isEditItemMode.value) {
-      await store.updateProjectItem(editingItemId.value, payload)
-    } else {
-      await store.createProjectItem(payload)
-    }
-
-    closeItemModal()
-  } catch (error) {
-    itemError.value =
-      error?.response?.data?.detail || 'Не удалось сохранить позицию'
+  if (editingItemId.value) {
+    await store.updateProjectItem(editingItemId.value, payload)
+  } else {
+    await store.createProjectItem(payload)
   }
+
+  closeItemModal()
 }
 
-async function handleDeleteItem(row) {
-  const confirmed = window.confirm('Удалить позицию проекта?')
-  if (!confirmed) return
-
-  try {
-    await store.deleteProjectItem(row.id)
-  } catch (error) {
-    alert(error?.response?.data?.detail || 'Не удалось удалить позицию')
-  }
+async function deleteItem(id) {
+  await store.deleteProjectItem(id)
 }
 
-/* =========================
-   ОБЩЕЕ
-========================= */
-function goBack() {
-  router.push({ name: 'projects' })
+function calcItemSum(item) {
+  return Number(item.quantity || 0) * Number(item.fixed_sale_price || 0)
 }
-
-function formatMoney(value) {
-  if (value === null || value === undefined || value === '') return '—'
-  const num = Number(value)
-  if (Number.isNaN(num)) return String(value)
-  return new Intl.NumberFormat('ru-RU').format(num)
-}
-
-function formatDate(value) {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('ru-RU')
-}
-
-onMounted(async () => {
-  try {
-    await store.initProjectDetails(projectId.value)
-  } catch (error) {
-    console.error('Ошибка загрузки проекта', error)
-  }
-})
-
-onUnmounted(() => {
-  store.clearCurrentProject()
-})
 </script>
 
 <style scoped>
-.project-details-page {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* ===== BASE ===== */
+div {
+  color: #e5e7eb;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-.page-header h1 {
-  margin: 8px 0 0;
-  font-size: 28px;
-}
-
-.back-btn {
-  border: none;
-  background: transparent;
-  color: #2563eb;
-  cursor: pointer;
-  padding: 0;
-  font: inherit;
-}
-
-.card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 20px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+h1 {
+  font-size: 22px;
   margin-bottom: 16px;
 }
 
-.card h2 {
-  margin: 0;
-  font-size: 20px;
+h2 {
+  font-size: 18px;
+  margin: 16px 0 10px;
+  color: #f3f4f6;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+h3 {
+  font-size: 14px;
+  margin: 12px 0 8px;
+  color: #9ca3af;
 }
 
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.label {
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.value {
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.economy-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.economy-table td {
-  padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.economy-table td:last-child {
-  text-align: right;
-  font-weight: 600;
-}
-
-.access-row {
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.loading-state,
-.empty-state {
-  padding: 20px;
-  border: 1px dashed #d1d5db;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.primary-btn,
-.secondary-btn,
-.danger-btn,
-.icon-btn {
-  border: none;
+/* ===== BUTTONS ===== */
+button {
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
+  transition: 0.15s;
+  margin-right: 6px;
 }
 
-.primary-btn {
-  background: #2563eb;
-  color: #fff;
-  padding: 10px 14px;
+button:hover {
+  background: #374151;
 }
 
-.secondary-btn {
-  background: #e5e7eb;
-  color: #111827;
-  padding: 8px 12px;
+button:active {
+  transform: scale(0.98);
 }
 
-.danger-btn {
-  background: #dc2626;
-  color: #fff;
-  padding: 8px 12px;
+/* ===== SECTIONS ===== */
+section {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
 }
 
-.danger-btn:disabled,
-.primary-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* ===== TEXT BLOCKS ===== */
+section div {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #d1d5db;
 }
 
-.icon-btn {
-  background: transparent;
-  font-size: 18px;
-  padding: 4px 8px;
+/* ===== TABLE ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: #0b1220;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.modal-overlay {
+th {
+  text-align: left;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 10px;
+  border-bottom: 1px solid #1f2937;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #1f2937;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+tr:hover td {
+  background: #111827;
+}
+
+/* ===== MODALS ===== */
+div[v-if] {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.45);
+  background: rgba(0,0,0,0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+}
+
+/* inner modal card */
+div[v-if] > div {
+  width: 420px;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
   padding: 16px;
 }
 
-.modal {
+/* ===== FORMS ===== */
+input,
+select {
   width: 100%;
-  max-width: 860px;
-  background: #fff;
-  border-radius: 14px;
-  padding: 20px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.modal-header h2 {
-  margin: 0;
-}
-
-.project-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.form-group input,
-.form-group select {
-  min-height: 42px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  padding: 0 12px;
-  font-size: 14px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border: 1px solid #374151;
+  background: #0b1220;
+  color: #e5e7eb;
   outline: none;
 }
 
-.form-error {
-  color: #dc2626;
-  font-size: 14px;
+input:focus,
+select:focus {
+  border-color: #3b82f6;
 }
 
-.modal-actions {
+/* ===== LAYOUT HELPERS ===== */
+section > div {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
 }
 
-@media (max-width: 900px) {
-  .project-details-page {
-    padding: 16px;
-  }
+/* fix modal inner spacing override */
+div[v-if] section > div {
+  display: block;
+}
 
-  .info-grid,
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .section-header {
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  section > div {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
   }
 }
 </style>

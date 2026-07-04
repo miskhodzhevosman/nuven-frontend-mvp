@@ -1,168 +1,140 @@
 <template>
-  <div class="factory-form">
-    <h2>
-      {{ isEditMode ? 'Редактировать фабрику' : 'Новая фабрика' }}
-    </h2>
+  <div class="backdrop" @click.self="$emit('close')">
+    <div class="card">
+      <h2 class="title">
+        {{ factory?.id ? 'Редактирование' : 'Новая фабрика' }}
+      </h2>
 
-    <form @submit.prevent="submitForm">
-      <div class="form-row">
-        <label for="name">Название</label>
-        <input
-          id="name"
-          v-model="form.name"
-          type="text"
-          placeholder="Введите название"
-        />
+      <div class="form">
+        <label class="field">
+          <span>Название *</span>
+          <input v-model="local.name" />
+        </label>
+
+        <label class="field">
+          <span>Адрес</span>
+          <input v-model="local.address" />
+        </label>
       </div>
 
-      <div class="form-row">
-        <label for="address">Адрес</label>
-        <input
-          id="address"
-          v-model="form.address"
-          type="text"
-          placeholder="Введите адрес"
-        />
+      <div class="actions">
+        <button class="btn primary" @click="submit">Сохранить</button>
+        <button class="btn ghost" @click="$emit('close')">Отмена</button>
       </div>
-
-      <p v-if="localError" class="error">
-        {{ localError }}
-      </p>
-
-      <div class="form-actions">
-        <button
-          type="submit"
-          :disabled="store.createLoading || store.updateLoading"
-        >
-          {{ submitButtonText }}
-        </button>
-
-        <button
-          type="button"
-          @click="handleCancel"
-          :disabled="store.createLoading || store.updateLoading"
-        >
-          Отмена
-        </button>
-      </div>
-    </form>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
-import { useSuppliesStore } from '@/stores/factoryStore'
+import { reactive, watch } from 'vue'
 
 const props = defineProps({
-  factory: {
-    type: Object,
-    default: null
-  }
+  factory: Object
 })
 
-const emit = defineEmits(['success', 'cancel'])
-const store = useSuppliesStore()
+const emit = defineEmits(['save', 'close'])
 
-const localError = ref('')
-
-const form = reactive({
+const local = reactive({
+  id: null,
   name: '',
   address: ''
 })
 
-const isEditMode = computed(() => !!props.factory)
-
-const submitButtonText = computed(() => {
-  if (store.createLoading || store.updateLoading) {
-    return 'Сохранение...'
-  }
-
-  return isEditMode.value ? 'Сохранить изменения' : 'Создать'
-})
-
-const fillForm = () => {
-  form.name = props.factory?.name ?? ''
-  form.address = props.factory?.address ?? ''
-}
-
 watch(
   () => props.factory,
-  () => {
-    fillForm()
-    localError.value = ''
+  (val) => {
+    local.id = val?.id ?? null
+    local.name = val?.name ?? ''
+    local.address = val?.address ?? ''
   },
   { immediate: true }
 )
 
-const resetForm = () => {
-  form.name = ''
-  form.address = ''
-  localError.value = ''
-}
+function submit() {
+  if (!local.name.trim()) return
 
-const submitForm = async () => {
-  localError.value = ''
-
-  if (!form.name.trim() || !form.address.trim()) {
-    localError.value = 'Заполни все поля'
-    return
-  }
-
-  try {
-    if (isEditMode.value) {
-      await store.updateFactory(props.factory.id, {
-        name: form.name,
-        address: form.address
-      })
-    } else {
-      await store.createFactory({
-        name: form.name,
-        address: form.address
-      })
-    }
-
-    resetForm()
-    emit('success')
-  } catch (error) {
-    localError.value = isEditMode.value
-      ? 'Не удалось обновить фабрику'
-      : 'Не удалось создать фабрику'
-  }
-}
-
-const handleCancel = () => {
-  resetForm()
-  emit('cancel')
+  emit('save', {
+    id: local.id,
+    name: local.name,
+    address: local.address
+  })
 }
 </script>
 
 <style scoped>
-h2 {color: #f3f4f6;}
-.factory-form {
-  margin: 20px 0;
-  padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  max-width: 500px;
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.form-row {
+.card {
+  width: 420px;
+  background: #1c1c1c;
+  border: 1px solid #2b2b2b;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+
+.title {
+  margin: 0 0 16px;
+  font-size: 18px;
+  color: #eaeaea;
+}
+
+.form {
   display: flex;
   flex-direction: column;
-  margin-bottom: 12px;
+  gap: 12px;
 }
 
-.form-row input {
-  padding: 8px;
+.field span {
+  font-size: 12px;
+  color: #aaa;
 }
 
-.form-actions {
+input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #121212;
+  border: 1px solid #333;
+  color: #fff;
+  outline: none;
+  transition: 0.15s;
+}
+
+input:focus {
+  border-color: #3b82f6;
+}
+
+.actions {
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
+  margin-top: 16px;
 }
 
-.error {
-  color: red;
-  margin-bottom: 12px;
+.btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.ghost {
+  background: transparent;
+  border: 1px solid #333;
+  color: #ddd;
 }
 </style>
