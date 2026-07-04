@@ -18,12 +18,6 @@
         </span>
       </router-link>
 
-      <router-link to="/analytics" class="nav-item">
-        <span class="nav-item-left">
-          <AnalyticsIcon />
-          Аналитика
-        </span>
-      </router-link>
 
       <router-link to="/finance" class="nav-item">
         <span class="nav-item-left">
@@ -33,13 +27,6 @@
       </router-link>
 
       <div class="nav-category">КЛИЕНТЫ И ПРОДАЖИ</div>
-
-      <router-link to="/crm" class="nav-item">
-        <span class="nav-item-left">
-          <CrmIcon />
-          CRM / Лиды
-        </span>
-      </router-link>
 
       <router-link to="/clients" class="nav-item">
         <span class="nav-item-left">
