@@ -12,16 +12,15 @@ export const useProjectsStore = defineStore('projects', {
 
     loading: false,
     saving: false,
+    detailsLoading: false,
 
-    // Детальная карточка проекта
     currentProject: null,
     currentProjectFinance: null,
     currentProjectItems: [],
     currentProjectExpenses: [],
-    detailsLoading: false,
 
-    // Фильтр
     activeStatusId: 'all',
+    deletingProjectItemId: null,
   }),
 
   getters: {
@@ -63,32 +62,21 @@ export const useProjectsStore = defineStore('projects', {
     },
 
     filteredProjects() {
-      if (this.activeStatusId === 'all') {
-        return this.enrichedProjects
-      }
-      return this.enrichedProjects.filter(
-        project => project.status === this.activeStatusId
-      )
+      if (this.activeStatusId === 'all') return this.enrichedProjects
+      return this.enrichedProjects.filter(project => project.status === this.activeStatusId)
     },
 
     statusTiles() {
       const total = this.projects.length
-
       const dynamicStatuses = this.statuses.map(status => ({
         id: status.id,
         name: status.name,
         count: this.projects.filter(project => project.status === status.id).length
       }))
 
-      return [
-        { id: 'all', name: 'Все', count: total },
-        ...dynamicStatuses
-      ]
+      return [{ id: 'all', name: 'Все', count: total }, ...dynamicStatuses]
     },
 
-    // Для таблицы проектов:
-    // Сумма, Маржа, Оплачено, Срок в API списка пока не приходят.
-    // Поэтому пока ставим заглушки.
     projectTableRows() {
       return this.filteredProjects.map(project => ({
         ...project,
@@ -114,9 +102,7 @@ export const useProjectsStore = defineStore('projects', {
 
     currentProjectItemsRows(state) {
       return state.currentProjectItems.map(item => {
-        const nomenclature = state.nomenclatures.find(
-          n => n.id === item.nomenclature
-        )
+        const nomenclature = state.nomenclatures.find(n => n.id === item.nomenclature)
 
         const qty = Number(item.quantity || 0)
         const salePrice = Number(item.fixed_sale_price || 0)
@@ -133,6 +119,14 @@ export const useProjectsStore = defineStore('projects', {
   actions: {
     setActiveStatus(statusId) {
       this.activeStatusId = statusId
+    },
+
+    async safeLoadStatuses() {
+      try {
+        return await projectsService.getProjectStatuses()
+      } catch (e) {
+        return []
+      }
     },
 
     async initProjectsPage() {
@@ -154,21 +148,30 @@ export const useProjectsStore = defineStore('projects', {
       }
     },
 
-    async safeLoadStatuses() {
-      try {
-        return await projectsService.getProjectStatuses()
-      } catch (e) {
-        // Если endpoint статусов пока отсутствует — возвращаем пустой список.
-        return []
-      }
-    },
-
     async createProject(payload) {
       this.saving = true
       try {
         const created = await projectsService.createProject(payload)
         this.projects.unshift(created)
         return created
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateProject(id, payload) {
+      this.saving = true
+      try {
+        const updated = await projectsService.updateProject(id, payload)
+
+        this.currentProject = updated
+
+        const listIndex = this.projects.findIndex(item => item.id === id)
+        if (listIndex !== -1) {
+          this.projects[listIndex] = updated
+        }
+
+        return updated
       } finally {
         this.saving = false
       }
@@ -212,6 +215,41 @@ export const useProjectsStore = defineStore('projects', {
         this.nomenclatures = nomenclatures
       } finally {
         this.detailsLoading = false
+      }
+    },
+
+    async createProjectItem(payload) {
+      this.saving = true
+      try {
+        const created = await projectsService.createProjectItem(payload)
+        this.currentProjectItems.push(created)
+        return created
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateProjectItem(id, payload) {
+      this.saving = true
+      try {
+        const updated = await projectsService.updateProjectItem(id, payload)
+        const index = this.currentProjectItems.findIndex(item => item.id === id)
+        if (index !== -1) {
+          this.currentProjectItems[index] = updated
+        }
+        return updated
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteProjectItem(id) {
+      this.deletingProjectItemId = id
+      try {
+        await projectsService.deleteProjectItem(id)
+        this.currentProjectItems = this.currentProjectItems.filter(item => item.id !== id)
+      } finally {
+        this.deletingProjectItemId = null
       }
     },
 

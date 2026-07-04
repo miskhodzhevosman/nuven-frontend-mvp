@@ -10,7 +10,6 @@ export const projectsService = {
   // Проекты
   // =========================
   async getProjects() {
-    // Предполагаемый endpoint списка проектов
     const { data } = await api.get('/crm/projects/')
     return data
   },
@@ -22,6 +21,11 @@ export const projectsService = {
 
   async createProject(payload) {
     const { data } = await api.post('/crm/projects/', payload)
+    return data
+  },
+
+  async updateProject(id, payload) {
+    const { data } = await api.patch(`/crm/projects/${id}/`, payload)
     return data
   },
 
@@ -44,6 +48,20 @@ export const projectsService = {
   async getProjectItems(projectId) {
     const { data } = await api.get(`/crm/projects/${projectId}/items/`)
     return data
+  },
+
+  async createProjectItem(payload) {
+    const { data } = await api.post('/crm/project-items/', payload)
+    return data
+  },
+
+  async updateProjectItem(id, payload) {
+    const { data } = await api.patch(`/crm/project-items/${id}/`, payload)
+    return data
+  },
+
+  async deleteProjectItem(id) {
+    await api.delete(`/crm/project-items/${id}/`)
   },
 
   // =========================
@@ -75,7 +93,7 @@ export const projectsService = {
   },
 
   // =========================
-  // Товары (для позиций проекта)
+  // Номенклатура
   // =========================
   async getNomenclatures() {
     const { data } = await api.get('/supplies/nomenclatures/')
@@ -85,10 +103,7 @@ export const projectsService = {
   // =========================
   // Статусы проекта
   // =========================
-  // ВАЖНО:
-  // Если у вас нет отдельного endpoint статусов, замените это на свой источник.
   async getProjectStatuses() {
-    // Предполагаемый endpoint
     const { data } = await api.get('/crm/project-statuses/')
     return data
   }
