@@ -8,6 +8,8 @@ import ProductsView from '@/views/ProductsView.vue'
 import FactoryView from '@/views/FactoryView.vue'
 import ProjectDetailsView from '@/views/ProjectDetailsView.vue'
 import ClientPaymentsView from '@/views/ClientPaymentsView.vue'
+import FactoryPaymentsView from '@/views/FactoryPaymentsView.vue'
+import OperationExpensesView from '@/views/OperationExpensesView.vue'
 
 const routes = [
   { path: '/', component: DashboardView },
@@ -22,6 +24,8 @@ const routes = [
     component: ProjectDetailsView
   },
   { path: '/client-payments', name: 'client-payments', component: ClientPaymentsView },
+  { path: '/factory-payments', name: 'factory-payments', component: FactoryPaymentsView },
+  { path: '/expenses', name: 'expenses', component: OperationExpensesView }
 ]
 
 export default createRouter({

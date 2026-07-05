@@ -67,6 +67,13 @@
         </span>
       </router-link>
 
+      <router-link to="/factory-payments" class="nav-item">
+        <span class="nav-item-left">
+          <PaymentsIcon />
+          Оплаты фабрикам
+        </span>
+      </router-link>
+
       <router-link to="/expenses" class="nav-item">
         <span class="nav-item-left">
           <ExpensesIcon />
