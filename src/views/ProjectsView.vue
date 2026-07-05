@@ -25,8 +25,8 @@
     <!-- Таблица проектов -->
     <Table
       :columns="columns"
-      :rows="store.projectTableRows"
-      :loading="store.loading"
+      :rows="tableRows"
+      :loading="store.loading || financeLoading"
       row-key="id"
     >
       <template #cell-name="{ row }">
@@ -52,7 +52,7 @@
       </template>
 
       <template #cell-margin_value="{ value }">
-        {{ value === '—' ? '—' : `${value}%` }}
+        {{ value === '—' ? '—' : `${formatPercent(value)}%` }}
       </template>
 
       <template #cell-paid="{ value }">
@@ -178,7 +178,11 @@
     </div>
 
     <!-- Модалка создания клиента -->
-    <div v-if="showClientModal" class="modal-overlay" @click.self="closeClientModal">
+    <div
+      v-if="showClientModal"
+      class="modal-overlay"
+      @click.self="closeClientModal"
+    >
       <div class="modal modal-small">
         <div class="modal-header">
           <h2>Создать клиента</h2>
@@ -188,16 +192,29 @@
         <form class="project-form" @submit.prevent="handleCreateClient">
           <div class="form-group">
             <label for="client-name">Название *</label>
-            <input id="client-name" v-model="clientForm.name" type="text" required />
+            <input
+              id="client-name"
+              v-model="clientForm.name"
+              type="text"
+              required
+            />
           </div>
 
           <div class="form-group">
             <label for="client-contacts">Контакты</label>
-            <input id="client-contacts" v-model="clientForm.contacts" type="text" />
+            <input
+              id="client-contacts"
+              v-model="clientForm.contacts"
+              type="text"
+            />
           </div>
 
           <div class="modal-actions">
-            <button type="button" class="secondary-btn" @click="closeClientModal">
+            <button
+              type="button"
+              class="secondary-btn"
+              @click="closeClientModal"
+            >
               Отмена
             </button>
             <button type="submit" class="primary-btn">
@@ -209,7 +226,11 @@
     </div>
 
     <!-- Модалка создания менеджера -->
-    <div v-if="showManagerModal" class="modal-overlay" @click.self="closeManagerModal">
+    <div
+      v-if="showManagerModal"
+      class="modal-overlay"
+      @click.self="closeManagerModal"
+    >
       <div class="modal modal-small">
         <div class="modal-header">
           <h2>Создать тех. менеджера</h2>
@@ -219,16 +240,29 @@
         <form class="project-form" @submit.prevent="handleCreateManager">
           <div class="form-group">
             <label for="manager-name">ФИО *</label>
-            <input id="manager-name" v-model="managerForm.full_name" type="text" required />
+            <input
+              id="manager-name"
+              v-model="managerForm.full_name"
+              type="text"
+              required
+            />
           </div>
 
           <div class="form-group">
             <label for="manager-contacts">Контакты</label>
-            <input id="manager-contacts" v-model="managerForm.contacts" type="text" />
+            <input
+              id="manager-contacts"
+              v-model="managerForm.contacts"
+              type="text"
+            />
           </div>
 
           <div class="modal-actions">
-            <button type="button" class="secondary-btn" @click="closeManagerModal">
+            <button
+              type="button"
+              class="secondary-btn"
+              @click="closeManagerModal"
+            >
               Отмена
             </button>
             <button type="submit" class="primary-btn">
@@ -246,9 +280,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Table from '@/components/Table.vue'
 import { useProjectsStore } from '@/stores/projects'
+import { useFinanceStore } from '@/stores/finance.store'
 
 const router = useRouter()
 const store = useProjectsStore()
+const financeStore = useFinanceStore()
 
 const columns = [
   { key: 'name', label: 'Проект' },
@@ -261,6 +297,9 @@ const columns = [
   { key: 'deadline', label: 'Срок' },
   { key: 'status_name', label: 'Статус' },
 ]
+
+const tableRows = ref([])
+const financeLoading = ref(false)
 
 const showModal = ref(false)
 const showClientModal = ref(false)
@@ -341,6 +380,9 @@ async function handleSubmit() {
 
     await store.createProject(payload)
     closeModal()
+
+    await store.initProjectsPage()
+    await buildTableRows()
   } catch (error) {
     errorMessage.value =
       error?.response?.data?.detail || 'Не удалось создать проект'
@@ -384,7 +426,22 @@ function formatMoney(value) {
   if (value === null || value === undefined || value === '' || value === '—') {
     return '—'
   }
-  return new Intl.NumberFormat('ru-RU').format(Number(value))
+
+  const num = Number(value)
+  if (Number.isNaN(num)) return value
+
+  return new Intl.NumberFormat('ru-RU').format(num)
+}
+
+function formatPercent(value) {
+  if (value === null || value === undefined || value === '' || value === '—') {
+    return '—'
+  }
+
+  const num = Number(value)
+  if (Number.isNaN(num)) return value
+
+  return num.toFixed(2)
 }
 
 function formatDate(value) {
@@ -394,14 +451,58 @@ function formatDate(value) {
   return date.toLocaleDateString('ru-RU')
 }
 
+async function buildTableRows() {
+  const sourceRows = Array.isArray(store.projectTableRows)
+    ? store.projectTableRows
+    : []
+
+  financeLoading.value = true
+
+  try {
+    const rows = await Promise.all(
+      sourceRows.map(async (row) => {
+        try {
+          const report = await financeStore.fetchProjectReport(row.id)
+
+          return {
+            ...row,
+            amount: report?.planned?.revenue ?? '—',
+            margin_value: report?.planned?.margin ?? '—',
+            paid: report?.fact?.client_received ?? '—',
+          }
+        } catch (error) {
+          console.error(`Ошибка загрузки финансов проекта ${row.id}`, error)
+
+          return {
+            ...row,
+            amount: '—',
+            margin_value: '—',
+            paid: '—',
+          }
+        }
+      })
+    )
+
+    tableRows.value = rows
+  } finally {
+    financeLoading.value = false
+    financeStore.clearProjectReport()
+  }
+}
+
 onMounted(async () => {
   try {
     await store.initProjectsPage()
+    await buildTableRows()
   } catch (error) {
     console.error('Ошибка загрузки проектов', error)
   }
 })
 </script>
+
+
+
+
 
 <style scoped>
 .projects-page {
