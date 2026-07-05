@@ -1,4 +1,274 @@
-```vue
+<script setup>
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useProjectsStore } from '@/stores/projects'
+import {
+  getTransactions,
+  createTransaction,
+  deleteTransaction,
+  getOperationTypes,
+  createOperationType
+} from '@/services/finance.service'
+
+const store = useProjectsStore()
+const route = useRoute()
+const router = useRouter()
+
+const projectId = Number(route.params.id)
+
+/* ===================== */
+/* LOADING */
+/* ===================== */
+
+const loading = ref(false)
+
+/* ===================== */
+/* STORE DATA */
+/* ===================== */
+
+const project = computed(() => store.currentProject)
+const projectInfo = computed(() => store.currentProjectInfo)
+const finance = computed(() => store.currentProjectFinance)
+const itemsRows = computed(() => store.currentProjectItemsRows)
+const clients = computed(() => store.clients)
+const managers = computed(() => store.managers)
+const statuses = computed(() => store.statuses)
+
+/* безопасные алиасы (ВАЖНО) */
+const planned = computed(() => finance.value?.planned || {})
+const fact = computed(() => finance.value?.fact || {})
+const cashflow = computed(() => finance.value?.cashflow || {})
+
+/* ===================== */
+/* EXPENSES STATE */
+/* ===================== */
+
+const transactions = ref([])
+const operationTypes = ref([])
+
+const projectExpenses = computed(() => transactions.value)
+
+/* ===================== */
+/* INIT */
+/* ===================== */
+
+onMounted(async () => {
+  loading.value = true
+
+  await store.initProjectDetails(projectId)
+
+  await loadOperationTypes()
+  await loadExpenses()
+
+  loading.value = false
+})
+
+onBeforeUnmount(() => {
+  store.clearCurrentProject()
+})
+
+/* ===================== */
+/* FINANCE TYPES */
+/* ===================== */
+
+async function loadOperationTypes() {
+  operationTypes.value = await getOperationTypes()
+}
+
+function getTypeId(code) {
+  return operationTypes.value.find(t => t.code === code)?.id
+}
+
+/* ===================== */
+/* EXPENSES */
+/* ===================== */
+
+async function loadExpenses() {
+  const all = await getTransactions()
+
+  const typeId = getTypeId('project_expense')
+
+  transactions.value = all.filter(t =>
+    t.project === projectId &&
+    t.finance_operation_type === typeId
+  )
+}
+
+/* ===================== */
+/* MODAL EXPENSE */
+/* ===================== */
+
+const showExpenseModal = ref(false)
+
+const showItemModal = ref(false)
+
+const itemForm = reactive({
+  nomenclature: null,
+  quantity: 1,
+  fixed_cost_price: 0,
+  fixed_sale_price: 0,
+})
+
+const expenseForm = reactive({
+  name: '',
+  amount: '',
+  date: ''
+})
+
+function openExpenseModal() {
+  showExpenseModal.value = true
+}
+
+function closeExpenseModal() {
+  showExpenseModal.value = false
+}
+
+/* ===================== */
+/* SAVE EXPENSE (FIXED) */
+/* ===================== */
+
+async function saveExpense() {
+  let typeId = getTypeId('project_expense')
+
+  if (!typeId) {
+    const created = await createOperationType({
+      name: 'Project expense',
+      code: 'project_expense'
+    })
+
+    operationTypes.value.push(created)
+    typeId = created.id
+  }
+
+  await createTransaction({
+    name: expenseForm.name,
+    amount: Number(expenseForm.amount),
+    date: expenseForm.date,
+    project: projectId,
+    counterparty: null,
+    finance_operation_type: typeId
+  })
+
+  closeExpenseModal()
+  await loadExpenses()
+}
+
+function openCreateItem() {
+  itemForm.nomenclature = null
+  itemForm.quantity = 1
+  itemForm.fixed_cost_price = 0
+  itemForm.fixed_sale_price = 0
+
+  showItemModal.value = true
+}
+
+async function saveItem() {
+  await store.createProjectItem({
+    project: projectId,
+    ...itemForm
+  })
+
+  showItemModal.value = false
+}
+
+/* ===================== */
+/* DELETE EXPENSE */
+/* ===================== */
+
+async function deleteExpense(id) {
+  await deleteTransaction(id)
+  await loadExpenses()
+}
+
+/* ===================== */
+/* PROJECT EDIT MODAL */
+/* ===================== */
+
+const showProjectModal = ref(false)
+
+const projectForm = reactive({
+  name: '',
+  geography: '',
+  client: '',
+  tech_manager: '',
+  status: '',
+})
+
+function openEditProject() {
+  if (!project.value) return
+
+  Object.assign(projectForm, {
+    name: project.value.name ?? '',
+    geography: project.value.geography ?? '',
+    client: project.value.client ?? '',
+    tech_manager: project.value.tech_manager ?? '',
+    status: project.value.status ?? '',
+  })
+
+  showProjectModal.value = true
+}
+
+function closeProjectModal() {
+  showProjectModal.value = false
+}
+
+async function saveProject() {
+  await store.updateProject(projectId, {
+    name: projectForm.name,
+    geography: projectForm.geography,
+    client: Number(projectForm.client),
+    tech_manager: Number(projectForm.tech_manager),
+    status: Number(projectForm.status),
+  })
+
+  showProjectModal.value = false
+}
+
+/* ===================== */
+/* STATUS BADGE (ВОССТАНОВЛЕНО) */
+/* ===================== */
+
+function statusBadgeClass(statusId) {
+  const status = store.statuses?.find(s => s.id === statusId)
+  const name = (status?.name || '').toLowerCase()
+
+  if (name.includes('работ') || name.includes('process')) {
+    return 'status-badge--blue'
+  }
+
+  if (name.includes('заверш') || name.includes('done')) {
+    return 'status-badge--green'
+  }
+
+  if (name.includes('нов') || name.includes('draft')) {
+    return 'status-badge--gray'
+  }
+
+  if (name.includes('отмен') || name.includes('cancel')) {
+    return 'status-badge--red'
+  }
+
+  return 'status-badge--gray'
+}
+
+/* ===================== */
+/* HELPERS */
+/* ===================== */
+
+function goBack() {
+  router.push('/projects')
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('ru-RU').format(Number(value || 0))
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('ru-RU')
+}
+</script>
+
 <template>
   <div class="project-page">
     <!-- HEADER -->
@@ -29,6 +299,7 @@
       </div>
     </header>
 
+    <!-- LOADING -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <span>Загрузка проекта...</span>
@@ -36,9 +307,11 @@
 
     <template v-else-if="projectInfo">
       <div class="project-layout">
-        <!-- ЛЕВАЯ КОЛОНКА -->
+
+        <!-- LEFT -->
         <div class="project-main">
-          <!-- ИНФОРМАЦИЯ -->
+
+          <!-- INFO -->
           <section class="card">
             <div class="card__header">
               <h2 class="card__title">Информация о проекте</h2>
@@ -48,10 +321,7 @@
               <div class="info-item">
                 <span class="info-item__label">Статус</span>
                 <span class="info-item__value">
-                  <span
-                    class="status-badge"
-                    :class="statusBadgeClass(projectInfo.status)"
-                  >
+                  <span class="status-badge" :class="statusBadgeClass(projectInfo.status)">
                     {{ projectInfo.status_name }}
                   </span>
                 </span>
@@ -78,8 +348,9 @@
               </div>
             </div>
           </section>
+          
 
-          <!-- ПОЗИЦИИ -->
+          <!-- ITEMS -->
           <section class="card">
             <div class="card__header">
               <div>
@@ -122,7 +393,7 @@
                           @click="deleteItem(item.id)"
                           :disabled="store.deletingProjectItemId === item.id"
                         >
-                          {{ store.deletingProjectItemId === item.id ? 'Удаление...' : 'Удалить' }}
+                          Удалить
                         </button>
                       </div>
                     </td>
@@ -138,97 +409,172 @@
               </div>
             </div>
           </section>
-        </div>
 
-        <!-- ПРАВАЯ КОЛОНКА -->
-        <aside class="project-sidebar">
-          <!-- ФИНАНСОВЫЕ KPI -->
+          <!-- 💥 PROJECT EXPENSES -->
           <section class="card">
             <div class="card__header">
-              <h2 class="card__title">Финансы</h2>
+              <div>
+                <h2 class="card__title">Проектные расходы</h2>
+                <p class="card__subtitle">Расходы, привязанные к проекту</p>
+              </div>
+
+              <button class="btn btn--primary" @click="openExpenseModal">
+                + Добавить расход
+              </button>
             </div>
 
-            <div class="kpi-grid">
-              <div class="kpi-card">
-                <div class="kpi-card__label">Плановая выручка</div>
-                <div class="kpi-card__value">{{ formatMoney(planned.revenue) }}</div>
-              </div>
+            <div v-if="projectExpenses?.length" class="table-wrap">
+              <table class="project-table">
+                <thead>
+                  <tr>
+                    <th>Название</th>
+                    <th>Дата</th>
+                    <th>Сумма</th>
+                    <th class="ta-right">Действия</th>
+                  </tr>
+                </thead>
 
-              <div class="kpi-card">
-                <div class="kpi-card__label">Плановая валовая прибыль</div>
-                <div class="kpi-card__value">{{ formatMoney(planned.gross_profit) }}</div>
-              </div>
-
-              <div class="kpi-card">
-                <div class="kpi-card__label">Маржа</div>
-                <div class="kpi-card__value">{{ formatPercent(planned.margin) }}</div>
-              </div>
-
-              <div class="kpi-card kpi-card--accent">
-                <div class="kpi-card__label">Чистая прибыль</div>
-                <div class="kpi-card__value">{{ formatMoney(netProfit) }}</div>
-              </div>
+                <tbody>
+                  <tr v-for="e in projectExpenses" :key="e.id">
+                    <td>{{ e.name }}</td>
+                    <td>{{ formatDate(e.date) }}</td>
+                    <td>{{ formatMoney(e.amount) }}</td>
+                    <td class="ta-right">
+                      <button class="btn btn--sm btn--danger" @click="deleteExpense(e.id)">
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            <div class="finance-blocks">
-              <div class="finance-block">
-                <h3>План</h3>
-                <div class="finance-row">
-                  <span>Выручка</span>
-                  <strong>{{ formatMoney(planned.revenue) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>COGS</span>
-                  <strong>{{ formatMoney(planned.cogs) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>Валовая прибыль</span>
-                  <strong>{{ formatMoney(planned.gross_profit) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>Маржа</span>
-                  <strong>{{ formatPercent(planned.margin) }}</strong>
-                </div>
-              </div>
-
-              <div class="finance-block">
-                <h3>Факт</h3>
-                <div class="finance-row">
-                  <span>Клиент оплатил</span>
-                  <strong>{{ formatMoney(fact.client_received) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>Фабрики оплачены</span>
-                  <strong>{{ formatMoney(fact.factory_paid) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>Расходы проекта</span>
-                  <strong>{{ formatMoney(fact.project_expenses) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>Операционные расходы</span>
-                  <strong>{{ formatMoney(fact.operation_expenses) }}</strong>
-                </div>
-              </div>
-
-              <div class="finance-block">
-                <h3>Cashflow</h3>
-                <div class="finance-row">
-                  <span>Дебиторка</span>
-                  <strong>{{ formatMoney(cashflow.accounts_receivable) }}</strong>
-                </div>
-                <div class="finance-row">
-                  <span>Кредиторка</span>
-                  <strong>{{ formatMoney(cashflow.accounts_payable) }}</strong>
-                </div>
+            <div v-else class="empty-state">
+              <div class="empty-state__title">Нет расходов</div>
+              <div class="empty-state__text">
+                Добавьте первый проектный расход
               </div>
             </div>
           </section>
-        </aside>
+
+        </div>
+
+        <!-- RIGHT -->
+<aside class="project-sidebar">
+  <section class="card">
+    <h2 class="card__title">Финансы</h2>
+
+    <div class="finance-blocks">
+
+      <!-- PLAN -->
+      <div class="finance-block">
+        <h3>План</h3>
+
+        <div class="finance-row">
+          <span>Выручка</span>
+          <strong>{{ formatMoney(planned?.revenue ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>COGS</span>
+          <strong>{{ formatMoney(planned?.cogs ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>Валовая прибыль</span>
+          <strong>{{ formatMoney(planned?.gross_profit ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>Маржа</span>
+          <strong>{{ planned?.margin ?? 0 }}%</strong>
+        </div>
+      </div>
+
+      <!-- FACT -->
+      <div class="finance-block">
+        <h3>Факт</h3>
+
+        <div class="finance-row">
+          <span>Оплата от клиента</span>
+          <strong>{{ formatMoney(fact?.client_received ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>Оплаты фабрикам</span>
+          <strong>{{ formatMoney(fact?.factory_paid ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>Проектные расходы</span>
+          <strong>{{ formatMoney(fact?.project_expenses ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>Операционные расходы</span>
+          <strong>{{ formatMoney(fact?.operation_expenses ?? 0) }}</strong>
+        </div>
+      </div>
+
+      <!-- CASHFLOW -->
+      <div class="finance-block">
+        <h3>Cashflow</h3>
+
+        <div class="finance-row">
+          <span>Дебиторка</span>
+          <strong>{{ formatMoney(cashflow?.accounts_receivable ?? 0) }}</strong>
+        </div>
+
+        <div class="finance-row">
+          <span>Кредиторка</span>
+          <strong>{{ formatMoney(cashflow?.accounts_payable ?? 0) }}</strong>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</aside>
+
       </div>
     </template>
 
-    <!-- MODAL ПРОЕКТА -->
+    <!-- MODAL EXPENSE -->
+    <div v-if="showExpenseModal" class="modal" @click.self="closeExpenseModal">
+      <div class="modal__card modal__card--md">
+        <div class="modal__header">
+          <h3>Новый проектный расход</h3>
+          <button class="icon-btn" @click="closeExpenseModal">✕</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label>Название</label>
+            <input v-model="expenseForm.name" placeholder="Например: логистика" />
+          </div>
+
+          <div class="form-field">
+            <label>Сумма</label>
+            <input v-model="expenseForm.amount" type="number" />
+          </div>
+
+          <div class="form-field">
+            <label>Дата</label>
+            <input v-model="expenseForm.date" type="date" />
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" @click="closeExpenseModal">
+            Отмена
+          </button>
+          <button class="btn btn--primary" @click="saveExpense">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PROJECT -->
     <div v-if="showProjectModal" class="modal" @click.self="closeProjectModal">
       <div class="modal__card modal__card--md">
         <div class="modal__header">
@@ -238,19 +584,18 @@
 
         <div class="form-grid">
           <div class="form-field">
-            <label>Название проекта</label>
-            <input v-model="projectForm.name" placeholder="Название проекта" />
+            <label>Название</label>
+            <input v-model="projectForm.name" />
           </div>
 
           <div class="form-field">
             <label>География</label>
-            <input v-model="projectForm.geography" placeholder="Например: Казахстан, РФ, EU" />
+            <input v-model="projectForm.geography" />
           </div>
 
           <div class="form-field">
             <label>Клиент</label>
             <select v-model="projectForm.client">
-              <option disabled value="">Выберите клиента</option>
               <option v-for="c in clients" :key="c.id" :value="c.id">
                 {{ c.name }}
               </option>
@@ -260,7 +605,6 @@
           <div class="form-field">
             <label>Менеджер</label>
             <select v-model="projectForm.tech_manager">
-              <option disabled value="">Выберите менеджера</option>
               <option v-for="m in managers" :key="m.id" :value="m.id">
                 {{ m.full_name }}
               </option>
@@ -270,9 +614,8 @@
           <div class="form-field form-field--full">
             <label>Статус</label>
             <select v-model="projectForm.status">
-              <option disabled value="">Выберите статус</option>
-              <option v-for="status in statuses" :key="status.id" :value="status.id">
-                {{ status.name }}
+              <option v-for="s in statuses" :key="s.id" :value="s.id">
+                {{ s.name }}
               </option>
             </select>
           </div>
@@ -280,280 +623,58 @@
 
         <div class="modal__actions">
           <button class="btn btn--ghost" @click="closeProjectModal">Отмена</button>
-          <button class="btn btn--primary" :disabled="store.saving" @click="saveProject">
-            {{ store.saving ? 'Сохранение...' : 'Сохранить' }}
+          <button class="btn btn--primary" @click="saveProject">
+            Сохранить
           </button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL ITEM -->
-    <div v-if="showItemModal" class="modal" @click.self="closeItemModal">
-      <div class="modal__card modal__card--md">
-        <div class="modal__header">
-          <h3>{{ editingItemId ? 'Редактирование позиции' : 'Новая позиция' }}</h3>
-          <button class="icon-btn" @click="closeItemModal">✕</button>
-        </div>
+    <div v-if="showItemModal" class="modal" @click.self="showItemModal = false">
+  <div class="modal__card modal__card--md">
+    <div class="modal__header">
+      <h3>Новая позиция проекта</h3>
+      <button class="icon-btn" @click="showItemModal = false">✕</button>
+    </div>
 
-        <div class="form-grid">
-          <div class="form-field form-field--full">
-            <label>Товар / номенклатура</label>
-            <select v-model="itemForm.nomenclature">
-              <option disabled value="">Выберите товар</option>
-              <option v-for="n in nomenclatures" :key="n.id" :value="n.id">
-                {{ n.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label>Количество</label>
-            <input v-model="itemForm.quantity" type="number" placeholder="0" />
-          </div>
-
-          <div class="form-field">
-            <label>Себестоимость</label>
-            <input v-model="itemForm.fixed_cost_price" type="number" placeholder="0" />
-          </div>
-
-          <div class="form-field">
-            <label>Цена продажи</label>
-            <input v-model="itemForm.fixed_sale_price" type="number" placeholder="0" />
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeItemModal">Отмена</button>
-          <button class="btn btn--primary" :disabled="store.saving" @click="saveItem">
-            {{ store.saving ? 'Сохранение...' : 'Сохранить' }}
-          </button>
-        </div>
+    <div class="form-grid">
+      <div class="form-field form-field--full">
+        <label>Номенклатура</label>
+        <select v-model="itemForm.nomenclature">
+          <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
+            {{ n.name }}
+          </option>
+        </select>
       </div>
+
+      <div class="form-field">
+        <label>Количество</label>
+        <input type="number" v-model="itemForm.quantity" />
+      </div>
+
+      <div class="form-field">
+        <label>Себестоимость</label>
+        <input type="number" v-model="itemForm.fixed_cost_price" />
+      </div>
+
+      <div class="form-field">
+        <label>Цена продажи</label>
+        <input type="number" v-model="itemForm.fixed_sale_price" />
+      </div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn btn--ghost" @click="showItemModal = false">
+        Отмена
+      </button>
+      <button class="btn btn--primary" @click="saveItem">
+        Сохранить
+      </button>
     </div>
   </div>
+</div>
+  </div>
 </template>
-
-<script setup>
-import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useProjectsStore } from '@/stores/projects'
-
-const store = useProjectsStore()
-const route = useRoute()
-const router = useRouter()
-
-const projectId = Number(route.params.id)
-
-const loading = ref(false)
-
-const project = computed(() => store.currentProject)
-const projectInfo = computed(() => store.currentProjectInfo)
-const finance = computed(() => store.currentProjectFinance)
-const itemsRows = computed(() => store.currentProjectItemsRows)
-
-const planned = computed(() => finance.value?.planned || {})
-const fact = computed(() => finance.value?.fact || {})
-const cashflow = computed(() => finance.value?.cashflow || {})
-const netProfit = computed(() => finance.value?.net_profit ?? 0)
-
-const clients = computed(() => store.clients)
-const managers = computed(() => store.managers)
-const statuses = computed(() => store.statuses)
-const nomenclatures = computed(() => store.nomenclatures)
-
-onMounted(async () => {
-  loading.value = true
-  await store.initProjectDetails(projectId)
-  loading.value = false
-})
-
-onBeforeUnmount(() => {
-  store.clearCurrentProject()
-})
-
-function goBack() {
-  router.push('/projects')
-}
-
-/* ===================== */
-/* PROJECT EDIT */
-/* ===================== */
-const showProjectModal = ref(false)
-
-const projectForm = reactive({
-  name: '',
-  geography: '',
-  client: '',
-  tech_manager: '',
-  status: '',
-})
-
-function openEditProject() {
-  if (!project.value) return
-
-  Object.assign(projectForm, {
-    name: project.value.name ?? '',
-    geography: project.value.geography ?? '',
-    client: project.value.client ?? '',
-    tech_manager: project.value.tech_manager ?? '',
-    status: project.value.status ?? '',
-  })
-
-  showProjectModal.value = true
-}
-
-function closeProjectModal() {
-  showProjectModal.value = false
-}
-
-async function saveProject() {
-  await store.updateProject(projectId, {
-    name: projectForm.name,
-    geography: projectForm.geography,
-    client: Number(projectForm.client),
-    tech_manager: Number(projectForm.tech_manager),
-    status: Number(projectForm.status),
-  })
-
-  showProjectModal.value = false
-}
-
-/* ===================== */
-/* ITEMS */
-/* ===================== */
-const showItemModal = ref(false)
-const editingItemId = ref(null)
-
-const itemForm = reactive({
-  nomenclature: '',
-  quantity: '',
-  fixed_cost_price: '',
-  fixed_sale_price: '',
-  project: projectId,
-})
-
-function openCreateItem() {
-  editingItemId.value = null
-
-  Object.assign(itemForm, {
-    nomenclature: '',
-    quantity: '',
-    fixed_cost_price: '',
-    fixed_sale_price: '',
-    project: projectId,
-  })
-
-  showItemModal.value = true
-}
-
-function openEditItem(item) {
-  editingItemId.value = item.id
-
-  Object.assign(itemForm, {
-    nomenclature: item.nomenclature,
-    quantity: item.quantity,
-    fixed_cost_price: item.fixed_cost_price,
-    fixed_sale_price: item.fixed_sale_price,
-    project: projectId,
-  })
-
-  showItemModal.value = true
-}
-
-function closeItemModal() {
-  showItemModal.value = false
-}
-
-async function saveItem() {
-  const payload = {
-    nomenclature: Number(itemForm.nomenclature),
-    quantity: Number(itemForm.quantity),
-    fixed_cost_price: Number(itemForm.fixed_cost_price),
-    fixed_sale_price: Number(itemForm.fixed_sale_price),
-    project: projectId,
-  }
-
-  if (editingItemId.value) {
-    await store.updateProjectItem(editingItemId.value, payload)
-  } else {
-    await store.createProjectItem(payload)
-  }
-
-  showItemModal.value = false
-}
-
-async function deleteItem(id) {
-  await store.deleteProjectItem(id)
-}
-
-/* ===================== */
-/* UI HELPERS */
-/* ===================== */
-function formatMoney(value) {
-  const number = Number(value || 0)
-  return new Intl.NumberFormat('ru-RU', {
-    maximumFractionDigits: 0,
-  }).format(number)
-}
-
-function formatPercent(value) {
-  if (value === null || value === undefined || value === '') return '—'
-  return `${value}%`
-}
-
-function formatDate(value) {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('ru-RU').format(date)
-}
-
-/**
- * Можно потом завязать на реальные id статусов.
- * Пока делаем fallback по названию статуса / id.
- */
-function statusBadgeClass(statusId) {
-  const status = statuses.value.find(s => s.id === statusId)
-  const name = (status?.name || '').toLowerCase()
-
-  if (
-    name.includes('работ') ||
-    name.includes('актив') ||
-    name.includes('process') ||
-    name.includes('progress')
-  ) {
-    return 'status-badge--blue'
-  }
-
-  if (
-    name.includes('заверш') ||
-    name.includes('done') ||
-    name.includes('success') ||
-    name.includes('closed')
-  ) {
-    return 'status-badge--green'
-  }
-
-  if (
-    name.includes('нов') ||
-    name.includes('draft') ||
-    name.includes('подготов')
-  ) {
-    return 'status-badge--gray'
-  }
-
-  if (
-    name.includes('просроч') ||
-    name.includes('cancel') ||
-    name.includes('отмен')
-  ) {
-    return 'status-badge--red'
-  }
-
-  return 'status-badge--gray'
-}
-</script>
-
 <style scoped>
 :root {
   color-scheme: dark;
@@ -1169,4 +1290,4 @@ select:focus {
   }
 }
 </style>
-```
+
