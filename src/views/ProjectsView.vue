@@ -276,7 +276,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Table from '@/components/Table.vue'
 import { useProjectsStore } from '@/stores/projects'
@@ -381,8 +381,9 @@ async function handleSubmit() {
     await store.createProject(payload)
     closeModal()
 
+    // после создания просто заново грузим страницу проектов;
+    // watcher ниже сам пересоберёт tableRows
     await store.initProjectsPage()
-    await buildTableRows()
   } catch (error) {
     errorMessage.value =
       error?.response?.data?.detail || 'Не удалось создать проект'
@@ -451,6 +452,10 @@ function formatDate(value) {
   return date.toLocaleDateString('ru-RU')
 }
 
+/**
+ * Собираем строки таблицы на основе УЖЕ отфильтрованного store.projectTableRows
+ * и дозаполняем финансовые поля.
+ */
 async function buildTableRows() {
   const sourceRows = Array.isArray(store.projectTableRows)
     ? store.projectTableRows
@@ -466,18 +471,18 @@ async function buildTableRows() {
 
           return {
             ...row,
-            amount: report?.planned?.revenue ?? '—',
-            margin_value: report?.planned?.margin ?? '—',
-            paid: report?.fact?.client_received ?? '—',
+            amount: report?.planned?.revenue ?? row.amount ?? '—',
+            margin_value: report?.planned?.margin ?? row.margin_value ?? '—',
+            paid: report?.fact?.client_received ?? row.paid ?? '—',
           }
         } catch (error) {
           console.error(`Ошибка загрузки финансов проекта ${row.id}`, error)
 
           return {
             ...row,
-            amount: '—',
-            margin_value: '—',
-            paid: '—',
+            amount: row.amount ?? '—',
+            margin_value: row.margin_value ?? '—',
+            paid: row.paid ?? '—',
           }
         }
       })
@@ -490,17 +495,31 @@ async function buildTableRows() {
   }
 }
 
+/**
+ * 1) Первичная загрузка страницы
+ */
 onMounted(async () => {
   try {
     await store.initProjectsPage()
-    await buildTableRows()
   } catch (error) {
     console.error('Ошибка загрузки проектов', error)
   }
 })
+
+/**
+ * 2) Самое важное:
+ * каждый раз, когда меняется store.projectTableRows
+ * (а он меняется и при initProjectsPage, и при переключении плитки),
+ * мы заново собираем tableRows.
+ */
+watch(
+  () => store.projectTableRows,
+  async () => {
+    await buildTableRows()
+  },
+  { immediate: true }
+)
 </script>
-
-
 
 
 
