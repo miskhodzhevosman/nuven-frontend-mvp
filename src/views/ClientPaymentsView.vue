@@ -8,6 +8,32 @@
       </button>
     </div>
 
+    <!-- FILTER -->
+    <div class="filters">
+      <input
+        v-model="projectSearch"
+        placeholder="Поиск проекта..."
+        class="search-input"
+      />
+
+      <div v-if="projectSearch && filteredProjects.length" class="dropdown">
+        <div
+          v-for="p in filteredProjects"
+          :key="p.id"
+          class="dropdown-item"
+          @click="selectProject(p)"
+        >
+          {{ p.name || `Проект #${p.id}` }}
+        </div>
+      </div>
+
+      <div v-if="selectedProjectId" class="selected-filter">
+        Фильтр: {{ selectedProjectName }}
+        <button @click="clearFilter">✕</button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
     <Table
       :columns="columns"
       :rows="rows"
@@ -45,7 +71,7 @@
         <h2>Добавить оплату</h2>
 
         <form @submit.prevent="submit">
-          <!-- PROJECT ONLY -->
+          <!-- PROJECT -->
           <select v-model="form.project" required>
             <option value="">Выберите проект</option>
             <option
@@ -60,9 +86,7 @@
           <input type="date" v-model="form.date" required />
           <input v-model="form.amount" placeholder="Сумма" required />
 
-          <button type="submit">
-            Сохранить
-          </button>
+          <button type="submit">Сохранить</button>
         </form>
       </div>
     </div>
@@ -87,11 +111,16 @@ const showModal = ref(false)
 
 const transactions = ref([])
 
+/**
+ * FILTER STATE
+ */
+const projectSearch = ref('')
+const selectedProjectId = ref(null)
+
 const CLIENT_PAYMENT_TYPE_ID = 1
 
 /**
  * FORM
- * ⚠️ counterparty НЕ вводим, но он обязателен для backend
  */
 const form = reactive({
   project: '',
@@ -99,6 +128,9 @@ const form = reactive({
   amount: ''
 })
 
+/**
+ * COLUMNS
+ */
 const columns = [
   { key: 'project', label: 'Проект' },
   { key: 'client', label: 'Клиент' },
@@ -123,11 +155,45 @@ async function load() {
 onMounted(load)
 
 /**
+ * PROJECT SEARCH
+ */
+const filteredProjects = computed(() => {
+  if (!projectSearch.value) return []
+
+  const q = projectSearch.value.toLowerCase()
+
+  return projectsStore.projects.filter(p =>
+    (p.name || '').toLowerCase().includes(q)
+  )
+})
+
+function selectProject(project) {
+  selectedProjectId.value = project.id
+  projectSearch.value = project.name
+}
+
+function clearFilter() {
+  selectedProjectId.value = null
+  projectSearch.value = ''
+}
+
+const selectedProjectName = computed(() => {
+  const p = projectsStore.projects.find(
+    x => x.id === selectedProjectId.value
+  )
+  return p?.name || ''
+})
+
+/**
  * ROWS
  */
 const rows = computed(() => {
   return transactions.value
     .filter(t => t.finance_operation_type === CLIENT_PAYMENT_TYPE_ID)
+    .filter(t => {
+      if (!selectedProjectId.value) return true
+      return t.project === selectedProjectId.value
+    })
     .map(t => {
       const project = projectsStore.projects.find(p => p.id === t.project)
       const client = project
@@ -161,7 +227,7 @@ async function submit() {
 
   await createTransaction({
     project: form.project,
-    counterparty: project.client, // 💥 ВАЖНО — ОБЯЗАТЕЛЬНО
+    counterparty: project.client,
     finance_operation_type: CLIENT_PAYMENT_TYPE_ID,
     date: form.date,
     amount: form.amount
