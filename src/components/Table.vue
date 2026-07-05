@@ -73,10 +73,10 @@ defineProps({
 .table-wrapper {
   overflow-x: auto;
   border-radius: 12px;
-  border: 1px solid #2d2d3f;
-  background-color: #1a1a2e;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  border: 1px solid rgba(201, 168, 106, 0.15);
+  background-color: #16181C;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .base-table {
@@ -84,12 +84,12 @@ defineProps({
   border-collapse: collapse;
   font-size: 14px;
   line-height: 1.5;
-  color: #e2e8f0;
+  color: #D0D2D5;
   min-width: 700px;
 }
 
 .base-table thead {
-  background-color: #252540;
+  background-color: #0E0F12;
 }
 
 .base-table th {
@@ -97,24 +97,18 @@ defineProps({
   text-align: left;
   font-weight: 600;
   font-size: 12px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #94a3b8;
-  border-bottom: 2px solid #2d2d3f;
-  border-top: none;
-  border-left: none;
-  border-right: none;
+  color: #C9A86A;
+  border-bottom: 1px solid rgba(201, 168, 106, 0.2);
   white-space: nowrap;
 }
 
 .base-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid #2d2d3f;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  color: #e2e8f0;
-  background-color: #1a1a2e;
+  border-bottom: 1px solid rgba(201, 168, 106, 0.08);
+  color: #D0D2D5;
+  background-color: #16181C;
 }
 
 .base-table tbody tr {
@@ -122,7 +116,7 @@ defineProps({
 }
 
 .base-table tbody tr:hover {
-  background-color: #22223a;
+  background-color: #0E0F12;
 }
 
 .base-table tbody tr:last-child td {

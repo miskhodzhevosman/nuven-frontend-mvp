@@ -82,26 +82,44 @@ onMounted(() => {
 <style scoped>
 .page {
   padding: 24px;
-  background: #121212;
+  background: #0E0F12;
   min-height: 100vh;
-  color: #e5e5e5;
+  color: #D0D2D5;
 }
 
+/* HEADER */
 .header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
+  padding: 16px;
+  background: #16181C;
+  border-radius: 12px;
 }
 
+h1 {
+  margin: 0;
+  color: #C9A86A;
+}
+
+/* BUTTON */
 .btn {
-  background: #3b82f6;
+  background: #C9A86A;
   border: none;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 8px;
+  color: #0E0F12;
+  padding: 10px 14px;
+  border-radius: 10px;
   cursor: pointer;
+  transition: 0.15s ease;
 }
 
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+/* ACTIONS */
 .actions {
   display: flex;
   gap: 10px;
@@ -110,14 +128,22 @@ onMounted(() => {
 .link {
   background: none;
   border: none;
-  color: #7aa2ff;
+  color: #C9A86A;
   cursor: pointer;
+}
+
+.link:hover {
+  color: #D0D2D5;
 }
 
 .danger {
   background: none;
   border: none;
-  color: #ff6b6b;
+  color: #C96A6A;
   cursor: pointer;
+}
+
+.danger:hover {
+  color: #ff8a8a;
 }
 </style>

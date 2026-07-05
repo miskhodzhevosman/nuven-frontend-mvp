@@ -127,10 +127,10 @@ const SettingsIcon = { template: `<svg viewBox="0 0 24 24"><circle cx="12" cy="1
   width: 280px;
   height: 100vh;
   background: #16181C;
-  color: #fff;
+  color: #D0D2D5;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255,255,255,0.05);
+  border-right: 1px solid rgba(201, 168, 106, 0.08);
 }
 
 .logo {
@@ -138,18 +138,25 @@ const SettingsIcon = { template: `<svg viewBox="0 0 24 24"><circle cx="12" cy="1
   align-items: center;
   gap: 12px;
   padding: 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(201, 168, 106, 0.08);
 }
 
 .logo-icon {
   width: 36px;
   height: 36px;
-  background: #6366f1;
+  background: #C9A86A;
+  color: #0E0F12;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-weight: bold;
+  font-weight: 700;
+}
+
+.logo-text {
+  color: #D0D2D5;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .nav {
@@ -160,23 +167,33 @@ const SettingsIcon = { template: `<svg viewBox="0 0 24 24"><circle cx="12" cy="1
 
 .nav-category {
   font-size: 11px;
-  color: #6b7280;
+  color: #C9A86A;
   padding: 10px 20px;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .nav-item {
   display: flex;
   padding: 10px 20px;
-  color: #d1d5db;
+  color: #D0D2D5;
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: 10px;
   margin: 2px 10px;
+  transition: 0.15s ease;
+  border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background: rgba(255,255,255,0.06);
-  color: white;
+  background: rgba(14, 15, 18, 0.6);
+  border-color: rgba(201, 168, 106, 0.15);
+  color: #fff;
+}
+
+.nav-item.router-link-active {
+  background: rgba(201, 168, 106, 0.12);
+  border-color: rgba(201, 168, 106, 0.35);
+  color: #fff;
 }
 
 .nav-item-left {
@@ -188,15 +205,15 @@ const SettingsIcon = { template: `<svg viewBox="0 0 24 24"><circle cx="12" cy="1
 .nav-item-left svg {
   width: 18px;
   height: 18px;
-  stroke: #6b7280;
+  stroke: #C9A86A;
   fill: none;
 }
 
 .footer {
   padding: 14px 20px;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(201, 168, 106, 0.08);
   font-size: 12px;
-  color: #6b7280;
+  color: #C9A86A;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -205,7 +222,8 @@ const SettingsIcon = { template: `<svg viewBox="0 0 24 24"><circle cx="12" cy="1
 .status-dot {
   width: 8px;
   height: 8px;
-  background: #34d399;
+  background: #C9A86A;
   border-radius: 50%;
+  box-shadow: 0 0 10px rgba(201, 168, 106, 0.4);
 }
 </style>

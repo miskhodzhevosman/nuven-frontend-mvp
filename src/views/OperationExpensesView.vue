@@ -235,26 +235,41 @@ function formatDate(d) {
 .page {
   display: grid;
   gap: 16px;
+  background: #0E0F12;
+  color: #D0D2D5;
 }
 
-.page-head {
+/* HEADER */
+.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 16px;
+  background: #16181C;
+  border-radius: 12px;
 }
 
+h1 {
+  margin: 0;
+  color: #C9A86A;
+}
+
+/* CARDS */
 .card {
   padding: 16px;
   border-radius: 12px;
-  background: var(--surface, #111827);
+  background: #16181C;
+  border: 1px solid #2A2D33;
 }
 
+/* ACTIONS */
 .actions {
   display: flex;
   gap: 8px;
 }
 
+/* BUTTONS */
 .btn,
 .btn-secondary,
 .btn-danger,
@@ -263,33 +278,51 @@ function formatDate(d) {
   border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
+  transition: 0.15s ease;
 }
 
 .btn {
-  background: #2563eb;
-  color: #fff;
+  background: #C9A86A;
+  color: #0E0F12;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
 }
 
 .btn-secondary {
-  background: #374151;
-  color: #fff;
+  background: #2A2D33;
+  color: #D0D2D5;
+}
+
+.btn-secondary:hover {
+  background: #343842;
 }
 
 .btn-danger {
-  background: #dc2626;
-  color: #fff;
+  background: #7A2E2E;
+  color: #D0D2D5;
+}
+
+.btn-danger:hover {
+  background: #922F2F;
 }
 
 .icon-btn {
   background: transparent;
-  color: inherit;
-  padding: 4px 8px;
+  color: #D0D2D5;
+  padding: 6px 8px;
 }
 
+.icon-btn:hover {
+  color: #C9A86A;
+}
+
+/* MODAL */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.7);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -299,7 +332,8 @@ function formatDate(d) {
   width: min(820px, 100%);
   padding: 16px;
   border-radius: 12px;
-  background: var(--surface, #111827);
+  background: #16181C;
+  border: 1px solid #2A2D33;
 }
 
 .modal-head {
@@ -309,42 +343,34 @@ function formatDate(d) {
   margin-bottom: 12px;
 }
 
-.form {
+/* FORM */
+form {
   display: grid;
-  gap: 16px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.field {
-  display: grid;
-  gap: 6px;
-}
-
-.field input,
-.field select {
+input,
+select {
   min-height: 40px;
   border-radius: 10px;
-  border: 1px solid #374151;
-  background: #0f172a;
-  color: #fff;
+  border: 1px solid #2A2D33;
+  background: #0E0F12;
+  color: #D0D2D5;
   padding: 0 12px;
+  outline: none;
 }
 
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+input:focus,
+select:focus {
+  border-color: #C9A86A;
 }
 
+/* ERROR */
 .error {
-  color: #f87171;
+  color: #C96A6A;
 }
 
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;

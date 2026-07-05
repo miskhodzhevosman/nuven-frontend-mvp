@@ -72,8 +72,8 @@ defineEmits(['toggle-sidebar'])
   align-items: center;
   justify-content: space-between;
   padding: 16px 32px;
-  background: #0f131a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #16181C;
+  border-bottom: 1px solid rgba(201, 168, 106, 0.12);
 }
 
 /* LEFT */
@@ -86,7 +86,7 @@ defineEmits(['toggle-sidebar'])
 .menu-toggle {
   background: none;
   border: none;
-  color: #d1d5db;
+  color: #D0D2D5;
   cursor: pointer;
   display: none;
 }
@@ -101,17 +101,17 @@ defineEmits(['toggle-sidebar'])
 
 .topbar-title {
   font-size: 18px;
-  font-weight: 500;
-  color: #f3f4f6;
+  font-weight: 600;
+  color: #F8FAFC;
 }
 
 .topbar-breadcrumb {
   font-size: 14px;
-  color: #6b7280;
+  color: #94A3B8;
 }
 
 .topbar-breadcrumb span {
-  color: #9ca3af;
+  color: #C9A86A;
 }
 
 /* RIGHT */
@@ -127,23 +127,27 @@ defineEmits(['toggle-sidebar'])
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: #0E0F12;
+  border: 1px solid rgba(201, 168, 106, 0.15);
 }
 
 .search-box input {
   background: none;
   border: none;
   outline: none;
-  color: #d1d5db;
+  color: #D0D2D5;
   width: 180px;
+}
+
+.search-box input::placeholder {
+  color: #64748B;
 }
 
 .search-box svg {
   width: 18px;
   height: 18px;
-  stroke: #6b7280;
+  stroke: #C9A86A;
   fill: none;
   stroke-width: 2;
 }
@@ -151,12 +155,13 @@ defineEmits(['toggle-sidebar'])
 /* ICONS */
 .topbar-icon {
   position: relative;
-  color: #9ca3af;
+  color: #94A3B8;
   cursor: pointer;
+  transition: 0.15s ease;
 }
 
 .topbar-icon:hover {
-  color: #f3f4f6;
+  color: #F8FAFC;
 }
 
 .topbar-icon svg {
@@ -171,8 +176,8 @@ defineEmits(['toggle-sidebar'])
   position: absolute;
   top: -6px;
   right: -6px;
-  background: #ef4444;
-  color: white;
+  background: #C9A86A;
+  color: #0E0F12;
   font-size: 10px;
   width: 18px;
   height: 18px;
@@ -180,6 +185,7 @@ defineEmits(['toggle-sidebar'])
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 700;
 }
 
 /* AVATAR */
@@ -187,11 +193,12 @@ defineEmits(['toggle-sidebar'])
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #C9A86A, #16181C);
+  color: #0E0F12;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 

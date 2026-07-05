@@ -78,8 +78,16 @@ onMounted(() => {
 <style scoped>
 .dashboard {
   padding: 20px;
+  background: #0E0F12;
+  color: #D0D2D5;
 }
 
+h1 {
+  margin-bottom: 16px;
+  color: #C9A86A;
+}
+
+/* TILES */
 .tiles {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -88,20 +96,61 @@ onMounted(() => {
 }
 
 .tile {
-  border: 1px solid #eee;
-  border-radius: 10px;
-  padding: 12px;
-  background: #fff;
+  border: 1px solid #2A2D33;
+  border-radius: 12px;
+  padding: 14px;
+  background: #16181C;
+  transition: 0.15s ease;
+}
+
+.tile:hover {
+  border-color: #C9A86A;
+  transform: translateY(-2px);
 }
 
 .label {
   font-size: 12px;
-  color: #777;
+  color: #9AA0A6;
 }
 
 .value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   margin-top: 6px;
+  color: #D0D2D5;
+}
+
+/* TABLE WRAPPER (если есть кастомный Table) */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #16181C;
+  border-radius: 12px;
+  overflow: hidden;
+  color: #D0D2D5;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #2A2D33;
+}
+
+th {
+  color: #C9A86A;
+  text-align: left;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .tiles {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

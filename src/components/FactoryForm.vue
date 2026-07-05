@@ -65,7 +65,7 @@ function submit() {
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
+  background: rgba(14, 15, 18, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,8 +73,8 @@ function submit() {
 
 .card {
   width: 420px;
-  background: #1c1c1c;
-  border: 1px solid #2b2b2b;
+  background: #16181C;
+  border: 1px solid rgba(201, 168, 106, 0.15);
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.6);
@@ -83,7 +83,7 @@ function submit() {
 .title {
   margin: 0 0 16px;
   font-size: 18px;
-  color: #eaeaea;
+  color: #D0D2D5;
 }
 
 .form {
@@ -94,7 +94,7 @@ function submit() {
 
 .field span {
   font-size: 12px;
-  color: #aaa;
+  color: #C9A86A;
 }
 
 input {
@@ -102,15 +102,16 @@ input {
   margin-top: 4px;
   padding: 10px;
   border-radius: 8px;
-  background: #121212;
-  border: 1px solid #333;
-  color: #fff;
+  background: #0E0F12;
+  border: 1px solid rgba(201, 168, 106, 0.25);
+  color: #D0D2D5;
   outline: none;
   transition: 0.15s;
 }
 
 input:focus {
-  border-color: #3b82f6;
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.12);
 }
 
 .actions {
@@ -128,13 +129,17 @@ input:focus {
 }
 
 .primary {
-  background: #3b82f6;
-  color: white;
+  background: #C9A86A;
+  color: #0E0F12;
+}
+
+.primary:hover {
+  filter: brightness(1.05);
 }
 
 .ghost {
   background: transparent;
-  border: 1px solid #333;
-  color: #ddd;
+  border: 1px solid rgba(201, 168, 106, 0.3);
+  color: #D0D2D5;
 }
 </style>
