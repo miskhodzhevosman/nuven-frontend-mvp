@@ -1,110 +1,123 @@
 // src/services/projects.service.js
-import axios from 'axios'
+import {
+  httpGet,
+  httpPost,
+  httpPatch,
+  httpDelete,
+  handleResponse,
+} from '@/api/http'
 
-const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/',
-})
+/**
+ * Извлекает массив из пагинированного или обычного ответа
+ */
+function extractArray(data) {
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.results)) return data.results
+  if (Array.isArray(data?.items)) return data.items
+  if (Array.isArray(data?.data)) return data.data
+  
+  console.warn('⚠️ Unexpected API response format:', data)
+  return []
+}
 
 export const projectsService = {
   // =========================
   // Проекты
   // =========================
   async getProjects() {
-    const { data } = await api.get('/crm/projects/')
-    return data
+    const response = await httpGet('/api/crm/projects/')
+    const data = await handleResponse(response)
+    return extractArray(data)
   },
 
   async getProjectById(id) {
-    const { data } = await api.get(`/crm/projects/${id}/`)
-    return data
+    const response = await httpGet(`/api/crm/projects/${id}/`)
+    return handleResponse(response)
   },
 
   async createProject(payload) {
-    const { data } = await api.post('/crm/projects/', payload)
-    return data
+    return await httpPost('/api/crm/projects/', payload)
   },
 
   async updateProject(id, payload) {
-    const { data } = await api.patch(`/crm/projects/${id}/`, payload)
-    return data
+    return await httpPatch(`/api/crm/projects/${id}/`, payload)
   },
 
   // =========================
   // Финансы проекта
   // =========================
   async getProjectFinance(projectId) {
-    const { data } = await api.get(`/finance/projects/${projectId}/report/`)
-    return data
+    const response = await httpGet(`/api/finance/projects/${projectId}/report/`)
+    return handleResponse(response)
   },
 
   async getProjectExpenseTransactions(projectId) {
-    const { data } = await api.get(`/finance/projects/${projectId}/report/`)
-    return data
+    const response = await httpGet(`/api/finance/projects/${projectId}/report/`)
+    return handleResponse(response)
   },
 
   // =========================
   // Позиции проекта
   // =========================
   async getProjectItems(projectId) {
-    const { data } = await api.get(`/crm/projects/${projectId}/items/`)
-    return data
+    const response = await httpGet(`/api/crm/projects/${projectId}/items/`)
+    const data = await handleResponse(response)
+    return extractArray(data)
   },
 
   async createProjectItem(payload) {
-    const { data } = await api.post('/crm/project-items/', payload)
-    return data
+    return await httpPost('/api/crm/project-items/', payload)
   },
 
   async updateProjectItem(id, payload) {
-    const { data } = await api.patch(`/crm/project-items/${id}/`, payload)
-    return data
+    return await httpPatch(`/api/crm/project-items/${id}/`, payload)
   },
 
   async deleteProjectItem(id) {
-    await api.delete(`/crm/project-items/${id}/`)
+    return await httpDelete(`/api/crm/project-items/${id}/`)
   },
 
   // =========================
   // Клиенты
   // =========================
   async getClients() {
-    const { data } = await api.get('/crm/counterparties/by_type/', {
-      params: { type: 'CLIENT' }
-    })
-    return data
+    const response = await httpGet('/api/crm/counterparties/by_type/?type=CLIENT')
+    const data = await handleResponse(response)
+    return extractArray(data)
   },
 
   async createClient(payload) {
-    const { data } = await api.post('/crm/counterparties/', payload)
-    return data
+    return await httpPost('/api/crm/counterparties/', payload)
   },
 
   // =========================
   // Тех. менеджеры
   // =========================
   async getTechnicalManagers() {
-    const { data } = await api.get('/crm/technical-managers/')
-    return data
+    const response = await httpGet('/api/crm/technical-managers/')
+    const data = await handleResponse(response)
+    return extractArray(data)
   },
 
   async createTechnicalManager(payload) {
-    const { data } = await api.post('/crm/technical-managers/', payload)
-    return data
+    return await httpPost('/api/crm/technical-managers/', payload)
   },
 
   // =========================
   // Номенклатура
   // =========================
   async getNomenclatures() {
-    const { data } = await api.get('/supplies/nomenclatures/')
-    return data
+    const response = await httpGet('/api/supplies/nomenclatures/')
+    const data = await handleResponse(response)
+    return extractArray(data)
   },
 
   // =========================
   // Статусы проекта
   // =========================
   async getProjectStatuses() {
-    const { data } = await api.get('/crm/project-statuses/')
-    return data
+    const response = await httpGet('/api/crm/project-statuses/')
+    const data = await handleResponse(response)
+    return extractArray(data)
   }
 }

@@ -55,12 +55,16 @@ const projectExpenses = computed(() => transactions.value)
 onMounted(async () => {
   loading.value = true
 
-  await store.initProjectDetails(projectId)
-
-  await loadOperationTypes()
-  await loadExpenses()
-
-  loading.value = false
+  try {
+    await store.initProjectDetails(projectId)
+    await loadOperationTypes()
+    await loadExpenses()
+  } catch (error) {
+    console.error('❌ Error loading project details:', error)
+    alert(error?.message || 'Не удалось загрузить данные проекта')
+  } finally {
+    loading.value = false
+  }
 })
 
 onBeforeUnmount(() => {
@@ -72,7 +76,13 @@ onBeforeUnmount(() => {
 /* ===================== */
 
 async function loadOperationTypes() {
-  operationTypes.value = await getOperationTypes()
+  try {
+    const data = await getOperationTypes()
+    operationTypes.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error('❌ Error loading operation types:', error)
+    operationTypes.value = []
+  }
 }
 
 function getTypeId(code) {
@@ -84,14 +94,20 @@ function getTypeId(code) {
 /* ===================== */
 
 async function loadExpenses() {
-  const all = await getTransactions()
+  try {
+    const all = await getTransactions()
+    const allTransactions = Array.isArray(all) ? all : []
 
-  const typeId = getTypeId('project_expense')
+    const typeId = getTypeId('project_expense')
 
-  transactions.value = all.filter(t =>
-    t.project === projectId &&
-    t.finance_operation_type === typeId
-  )
+    transactions.value = allTransactions.filter(t =>
+      t.project === projectId &&
+      t.finance_operation_type === typeId
+    )
+  } catch (error) {
+    console.error('❌ Error loading expenses:', error)
+    transactions.value = []
+  }
 }
 
 /* ===================== */
@@ -99,7 +115,6 @@ async function loadExpenses() {
 /* ===================== */
 
 const showExpenseModal = ref(false)
-
 const showItemModal = ref(false)
 
 const itemForm = reactive({
@@ -116,6 +131,9 @@ const expenseForm = reactive({
 })
 
 function openExpenseModal() {
+  expenseForm.name = ''
+  expenseForm.amount = ''
+  expenseForm.date = new Date().toISOString().split('T')[0]
   showExpenseModal.value = true
 }
 
@@ -124,34 +142,59 @@ function closeExpenseModal() {
 }
 
 /* ===================== */
-/* SAVE EXPENSE (FIXED) */
+/* SAVE EXPENSE */
 /* ===================== */
 
 async function saveExpense() {
-  let typeId = getTypeId('project_expense')
+  try {
+    let typeId = getTypeId('project_expense')
 
-  if (!typeId) {
-    const created = await createOperationType({
-      name: 'Project expense',
-      code: 'project_expense'
+    if (!typeId) {
+      const created = await createOperationType({
+        name: 'Project expense',
+        code: 'project_expense'
+      })
+
+      operationTypes.value.push(created)
+      typeId = created.id
+    }
+
+    await createTransaction({
+      name: expenseForm.name,
+      amount: Number(expenseForm.amount),
+      date: expenseForm.date,
+      project: projectId,
+      counterparty: null,
+      finance_operation_type: typeId
     })
 
-    operationTypes.value.push(created)
-    typeId = created.id
+    closeExpenseModal()
+    await loadExpenses()
+  } catch (error) {
+    console.error('❌ Error saving expense:', error)
+    alert(error?.message || 'Не удалось сохранить расход')
   }
-
-  await createTransaction({
-    name: expenseForm.name,
-    amount: Number(expenseForm.amount),
-    date: expenseForm.date,
-    project: projectId,
-    counterparty: null,
-    finance_operation_type: typeId
-  })
-
-  closeExpenseModal()
-  await loadExpenses()
 }
+
+/* ===================== */
+/* DELETE EXPENSE */
+/* ===================== */
+
+async function deleteExpense(id) {
+  if (!confirm('Удалить этот расход?')) return
+
+  try {
+    await deleteTransaction(id)
+    await loadExpenses()
+  } catch (error) {
+    console.error('❌ Error deleting expense:', error)
+    alert(error?.message || 'Не удалось удалить расход')
+  }
+}
+
+/* ===================== */
+/* PROJECT ITEMS */
+/* ===================== */
 
 function openCreateItem() {
   itemForm.nomenclature = null
@@ -163,21 +206,66 @@ function openCreateItem() {
 }
 
 async function saveItem() {
-  await store.createProjectItem({
-    project: projectId,
-    ...itemForm
-  })
+  try {
+    await store.createProjectItem({
+      project: projectId,
+      nomenclature: Number(itemForm.nomenclature),
+      quantity: Number(itemForm.quantity),
+      fixed_cost_price: Number(itemForm.fixed_cost_price),
+      fixed_sale_price: Number(itemForm.fixed_sale_price),
+    })
 
-  showItemModal.value = false
+    showItemModal.value = false
+  } catch (error) {
+    console.error('❌ Error saving item:', error)
+    alert(error?.message || 'Не удалось сохранить позицию')
+  }
 }
 
-/* ===================== */
-/* DELETE EXPENSE */
-/* ===================== */
+const editingItem = ref(null)
 
-async function deleteExpense(id) {
-  await deleteTransaction(id)
-  await loadExpenses()
+function openEditItem(item) {
+  editingItem.value = item
+  
+  itemForm.nomenclature = item.nomenclature
+  itemForm.quantity = item.quantity
+  itemForm.fixed_cost_price = item.fixed_cost_price
+  itemForm.fixed_sale_price = item.fixed_sale_price
+  
+  showItemModal.value = true
+}
+
+async function updateItem() {
+  try {
+    await store.updateProjectItem(editingItem.value.id, {
+      nomenclature: Number(itemForm.nomenclature),
+      quantity: Number(itemForm.quantity),
+      fixed_cost_price: Number(itemForm.fixed_cost_price),
+      fixed_sale_price: Number(itemForm.fixed_sale_price),
+    })
+
+    showItemModal.value = false
+    editingItem.value = null
+  } catch (error) {
+    console.error('❌ Error updating item:', error)
+    alert(error?.message || 'Не удалось обновить позицию')
+  }
+}
+
+async function deleteItem(id) {
+  if (!confirm('Удалить эту позицию?')) return
+
+  try {
+    await store.deleteProjectItem(id)
+  } catch (error) {
+    console.error('❌ Error deleting item:', error)
+    alert(error?.message || 'Не удалось удалить позицию')
+  }
+}
+
+function closeItemModal() {
+  showItemModal.value = false
+  editingItem.value = null
 }
 
 /* ===================== */
@@ -213,19 +301,24 @@ function closeProjectModal() {
 }
 
 async function saveProject() {
-  await store.updateProject(projectId, {
-    name: projectForm.name,
-    geography: projectForm.geography,
-    client: Number(projectForm.client),
-    tech_manager: Number(projectForm.tech_manager),
-    status: Number(projectForm.status),
-  })
+  try {
+    await store.updateProject(projectId, {
+      name: projectForm.name,
+      geography: projectForm.geography,
+      client: Number(projectForm.client),
+      tech_manager: Number(projectForm.tech_manager),
+      status: Number(projectForm.status),
+    })
 
-  showProjectModal.value = false
+    showProjectModal.value = false
+  } catch (error) {
+    console.error('❌ Error updating project:', error)
+    alert(error?.message || 'Не удалось обновить проект')
+  }
 }
 
 /* ===================== */
-/* STATUS BADGE (ВОССТАНОВЛЕНО) */
+/* STATUS BADGE */
 /* ===================== */
 
 function statusBadgeClass(statusId) {
@@ -270,7 +363,7 @@ function formatDate(value) {
 </script>
 
 <template>
-  <div class="project-page">
+<div class="project-page">
     <!-- HEADER -->
     <header class="page-header">
       <div class="page-header__left">
@@ -410,7 +503,7 @@ function formatDate(value) {
             </div>
           </section>
 
-          <!-- 💥 PROJECT EXPENSES -->
+          <!-- PROJECT EXPENSES -->
           <section class="card">
             <div class="card__header">
               <div>
@@ -460,80 +553,80 @@ function formatDate(value) {
         </div>
 
         <!-- RIGHT -->
-<aside class="project-sidebar">
-  <section class="card">
-    <h2 class="card__title">Финансы</h2>
+        <aside class="project-sidebar">
+          <section class="card">
+            <h2 class="card__title">Финансы</h2>
 
-    <div class="finance-blocks">
+            <div class="finance-blocks">
 
-      <!-- PLAN -->
-      <div class="finance-block">
-        <h3>План</h3>
+              <!-- PLAN -->
+              <div class="finance-block">
+                <h3>План</h3>
 
-        <div class="finance-row">
-          <span>Выручка</span>
-          <strong>{{ formatMoney(planned?.revenue ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>Выручка</span>
+                  <strong>{{ formatMoney(planned?.revenue ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>COGS</span>
-          <strong>{{ formatMoney(planned?.cogs ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>COGS</span>
+                  <strong>{{ formatMoney(planned?.cogs ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>Валовая прибыль</span>
-          <strong>{{ formatMoney(planned?.gross_profit ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>Валовая прибыль</span>
+                  <strong>{{ formatMoney(planned?.gross_profit ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>Маржа</span>
-          <strong>{{ planned?.margin ?? 0 }}%</strong>
-        </div>
-      </div>
+                <div class="finance-row">
+                  <span>Маржа</span>
+                  <strong>{{ planned?.margin ?? 0 }}%</strong>
+                </div>
+              </div>
 
-      <!-- FACT -->
-      <div class="finance-block">
-        <h3>Факт</h3>
+              <!-- FACT -->
+              <div class="finance-block">
+                <h3>Факт</h3>
 
-        <div class="finance-row">
-          <span>Оплата от клиента</span>
-          <strong>{{ formatMoney(fact?.client_received ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>Оплата от клиента</span>
+                  <strong>{{ formatMoney(fact?.client_received ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>Оплаты фабрикам</span>
-          <strong>{{ formatMoney(fact?.factory_paid ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>Оплаты фабрикам</span>
+                  <strong>{{ formatMoney(fact?.factory_paid ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>Проектные расходы</span>
-          <strong>{{ formatMoney(fact?.project_expenses ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>Проектные расходы</span>
+                  <strong>{{ formatMoney(fact?.project_expenses ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>Операционные расходы</span>
-          <strong>{{ formatMoney(fact?.operation_expenses ?? 0) }}</strong>
-        </div>
-      </div>
+                <div class="finance-row">
+                  <span>Операционные расходы</span>
+                  <strong>{{ formatMoney(fact?.operation_expenses ?? 0) }}</strong>
+                </div>
+              </div>
 
-      <!-- CASHFLOW -->
-      <div class="finance-block">
-        <h3>Cashflow</h3>
+              <!-- CASHFLOW -->
+              <div class="finance-block">
+                <h3>Cashflow</h3>
 
-        <div class="finance-row">
-          <span>Дебиторка</span>
-          <strong>{{ formatMoney(cashflow?.accounts_receivable ?? 0) }}</strong>
-        </div>
+                <div class="finance-row">
+                  <span>Дебиторка</span>
+                  <strong>{{ formatMoney(cashflow?.accounts_receivable ?? 0) }}</strong>
+                </div>
 
-        <div class="finance-row">
-          <span>Кредиторка</span>
-          <strong>{{ formatMoney(cashflow?.accounts_payable ?? 0) }}</strong>
-        </div>
-      </div>
+                <div class="finance-row">
+                  <span>Кредиторка</span>
+                  <strong>{{ formatMoney(cashflow?.accounts_payable ?? 0) }}</strong>
+                </div>
+              </div>
 
-    </div>
-  </section>
-</aside>
+            </div>
+          </section>
+        </aside>
 
       </div>
     </template>
@@ -618,8 +711,7 @@ function formatDate(value) {
                 {{ s.name }}
               </option>
             </select>
-          </div>
-        </div>
+                  </div>
 
         <div class="modal__actions">
           <button class="btn btn--ghost" @click="closeProjectModal">Отмена</button>
@@ -630,51 +722,58 @@ function formatDate(value) {
       </div>
     </div>
 
-    <div v-if="showItemModal" class="modal" @click.self="showItemModal = false">
-  <div class="modal__card modal__card--md">
-    <div class="modal__header">
-      <h3>Новая позиция проекта</h3>
-      <button class="icon-btn" @click="showItemModal = false">✕</button>
-    </div>
+    <!-- MODAL ITEM -->
+    <div v-if="showItemModal" class="modal" @click.self="closeItemModal">
+      <div class="modal__card modal__card--md">
+        <div class="modal__header">
+          <h3>{{ editingItem ? 'Редактировать позицию' : 'Новая позиция проекта' }}</h3>
+          <button class="icon-btn" @click="closeItemModal">✕</button>
+        </div>
 
-    <div class="form-grid">
-      <div class="form-field form-field--full">
-        <label>Номенклатура</label>
-        <select v-model="itemForm.nomenclature">
-          <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
-            {{ n.name }}
-          </option>
-        </select>
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label>Номенклатура</label>
+            <select v-model="itemForm.nomenclature">
+              <option disabled :value="null">Выберите товар</option>
+              <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
+                {{ n.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Количество</label>
+            <input type="number" v-model="itemForm.quantity" min="0" step="1" />
+          </div>
+
+          <div class="form-field">
+            <label>Себестоимость</label>
+            <input type="number" v-model="itemForm.fixed_cost_price" min="0" step="0.01" />
+          </div>
+
+          <div class="form-field form-field--full">
+            <label>Цена продажи</label>
+            <input type="number" v-model="itemForm.fixed_sale_price" min="0" step="0.01" />
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" @click="closeItemModal">
+            Отмена
+          </button>
+          <button 
+            class="btn btn--primary" 
+            @click="editingItem ? updateItem() : saveItem()"
+          >
+            {{ editingItem ? 'Обновить' : 'Создать' }}
+          </button>
+        </div>
       </div>
-
-      <div class="form-field">
-        <label>Количество</label>
-        <input type="number" v-model="itemForm.quantity" />
-      </div>
-
-      <div class="form-field">
-        <label>Себестоимость</label>
-        <input type="number" v-model="itemForm.fixed_cost_price" />
-      </div>
-
-      <div class="form-field">
-        <label>Цена продажи</label>
-        <input type="number" v-model="itemForm.fixed_sale_price" />
-      </div>
-    </div>
-
-    <div class="modal__actions">
-      <button class="btn btn--ghost" @click="showItemModal = false">
-        Отмена
-      </button>
-      <button class="btn btn--primary" @click="saveItem">
-        Сохранить
-      </button>
     </div>
   </div>
-</div>
   </div>
 </template>
+
 <style scoped>
 .project-page {
   min-height: 100vh;
@@ -699,6 +798,11 @@ function formatDate(value) {
   gap: 12px;
 }
 
+.page-header__right {
+  display: flex;
+  gap: 12px;
+}
+
 .page-title {
   margin: 0;
   font-size: 28px;
@@ -710,10 +814,46 @@ function formatDate(value) {
   margin-top: 6px;
 }
 
+/* LOADING */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px 20px;
+  color: #9AA0A6;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #2A2D33;
+  border-top-color: #C9A86A;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* LAYOUT */
 .project-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  gap: 20px;
+}
+
+.project-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.project-sidebar {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -736,6 +876,7 @@ function formatDate(value) {
 .card__title {
   margin: 0;
   font-size: 18px;
+  font-weight: 700;
   color: #C9A86A;
 }
 
@@ -753,6 +894,9 @@ function formatDate(value) {
 }
 
 .info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px;
   border-radius: 12px;
   background: #0E0F12;
@@ -762,12 +906,14 @@ function formatDate(value) {
 .info-item__label {
   font-size: 12px;
   color: #9AA0A6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .info-item__value {
-  margin-top: 6px;
   font-weight: 600;
   color: #D0D2D5;
+  font-size: 14px;
 }
 
 /* STATUS */
@@ -776,19 +922,55 @@ function formatDate(value) {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 600;
   border: 1px solid #2A2D33;
   background: #0E0F12;
   color: #D0D2D5;
 }
 
 .status-badge--blue {
-  color: #C9A86A;
-  border-color: #C9A86A;
+  color: #6A9AC9;
+  border-color: #6A9AC9;
+  background: rgba(106, 154, 201, 0.1);
 }
 
 .status-badge--green {
-  color: #C9A86A;
-  border-color: #C9A86A;
+  color: #6AC98E;
+  border-color: #6AC98E;
+  background: rgba(106, 201, 142, 0.1);
+}
+
+.status-badge--gray {
+  color: #9AA0A6;
+  border-color: #2A2D33;
+  background: #0E0F12;
+}
+
+.status-badge--red {
+  color: #C96A6A;
+  border-color: #C96A6A;
+  background: rgba(201, 106, 106, 0.1);
+}
+
+/* EMPTY STATE */
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed #2A2D33;
+  border-radius: 12px;
+  background: #0E0F12;
+}
+
+.empty-state__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #D0D2D5;
+  margin-bottom: 8px;
+}
+
+.empty-state__text {
+  font-size: 14px;
+  color: #9AA0A6;
 }
 
 /* TABLE */
@@ -808,18 +990,27 @@ function formatDate(value) {
 .project-table th {
   text-align: left;
   font-size: 12px;
+  font-weight: 600;
   color: #9AA0A6;
   padding: 12px;
   border-bottom: 1px solid #2A2D33;
+  background: #0E0F12;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .project-table td {
   padding: 12px;
   border-bottom: 1px solid #2A2D33;
   color: #D0D2D5;
+  font-size: 14px;
 }
 
-.project-table tr:hover td {
+.project-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.project-table tbody tr:hover td {
   background: #0E0F12;
 }
 
@@ -830,6 +1021,7 @@ function formatDate(value) {
 
 .td-amount {
   font-weight: 700;
+  color: #D0D2D5;
 }
 
 .ta-right {
@@ -843,6 +1035,12 @@ function formatDate(value) {
 }
 
 /* FINANCE */
+.finance-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .finance-block {
   padding: 12px;
   border-radius: 12px;
@@ -853,12 +1051,16 @@ function formatDate(value) {
 .finance-block h3 {
   margin: 0 0 10px;
   font-size: 14px;
+  font-weight: 700;
   color: #C9A86A;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .finance-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid #2A2D33;
 }
@@ -869,20 +1071,39 @@ function formatDate(value) {
 
 .finance-row span {
   color: #9AA0A6;
+  font-size: 13px;
 }
 
 .finance-row strong {
   color: #D0D2D5;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 /* BUTTONS */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #2A2D33;
   background: #0E0F12;
   color: #D0D2D5;
   padding: 10px 14px;
   border-radius: 10px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  background: #16181C;
+  border-color: #C9A86A;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn--primary {
@@ -891,14 +1112,30 @@ function formatDate(value) {
   border-color: #C9A86A;
 }
 
+.btn--primary:hover {
+  background: #D4B57A;
+  border-color: #D4B57A;
+}
+
 .btn--ghost {
   background: transparent;
+  border-color: transparent;
+}
+
+.btn--ghost:hover {
+  background: #16181C;
+  border-color: #2A2D33;
 }
 
 .btn--danger {
   background: #7A2E2E;
   border-color: #7A2E2E;
   color: #D0D2D5;
+}
+
+.btn--danger:hover {
+  background: #8A3E3E;
+  border-color: #8A3E3E;
 }
 
 .btn--sm {
@@ -910,59 +1147,122 @@ function formatDate(value) {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  z-index: 1000;
 }
 
 .modal__card {
   width: 100%;
   max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: #16181C;
   border: 1px solid #2A2D33;
   border-radius: 16px;
-  padding: 16px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal__card--md {
+  max-width: 560px;
 }
 
 .modal__header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2A2D33;
+}
+
+.modal__header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #C9A86A;
 }
 
 .icon-btn {
   background: transparent;
   border: 0;
+  color: #9AA0A6;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px 8px;
+  transition: color 0.15s ease;
+}
+
+.icon-btn:hover {
   color: #D0D2D5;
+}
+
+.modal__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #2A2D33;
 }
 
 /* FORM */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 .form-field {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-field--full {
+  grid-column: 1 / -1;
 }
 
 .form-field label {
   font-size: 12px;
+  font-weight: 600;
   color: #9AA0A6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 input,
 select {
-  height: 40px;
+  height: 42px;
   border-radius: 10px;
   border: 1px solid #2A2D33;
   background: #0E0F12;
   color: #D0D2D5;
-  padding: 0 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #C9A86A;
+}
+
+input:disabled,
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
 }
 
 /* RESPONSIVE */
@@ -975,6 +1275,66 @@ select {
   .info-grid {
     grid-template-columns: 1fr;
   }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header__right {
+    width: 100%;
+  }
+
+  .page-header__right .btn {
+    width: 100%;
+  }
+
+  .table-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .table-actions .btn {
+    width: 100%;
+  }
+
+  .modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal__actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .project-page {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .card__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card__header .btn {
+    width: 100%;
+  }
+
+  .table-wrap {
+    border-radius: 8px;
+  }
+
+  .project-table {
+    min-width: 600px;
+  }
 }
 </style>
-

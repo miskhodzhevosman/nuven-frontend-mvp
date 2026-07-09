@@ -1,53 +1,26 @@
-const BASE_URL = 'http://127.0.0.1:8000/api'
-
-async function request(url, options = {}) {
-  const res = await fetch(`${BASE_URL}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
-  })
-
-  if (!res.ok) {
-    let message = 'Request failed'
-    try {
-      const data = await res.json()
-      message = data?.detail || JSON.stringify(data)
-    } catch (e) {
-      // ignore
-    }
-    throw new Error(message)
-  }
-
-  if (res.status === 204) return null
-  return res.json()
-}
+// src/services/finance.service.js
+import {
+  httpGet,
+  httpPost,
+  httpPatch,
+  httpDelete,
+  handleResponse,
+} from '@/api/http'
 
 /**
  * =========================
- * REPORTS (твои методы)
+ * REPORTS
  * =========================
  */
 
 export async function getFinanceReport() {
-  const res = await fetch(`${BASE_URL}/finance/report/`)
-
-  if (!res.ok) {
-    throw new Error('Failed to load finance report')
-  }
-
-  return await res.json()
+  const response = await httpGet('/api/finance/report/')
+  return handleResponse(response)
 }
 
 export async function getProjectFinanceReport(projectId) {
-  const res = await fetch(`${BASE_URL}/finance/projects/${projectId}/report/`)
-
-  if (!res.ok) {
-    throw new Error(`Failed to load finance report for project ${projectId}`)
-  }
-
-  return await res.json()
+  const response = await httpGet(`/api/finance/projects/${projectId}/report/`)
+  return handleResponse(response)
 }
 
 /**
@@ -56,15 +29,13 @@ export async function getProjectFinanceReport(projectId) {
  * =========================
  */
 
-export function getOperationTypes() {
-  return request('/finance/operation-types/')
+export async function getOperationTypes() {
+  const response = await httpGet('/api/finance/operation-types/')
+  return handleResponse(response)
 }
 
-export function createOperationType(payload) {
-  return request('/finance/operation-types/', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  })
+export async function createOperationType(payload) {
+  return await httpPost('/api/finance/operation-types/', payload)
 }
 
 /**
@@ -73,30 +44,24 @@ export function createOperationType(payload) {
  * =========================
  */
 
-export function getTransactions() {
-  return request('/finance/transactions/')
+export async function getTransactions() {
+  const response = await httpGet('/api/finance/transactions/')
+  return handleResponse(response)
 }
 
-export function getTransaction(id) {
-  return request(`/finance/transactions/${id}/`)
+export async function getTransaction(id) {
+  const response = await httpGet(`/api/finance/transactions/${id}/`)
+  return handleResponse(response)
 }
 
-export function createTransaction(payload) {
-  return request('/finance/transactions/', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  })
+export async function createTransaction(payload) {
+  return await httpPost('/api/finance/transactions/', payload)
 }
 
-export function updateTransaction(id, payload) {
-  return request(`/finance/transactions/${id}/`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload)
-  })
+export async function updateTransaction(id, payload) {
+  return await httpPatch(`/api/finance/transactions/${id}/`, payload)
 }
 
-export function deleteTransaction(id) {
-  return request(`/finance/transactions/${id}/`, {
-    method: 'DELETE'
-  })
+export async function deleteTransaction(id) {
+  return await httpDelete(`/api/finance/transactions/${id}/`)
 }

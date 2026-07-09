@@ -125,6 +125,7 @@ export const useProjectsStore = defineStore('projects', {
       try {
         return await projectsService.getProjectStatuses()
       } catch (e) {
+        console.error('❌ Failed to load statuses:', e)
         return []
       }
     },
@@ -143,6 +144,9 @@ export const useProjectsStore = defineStore('projects', {
         this.clients = clients
         this.managers = managers
         this.statuses = statuses
+      } catch (e) {
+        console.error('❌ Error initializing projects page:', e)
+        throw e
       } finally {
         this.loading = false
       }
@@ -154,6 +158,9 @@ export const useProjectsStore = defineStore('projects', {
         const created = await projectsService.createProject(payload)
         this.projects.unshift(created)
         return created
+      } catch (e) {
+        console.error('❌ Error creating project:', e)
+        throw e
       } finally {
         this.saving = false
       }
@@ -172,21 +179,34 @@ export const useProjectsStore = defineStore('projects', {
         }
 
         return updated
+      } catch (e) {
+        console.error(`❌ Error updating project ${id}:`, e)
+        throw e
       } finally {
         this.saving = false
       }
     },
 
     async createClient(payload) {
-      const created = await projectsService.createClient(payload)
-      this.clients.push(created)
-      return created
+      try {
+        const created = await projectsService.createClient(payload)
+        this.clients.push(created)
+        return created
+      } catch (e) {
+        console.error('❌ Error creating client:', e)
+        throw e
+      }
     },
 
     async createTechnicalManager(payload) {
-      const created = await projectsService.createTechnicalManager(payload)
-      this.managers.push(created)
-      return created
+      try {
+        const created = await projectsService.createTechnicalManager(payload)
+        this.managers.push(created)
+        return created
+      } catch (e) {
+        console.error('❌ Error creating manager:', e)
+        throw e
+      }
     },
 
     async initProjectDetails(projectId) {
@@ -213,6 +233,9 @@ export const useProjectsStore = defineStore('projects', {
         this.managers = managers
         this.statuses = statuses
         this.nomenclatures = nomenclatures
+      } catch (e) {
+        console.error(`❌ Error initializing project ${projectId} details:`, e)
+        throw e
       } finally {
         this.detailsLoading = false
       }
@@ -224,6 +247,9 @@ export const useProjectsStore = defineStore('projects', {
         const created = await projectsService.createProjectItem(payload)
         this.currentProjectItems.push(created)
         return created
+      } catch (e) {
+        console.error('❌ Error creating project item:', e)
+        throw e
       } finally {
         this.saving = false
       }
@@ -238,6 +264,9 @@ export const useProjectsStore = defineStore('projects', {
           this.currentProjectItems[index] = updated
         }
         return updated
+      } catch (e) {
+        console.error(`❌ Error updating project item ${id}:`, e)
+        throw e
       } finally {
         this.saving = false
       }
@@ -248,6 +277,9 @@ export const useProjectsStore = defineStore('projects', {
       try {
         await projectsService.deleteProjectItem(id)
         this.currentProjectItems = this.currentProjectItems.filter(item => item.id !== id)
+      } catch (e) {
+        console.error(`❌ Error deleting project item ${id}:`, e)
+        throw e
       } finally {
         this.deletingProjectItemId = null
       }

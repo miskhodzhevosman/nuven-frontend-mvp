@@ -385,8 +385,9 @@ async function handleSubmit() {
     // watcher ниже сам пересоберёт tableRows
     await store.initProjectsPage()
   } catch (error) {
-    errorMessage.value =
-      error?.response?.data?.detail || 'Не удалось создать проект'
+    // Обновлённая обработка ошибок для fetch
+    errorMessage.value = error?.message || 'Не удалось создать проект'
+    console.error('❌ Create project error:', error)
   }
 }
 
@@ -401,7 +402,9 @@ async function handleCreateClient() {
     form.client = created.id
     closeClientModal()
   } catch (error) {
-    alert(error?.response?.data?.detail || 'Не удалось создать клиента')
+    // Обновлённая обработка ошибок
+    alert(error?.message || 'Не удалось создать клиента')
+    console.error('❌ Create client error:', error)
   }
 }
 
@@ -415,7 +418,9 @@ async function handleCreateManager() {
     form.tech_manager = created.id
     closeManagerModal()
   } catch (error) {
-    alert(error?.response?.data?.detail || 'Не удалось создать менеджера')
+    // Обновлённая обработка ошибок
+    alert(error?.message || 'Не удалось создать менеджера')
+    console.error('❌ Create manager error:', error)
   }
 }
 
@@ -476,7 +481,7 @@ async function buildTableRows() {
             paid: report?.fact?.client_received ?? row.paid ?? '—',
           }
         } catch (error) {
-          console.error(`Ошибка загрузки финансов проекта ${row.id}`, error)
+          console.error(`❌ Ошибка загрузки финансов проекта ${row.id}:`, error)
 
           return {
             ...row,
@@ -502,7 +507,7 @@ onMounted(async () => {
   try {
     await store.initProjectsPage()
   } catch (error) {
-    console.error('Ошибка загрузки проектов', error)
+    console.error('❌ Ошибка загрузки проектов:', error)
   }
 })
 
@@ -520,8 +525,6 @@ watch(
   { immediate: true }
 )
 </script>
-
-
 
 <style scoped>
 .projects-page {
@@ -636,6 +639,11 @@ watch(
 
 .primary-btn:hover {
   filter: brightness(1.1);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .secondary-btn {
@@ -753,6 +761,18 @@ watch(
 .form-error {
   color: #C96A6A;
   font-size: 14px;
+  padding: 12px;
+  background: rgba(201, 106, 106, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(201, 106, 106, 0.3);
+}
+
+/* MODAL ACTIONS */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 /* RESPONSIVE */
@@ -768,6 +788,14 @@ watch(
   .page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions button {
+    width: 100%;
   }
 }
 </style>

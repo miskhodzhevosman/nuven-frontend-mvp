@@ -1,4 +1,3 @@
-
 // src/stores/finance.store.js
 import { defineStore } from 'pinia'
 import {
@@ -78,10 +77,8 @@ export const useFinanceStore = defineStore('finance', {
         this.report = await getFinanceReport()
         return this.report
       } catch (e) {
-        this.error =
-          e?.response?.data?.detail ||
-          e?.message ||
-          'Не удалось загрузить финансовый отчёт'
+        this.error = e?.message || 'Не удалось загрузить финансовый отчёт'
+        console.error('❌ Finance report error:', e)
         throw e
       } finally {
         this.loading = false
@@ -96,10 +93,8 @@ export const useFinanceStore = defineStore('finance', {
         this.projectReport = await getProjectFinanceReport(projectId)
         return this.projectReport
       } catch (e) {
-        this.projectError =
-          e?.response?.data?.detail ||
-          e?.message ||
-          'Не удалось загрузить финансовый отчёт проекта'
+        this.projectError = e?.message || 'Не удалось загрузить финансовый отчёт проекта'
+        console.error(`❌ Project ${projectId} finance report error:`, e)
         throw e
       } finally {
         this.projectLoading = false
@@ -112,4 +107,3 @@ export const useFinanceStore = defineStore('finance', {
     },
   },
 })
-
