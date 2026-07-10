@@ -1,3 +1,4 @@
+
 <script setup>
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -19,13 +20,11 @@ const projectId = Number(route.params.id)
 /* ===================== */
 /* LOADING */
 /* ===================== */
-
 const loading = ref(false)
 
 /* ===================== */
 /* STORE DATA */
 /* ===================== */
-
 const project = computed(() => store.currentProject)
 const projectInfo = computed(() => store.currentProjectInfo)
 const finance = computed(() => store.currentProjectFinance)
@@ -34,34 +33,55 @@ const clients = computed(() => store.clients)
 const managers = computed(() => store.managers)
 const statuses = computed(() => store.statuses)
 
-/* безопасные алиасы (ВАЖНО) */
+/* безопасные алиасы */
 const planned = computed(() => finance.value?.planned || {})
 const fact = computed(() => finance.value?.fact || {})
 const cashflow = computed(() => finance.value?.cashflow || {})
 
 /* ===================== */
-/* EXPENSES STATE */
+/* FINANCE TYPES & DATA */
 /* ===================== */
-
+const operationTypes = ref([])        // всегда массив
 const transactions = ref([])
-const operationTypes = ref([])
 
-const projectExpenses = computed(() => transactions.value)
+function getTypeId(code) {
+  const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
+  return list.find(t => t.code === code)?.id
+}
+
+const projectExpenses = computed(() => {
+  const typeId = getTypeId('project_expense')
+  if (!typeId) return []
+  return transactions.value.filter(
+    t => t.project === projectId && t.finance_operation_type === typeId
+  )
+})
+
+// по аналогии с ClientPaymentsView/FactoryPayments
+const CLIENT_PAYMENT_TYPE_ID = 2
+const FACTORY_PAYMENT_TYPE_ID = 3
+
+const clientPayments = computed(() =>
+  transactions.value.filter(
+    t => t.project === projectId && t.finance_operation_type === CLIENT_PAYMENT_TYPE_ID
+  )
+)
+
+const factoryPayments = computed(() =>
+  transactions.value.filter(
+    t => t.project === projectId && t.finance_operation_type === FACTORY_PAYMENT_TYPE_ID
+  )
+)
 
 /* ===================== */
 /* INIT */
 /* ===================== */
-
 onMounted(async () => {
   loading.value = true
-
   try {
     await store.initProjectDetails(projectId)
     await loadOperationTypes()
-    await loadExpenses()
-  } catch (error) {
-    console.error('❌ Error loading project details:', error)
-    alert(error?.message || 'Не удалось загрузить данные проекта')
+    await loadTransactions()
   } finally {
     loading.value = false
   }
@@ -71,59 +91,32 @@ onBeforeUnmount(() => {
   store.clearCurrentProject()
 })
 
-/* ===================== */
-/* FINANCE TYPES */
-/* ===================== */
-
 async function loadOperationTypes() {
-  try {
-    const data = await getOperationTypes()
-    operationTypes.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    console.error('❌ Error loading operation types:', error)
-    operationTypes.value = []
-  }
+  const res = await getOperationTypes()
+  operationTypes.value = Array.isArray(res)
+    ? res
+    : Array.isArray(res?.results)
+      ? res.results
+      : Array.isArray(res?.items)
+        ? res.items
+        : []
 }
 
-function getTypeId(code) {
-  return operationTypes.value.find(t => t.code === code)?.id
-}
-
-/* ===================== */
-/* EXPENSES */
-/* ===================== */
-
-async function loadExpenses() {
-  try {
-    const all = await getTransactions()
-    const allTransactions = Array.isArray(all) ? all : []
-
-    const typeId = getTypeId('project_expense')
-
-    transactions.value = allTransactions.filter(t =>
-      t.project === projectId &&
-      t.finance_operation_type === typeId
-    )
-  } catch (error) {
-    console.error('❌ Error loading expenses:', error)
-    transactions.value = []
-  }
+async function loadTransactions() {
+  const res = await getTransactions()
+  transactions.value = Array.isArray(res)
+    ? res
+    : Array.isArray(res?.results)
+      ? res.results
+      : Array.isArray(res?.items)
+        ? res.items
+        : []
 }
 
 /* ===================== */
-/* MODAL EXPENSE */
+/* EXPENSE MODAL */
 /* ===================== */
-
 const showExpenseModal = ref(false)
-const showItemModal = ref(false)
-
-const itemForm = reactive({
-  nomenclature: null,
-  quantity: 1,
-  fixed_cost_price: 0,
-  fixed_sale_price: 0,
-})
-
 const expenseForm = reactive({
   name: '',
   amount: '',
@@ -131,149 +124,151 @@ const expenseForm = reactive({
 })
 
 function openExpenseModal() {
-  expenseForm.name = ''
-  expenseForm.amount = ''
-  expenseForm.date = new Date().toISOString().split('T')[0]
   showExpenseModal.value = true
 }
-
 function closeExpenseModal() {
   showExpenseModal.value = false
 }
 
-/* ===================== */
-/* SAVE EXPENSE */
-/* ===================== */
-
 async function saveExpense() {
-  try {
-    let typeId = getTypeId('project_expense')
+  let typeId = getTypeId('project_expense')
 
-    if (!typeId) {
-      const created = await createOperationType({
-        name: 'Project expense',
-        code: 'project_expense'
-      })
-
-      operationTypes.value.push(created)
-      typeId = created.id
-    }
-
-    await createTransaction({
-      name: expenseForm.name,
-      amount: Number(expenseForm.amount),
-      date: expenseForm.date,
-      project: projectId,
-      counterparty: null,
-      finance_operation_type: typeId
+  if (!typeId) {
+    const created = await createOperationType({
+      name: 'Project expense',
+      code: 'project_expense'
     })
-
-    closeExpenseModal()
-    await loadExpenses()
-  } catch (error) {
-    console.error('❌ Error saving expense:', error)
-    alert(error?.message || 'Не удалось сохранить расход')
+    // добавляем безопасно
+    const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
+    operationTypes.value = [...list, created]
+    typeId = created.id
   }
-}
 
-/* ===================== */
-/* DELETE EXPENSE */
-/* ===================== */
+  await createTransaction({
+    name: expenseForm.name,
+    amount: Number(expenseForm.amount),
+    date: expenseForm.date,
+    project: projectId,
+    counterparty: null,
+    finance_operation_type: typeId
+  })
 
-async function deleteExpense(id) {
-  if (!confirm('Удалить этот расход?')) return
-
-  try {
-    await deleteTransaction(id)
-    await loadExpenses()
-  } catch (error) {
-    console.error('❌ Error deleting expense:', error)
-    alert(error?.message || 'Не удалось удалить расход')
-  }
+  closeExpenseModal()
+  await loadTransactions()
 }
 
 /* ===================== */
 /* PROJECT ITEMS */
 /* ===================== */
+const showItemModal = ref(false)
+const itemForm = reactive({
+  nomenclature: null,
+  quantity: 1,
+  fixed_cost_price: 0,
+  fixed_sale_price: 0,
+})
 
 function openCreateItem() {
   itemForm.nomenclature = null
   itemForm.quantity = 1
   itemForm.fixed_cost_price = 0
   itemForm.fixed_sale_price = 0
-
   showItemModal.value = true
 }
 
 async function saveItem() {
-  try {
-    await store.createProjectItem({
-      project: projectId,
-      nomenclature: Number(itemForm.nomenclature),
-      quantity: Number(itemForm.quantity),
-      fixed_cost_price: Number(itemForm.fixed_cost_price),
-      fixed_sale_price: Number(itemForm.fixed_sale_price),
-    })
-
-    showItemModal.value = false
-  } catch (error) {
-    console.error('❌ Error saving item:', error)
-    alert(error?.message || 'Не удалось сохранить позицию')
-  }
-}
-
-const editingItem = ref(null)
-
-function openEditItem(item) {
-  editingItem.value = item
-  
-  itemForm.nomenclature = item.nomenclature
-  itemForm.quantity = item.quantity
-  itemForm.fixed_cost_price = item.fixed_cost_price
-  itemForm.fixed_sale_price = item.fixed_sale_price
-  
-  showItemModal.value = true
-}
-
-async function updateItem() {
-  try {
-    await store.updateProjectItem(editingItem.value.id, {
-      nomenclature: Number(itemForm.nomenclature),
-      quantity: Number(itemForm.quantity),
-      fixed_cost_price: Number(itemForm.fixed_cost_price),
-      fixed_sale_price: Number(itemForm.fixed_sale_price),
-    })
-
-    showItemModal.value = false
-    editingItem.value = null
-  } catch (error) {
-    console.error('❌ Error updating item:', error)
-    alert(error?.message || 'Не удалось обновить позицию')
-  }
-}
-
-async function deleteItem(id) {
-  if (!confirm('Удалить эту позицию?')) return
-
-  try {
-    await store.deleteProjectItem(id)
-  } catch (error) {
-    console.error('❌ Error deleting item:', error)
-    alert(error?.message || 'Не удалось удалить позицию')
-  }
-}
-
-function closeItemModal() {
+  await store.createProjectItem({
+    project: projectId,
+    ...itemForm
+  })
   showItemModal.value = false
-  editingItem.value = null
+}
+
+/* ===================== */
+/* DELETE EXPENSE */
+/* ===================== */
+async function deleteExpense(id) {
+  await deleteTransaction(id)
+  await loadTransactions()
+}
+
+/* ===================== */
+/* CLIENT PAYMENTS */
+/* ===================== */
+const showClientPaymentModal = ref(false)
+const clientPaymentForm = reactive({
+  date: '',
+  amount: ''
+})
+
+function openClientPaymentModal() {
+  showClientPaymentModal.value = true
+}
+function closeClientPaymentModal() {
+  showClientPaymentModal.value = false
+}
+
+async function saveClientPayment() {
+  const projectClientId = store.currentProject?.client || null
+
+  await createTransaction({
+    project: projectId,
+    counterparty: projectClientId,
+    finance_operation_type: CLIENT_PAYMENT_TYPE_ID,
+    date: clientPaymentForm.date,
+    amount: Number(clientPaymentForm.amount)
+  })
+
+  closeClientPaymentModal()
+  await loadTransactions()
+}
+
+async function deleteClientPayment(id) {
+  await deleteTransaction(id)
+  await loadTransactions()
+}
+
+/* ===================== */
+/* FACTORY PAYMENTS */
+/* ===================== */
+const showFactoryPaymentModal = ref(false)
+const factoryPaymentForm = reactive({
+  date: '',
+  amount: ''
+})
+
+function openFactoryPaymentModal() {
+  showFactoryPaymentModal.value = true
+}
+function closeFactoryPaymentModal() {
+  showFactoryPaymentModal.value = false
+}
+
+async function saveFactoryPayment() {
+  // при необходимости замените на поле фабрики из проекта
+  const projectFactoryOrClientId = store.currentProject?.client || null
+
+  await createTransaction({
+    project: projectId,
+    counterparty: projectFactoryOrClientId,
+    finance_operation_type: FACTORY_PAYMENT_TYPE_ID,
+    date: factoryPaymentForm.date,
+    amount: Number(factoryPaymentForm.amount)
+  })
+
+  closeFactoryPaymentModal()
+  await loadTransactions()
+}
+
+async function deleteFactoryPayment(id) {
+  await deleteTransaction(id)
+  await loadTransactions()
 }
 
 /* ===================== */
 /* PROJECT EDIT MODAL */
 /* ===================== */
-
 const showProjectModal = ref(false)
-
 const projectForm = reactive({
   name: '',
   geography: '',
@@ -301,69 +296,37 @@ function closeProjectModal() {
 }
 
 async function saveProject() {
-  try {
-    await store.updateProject(projectId, {
-      name: projectForm.name,
-      geography: projectForm.geography,
-      client: Number(projectForm.client),
-      tech_manager: Number(projectForm.tech_manager),
-      status: Number(projectForm.status),
-    })
+  await store.updateProject(projectId, {
+    name: projectForm.name,
+    geography: projectForm.geography,
+    client: Number(projectForm.client),
+    tech_manager: Number(projectForm.tech_manager),
+    status: Number(projectForm.status),
+  })
 
-    showProjectModal.value = false
-  } catch (error) {
-    console.error('❌ Error updating project:', error)
-    alert(error?.message || 'Не удалось обновить проект')
-  }
-}
-
-/* ===================== */
-/* STATUS BADGE */
-/* ===================== */
-
-function statusBadgeClass(statusId) {
-  const status = store.statuses?.find(s => s.id === statusId)
-  const name = (status?.name || '').toLowerCase()
-
-  if (name.includes('работ') || name.includes('process')) {
-    return 'status-badge--blue'
-  }
-
-  if (name.includes('заверш') || name.includes('done')) {
-    return 'status-badge--green'
-  }
-
-  if (name.includes('нов') || name.includes('draft')) {
-    return 'status-badge--gray'
-  }
-
-  if (name.includes('отмен') || name.includes('cancel')) {
-    return 'status-badge--red'
-  }
-
-  return 'status-badge--gray'
+  showProjectModal.value = false
 }
 
 /* ===================== */
 /* HELPERS */
 /* ===================== */
+function statusBadgeClass(statusId) {
+  const status = store.statuses?.find(s => s.id === statusId)
+  const name = (status?.name || '').toLowerCase()
+
+  if (name.includes('работ') || name.includes('process')) return 'status-badge--blue'
+  if (name.includes('заверш') || name.includes('done')) return 'status-badge--green'
+  if (name.includes('нов') || name.includes('draft')) return 'status-badge--gray'
+  if (name.includes('отмен') || name.includes('cancel')) return 'status-badge--red'
+  return 'status-badge--gray'
+}
 
 function goBack() {
   router.push('/projects')
 }
 
 function formatMoney(value) {
-  if (value === null || value === undefined || value === '') return '—'
-
-  const num = Number(value)
-  if (Number.isNaN(num)) return value
-
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'CNY',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num)
+  return new Intl.NumberFormat('ru-RU').format(Number(value || 0))
 }
 
 function formatDate(value) {
@@ -373,7 +336,7 @@ function formatDate(value) {
 </script>
 
 <template>
-<div class="project-page">
+  <div class="project-page">
     <!-- HEADER -->
     <header class="page-header">
       <div class="page-header__left">
@@ -452,7 +415,6 @@ function formatDate(value) {
             </div>
           </section>
           
-
           <!-- ITEMS -->
           <section class="card">
             <div class="card__header">
@@ -556,6 +518,96 @@ function formatDate(value) {
               <div class="empty-state__title">Нет расходов</div>
               <div class="empty-state__text">
                 Добавьте первый проектный расход
+              </div>
+            </div>
+          </section>
+
+          <!-- CLIENT PAYMENTS -->
+          <section class="card">
+            <div class="card__header">
+              <div>
+                <h2 class="card__title">Оплаты клиентов</h2>
+                <p class="card__subtitle">Поступления от клиента по этому проекту</p>
+              </div>
+
+              <button class="btn btn--primary" @click="openClientPaymentModal">
+                + Добавить оплату
+              </button>
+            </div>
+
+            <div v-if="clientPayments?.length" class="table-wrap">
+              <table class="project-table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Сумма</th>
+                    <th class="ta-right">Действия</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr v-for="p in clientPayments" :key="p.id">
+                    <td>{{ formatDate(p.date) }}</td>
+                    <td>{{ formatMoney(p.amount) }}</td>
+                    <td class="ta-right">
+                      <button class="btn btn--sm btn--danger" @click="deleteClientPayment(p.id)">
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div v-else class="empty-state">
+              <div class="empty-state__title">Нет оплат клиента</div>
+              <div class="empty-state__text">
+                Добавьте первую оплату клиента
+              </div>
+            </div>
+          </section>
+
+          <!-- FACTORY PAYMENTS -->
+          <section class="card">
+            <div class="card__header">
+              <div>
+                <h2 class="card__title">Оплаты фабрикам</h2>
+                <p class="card__subtitle">Платежи фабрикам по этому проекту</p>
+              </div>
+
+              <button class="btn btn--primary" @click="openFactoryPaymentModal">
+                + Добавить оплату
+              </button>
+            </div>
+
+            <div v-if="factoryPayments?.length" class="table-wrap">
+              <table class="project-table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Сумма</th>
+                    <th class="ta-right">Действия</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr v-for="p in factoryPayments" :key="p.id">
+                    <td>{{ formatDate(p.date) }}</td>
+                    <td>{{ formatMoney(p.amount) }}</td>
+                    <td class="ta-right">
+                      <button class="btn btn--sm btn--danger" @click="deleteFactoryPayment(p.id)">
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div v-else class="empty-state">
+              <div class="empty-state__title">Нет оплат фабрикам</div>
+              <div class="empty-state__text">
+                Добавьте первую оплату фабрике
               </div>
             </div>
           </section>
@@ -721,7 +773,8 @@ function formatDate(value) {
                 {{ s.name }}
               </option>
             </select>
-                  </div>
+          </div>
+        </div>
 
         <div class="modal__actions">
           <button class="btn btn--ghost" @click="closeProjectModal">Отмена</button>
@@ -733,18 +786,17 @@ function formatDate(value) {
     </div>
 
     <!-- MODAL ITEM -->
-    <div v-if="showItemModal" class="modal" @click.self="closeItemModal">
+    <div v-if="showItemModal" class="modal" @click.self="showItemModal = false">
       <div class="modal__card modal__card--md">
         <div class="modal__header">
-          <h3>{{ editingItem ? 'Редактировать позицию' : 'Новая позиция проекта' }}</h3>
-          <button class="icon-btn" @click="closeItemModal">✕</button>
+          <h3>Новая позиция проекта</h3>
+          <button class="icon-btn" @click="showItemModal = false">✕</button>
         </div>
 
         <div class="form-grid">
           <div class="form-field form-field--full">
             <label>Номенклатура</label>
             <select v-model="itemForm.nomenclature">
-              <option disabled :value="null">Выберите товар</option>
               <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
                 {{ n.name }}
               </option>
@@ -753,34 +805,84 @@ function formatDate(value) {
 
           <div class="form-field">
             <label>Количество</label>
-            <input type="number" v-model="itemForm.quantity" min="0" step="1" />
+            <input type="number" v-model="itemForm.quantity" />
           </div>
 
           <div class="form-field">
             <label>Себестоимость</label>
-            <input type="number" v-model="itemForm.fixed_cost_price" min="0" step="0.01" />
+            <input type="number" v-model="itemForm.fixed_cost_price" />
           </div>
 
-          <div class="form-field form-field--full">
+          <div class="form-field">
             <label>Цена продажи</label>
-            <input type="number" v-model="itemForm.fixed_sale_price" min="0" step="0.01" />
+            <input type="number" v-model="itemForm.fixed_sale_price" />
           </div>
         </div>
 
         <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeItemModal">
+          <button class="btn btn--ghost" @click="showItemModal = false">
             Отмена
           </button>
-          <button 
-            class="btn btn--primary" 
-            @click="editingItem ? updateItem() : saveItem()"
-          >
-            {{ editingItem ? 'Обновить' : 'Создать' }}
+          <button class="btn btn--primary" @click="saveItem">
+            Сохранить
           </button>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- MODAL CLIENT PAYMENT -->
+    <div v-if="showClientPaymentModal" class="modal" @click.self="closeClientPaymentModal">
+      <div class="modal__card modal__card--sm">
+        <div class="modal__header">
+          <h3>Оплата клиента</h3>
+          <button class="icon-btn" @click="closeClientPaymentModal">✕</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Дата</label>
+            <input v-model="clientPaymentForm.date" type="date" />
+          </div>
+
+          <div class="form-field">
+            <label>Сумма</label>
+            <input v-model="clientPaymentForm.amount" type="number" />
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" @click="closeClientPaymentModal">Отмена</button>
+          <button class="btn btn--primary" @click="saveClientPayment">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL FACTORY PAYMENT -->
+    <div v-if="showFactoryPaymentModal" class="modal" @click.self="closeFactoryPaymentModal">
+      <div class="modal__card modal__card--sm">
+        <div class="modal__header">
+          <h3>Оплата фабрике</h3>
+          <button class="icon-btn" @click="closeFactoryPaymentModal">✕</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Дата</label>
+            <input v-model="factoryPaymentForm.date" type="date" />
+          </div>
+
+          <div class="form-field">
+            <label>Сумма</label>
+            <input v-model="factoryPaymentForm.amount" type="number" />
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" @click="closeFactoryPaymentModal">Отмена</button>
+          <button class="btn btn--primary" @click="saveFactoryPayment">Сохранить</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
