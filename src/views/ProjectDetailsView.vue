@@ -353,7 +353,17 @@ function goBack() {
 }
 
 function formatMoney(value) {
-  return new Intl.NumberFormat('ru-RU').format(Number(value || 0))
+  if (value === null || value === undefined || value === '') return '—'
+
+  const num = Number(value)
+  if (Number.isNaN(num)) return value
+
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'CNY',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num)
 }
 
 function formatDate(value) {

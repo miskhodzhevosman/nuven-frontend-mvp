@@ -2,8 +2,8 @@
 <template>
   <div class="factories-view">
     <div class="view-header">
-      <h1>Заводы</h1>
-      <button class="primary" @click="openCreateDialog">+ Добавить завод</button>
+      <h1>Фабрики</h1>
+      <button class="primary" @click="openCreateDialog">+ Добавить фабрику</button>
     </div>
     
     <div v-if="loading" class="loading-state">
@@ -36,7 +36,7 @@
   <div v-if="showCreate" class="modal-backdrop" @click.self="closeCreateDialog">
     <div class="modal panel">
       <div class="modal-header">
-        <h3>Добавить завод</h3>
+        <h3>Добавить фабрику</h3>
         <button class="icon-btn" @click="closeCreateDialog" aria-label="Закрыть">✖</button>
       </div>
 
@@ -99,7 +99,7 @@
           <input
             v-model.trim="editForm.name"
             type="text"
-            placeholder="Напр. Северный завод"
+            placeholder="Напр. Северный фабрику"
             :class="{ 'has-error': editErrors.name }"
             required
           />
@@ -191,7 +191,7 @@ async function loadFactories() {
 }
 
 async function deleteFactory(id) {
-  if (!confirm('Удалить завод?')) return;
+  if (!confirm('Удалить фабрику?')) return;
   try {
     await deleteFactoryApi(id);
     factories.value = factories.value.filter(f => f.id !== id);
