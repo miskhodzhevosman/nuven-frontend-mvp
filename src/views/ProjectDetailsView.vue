@@ -1,4 +1,3 @@
-
 <script setup>
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -41,12 +40,18 @@ const cashflow = computed(() => finance.value?.cashflow || {})
 /* ===================== */
 /* FINANCE TYPES & DATA */
 /* ===================== */
-const operationTypes = ref([])        // всегда массив
+const operationTypes = ref([])
 const transactions = ref([])
 
 function getTypeId(code) {
   const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
   return list.find(t => t.code === code)?.id
+}
+
+// НОВАЯ ФУНКЦИЯ: получение названия типа операции по ID
+function getOperationTypeName(typeId) {
+  const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
+  return list.find(t => t.id === typeId)?.name || '—'
 }
 
 const projectExpenses = computed(() => {
@@ -57,7 +62,6 @@ const projectExpenses = computed(() => {
   )
 })
 
-// по аналогии с ClientPaymentsView/FactoryPayments
 const CLIENT_PAYMENT_TYPE_ID = 2
 const FACTORY_PAYMENT_TYPE_ID = 3
 
@@ -117,8 +121,8 @@ async function loadTransactions() {
 /* EXPENSE MODAL */
 /* ===================== */
 const showExpenseModal = ref(false)
+// УБРАНО поле name
 const expenseForm = reactive({
-  name: '',
   amount: '',
   date: ''
 })
@@ -138,14 +142,13 @@ async function saveExpense() {
       name: 'Project expense',
       code: 'project_expense'
     })
-    // добавляем безопасно
     const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
     operationTypes.value = [...list, created]
     typeId = created.id
   }
 
+  // УБРАНО поле name из createTransaction
   await createTransaction({
-    name: expenseForm.name,
     amount: Number(expenseForm.amount),
     date: expenseForm.date,
     project: projectId,
@@ -245,7 +248,6 @@ function closeFactoryPaymentModal() {
 }
 
 async function saveFactoryPayment() {
-  // при необходимости замените на поле фабрики из проекта
   const projectFactoryOrClientId = store.currentProject?.client || null
 
   await createTransaction({
@@ -492,7 +494,7 @@ function formatDate(value) {
               <table class="project-table">
                 <thead>
                   <tr>
-                    <th>Название</th>
+                    <th>Тип расхода</th>
                     <th>Дата</th>
                     <th>Сумма</th>
                     <th class="ta-right">Действия</th>
@@ -501,7 +503,8 @@ function formatDate(value) {
 
                 <tbody>
                   <tr v-for="e in projectExpenses" :key="e.id">
-                    <td>{{ e.name }}</td>
+                    <!-- ИЗМЕНЕНО: используем getOperationTypeName вместо e.name -->
+                    <td>{{ getOperationTypeName(e.finance_operation_type) }}</td>
                     <td>{{ formatDate(e.date) }}</td>
                     <td>{{ formatMoney(e.amount) }}</td>
                     <td class="ta-right">
@@ -701,12 +704,8 @@ function formatDate(value) {
           <button class="icon-btn" @click="closeExpenseModal">✕</button>
         </div>
 
+        <!-- ИЗМЕНЕНО: убрано поле "Название" -->
         <div class="form-grid">
-          <div class="form-field form-field--full">
-            <label>Название</label>
-            <input v-model="expenseForm.name" placeholder="Например: логистика" />
-          </div>
-
           <div class="form-field">
             <label>Сумма</label>
             <input v-model="expenseForm.amount" type="number" />
