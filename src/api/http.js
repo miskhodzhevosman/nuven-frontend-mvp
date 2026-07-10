@@ -1,187 +1,163 @@
 // src/api/http.js
-const API_BASE = 'http://localhost:8000'; // или 'http://127.0.0.1:8000' — используй единый хост
+const API_BASE = 'http://localhost:8000';
 
 // ============================================
-// 1. Утилиты для работы с cookies
+// 1. Работа с токенами
 // ============================================
 
-function getCookie(name) {
-  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return m ? decodeURIComponent(m.pop()) : null;
+const TOKEN_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
+
+function getAccessToken() {
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-function setCookie(name, value, days = 7) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+function getRefreshToken() {
+  return localStorage.getItem(REFRESH_KEY);
 }
 
-function deleteCookie(name) {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-}
-
-// ============================================
-// 2. CSRF токен
-// ============================================
-
-async function ensureCsrf() {
-  // 1. Проверяем существующий токен
-  let csrf = getCookie('csrftoken');
-  if (csrf) {
-    console.debug('✅ CSRF token already exists');
-    return csrf;
-  }
-
-  console.debug('🔄 CSRF token missing, requesting...');
-
-  try {
-    // 2. Запрашиваем новый токен
-    const response = await fetch(`${API_BASE}/api/csrf`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to get CSRF token: ${response.status}`);
-    }
-
-    // 3. Проверяем, что токен появился
-    csrf = getCookie('csrftoken');
-    
-    if (csrf) {
-      console.debug('✅ CSRF token obtained successfully');
-    } else {
-      console.warn('⚠️ CSRF token not found in document.cookie');
-      console.log('📌 Check Application → Cookies →', API_BASE);
-    }
-
-    return csrf;
-  } catch (error) {
-    console.error('❌ Error obtaining CSRF token:', error);
-    throw error;
+function setTokens(access, refresh) {
+  localStorage.setItem(TOKEN_KEY, access);
+  if (refresh) {
+    localStorage.setItem(REFRESH_KEY, refresh);
   }
 }
 
+function clearTokens() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
 // ============================================
-// 3. Основные HTTP методы
+// 2. Основные HTTP методы с JWT
 // ============================================
 
-async function withCsrfHeaders() {
-  let csrf = getCookie('csrftoken');
-  if (!csrf) csrf = await ensureCsrf();
-  
-  return {
+function getHeaders(additionalHeaders = {}) {
+  const token = getAccessToken();
+  const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-CSRFToken': csrf || '',
+    ...additionalHeaders,
   };
-}
-
-// --- GET ---
-async function httpGet(url, options = {}) {
-  const { throwOnError = true, headers = {} } = options;
   
-  const response = await fetch(`${API_BASE}${url}`, {
-    method: 'GET',
-    credentials: 'include',  // ⚠️ ОБЯЗАТЕЛЬНО!
-    headers: {
-      'Accept': 'application/json',
-      ...headers,
-    },
-  });
-
-  if (!response.ok && throwOnError) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`${response.status}: ${text || response.statusText}`);
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
-
-  return response;
-}
-
-// --- POST ---
-async function httpPost(url, data = {}) {
-  const headers = await withCsrfHeaders();
   
-  const response = await fetch(`${API_BASE}${url}`, {
-    method: 'POST',
-    credentials: 'include',  // ⚠️ ОБЯЗАТЕЛЬНО!
-    headers,
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`${response.status}: ${text || response.statusText}`);
-  }
-
-  return response.json();
+  return headers;
 }
 
-// --- PUT ---
-async function httpPut(url, data = {}) {
-  const headers = await withCsrfHeaders();
-  
-  const response = await fetch(`${API_BASE}${url}`, {
-    method: 'PUT',
-    credentials: 'include',  // ⚠️ ОБЯЗАТЕЛЬНО!
-    headers,
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`${response.status}: ${text || response.statusText}`);
-  }
-
-  return response.json();
-}
-
-// --- PATCH ---
-async function httpPatch(url, data = {}) {
-  const headers = await withCsrfHeaders();
-  
-  const response = await fetch(`${API_BASE}${url}`, {
-    method: 'PATCH',
-    credentials: 'include',  // ⚠️ ОБЯЗАТЕЛЬНО!
-    headers,
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`${response.status}: ${text || response.statusText}`);
-  }
-
-  return response.json();
-}
-
-// --- DELETE ---
-async function httpDelete(url, options = {}) {
-  const { data, throwOnError = true } = options;
-  const headers = await withCsrfHeaders();
+async function fetchWithAuth(url, options = {}) {
+  const { method = 'GET', data, headers = {}, throwOnError = true } = options;
   
   const fetchOptions = {
-    method: 'DELETE',
-    credentials: 'include',  // ⚠️ ОБЯЗАТЕЛЬНО!
-    headers,
+    method,
+    credentials: 'omit', // JWT не использует cookies
+    headers: getHeaders(headers),
   };
-
-  // Некоторые API принимают тело в DELETE, некоторые — нет
+  
   if (data !== undefined) {
     fetchOptions.body = JSON.stringify(data);
   }
-
+  
   const response = await fetch(`${API_BASE}${url}`, fetchOptions);
-
-  // DELETE может возвращать 204 No Content
+  
+  // Если 401 - пробуем обновить токен
+  if (response.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      // Повторяем запрос с новым токеном
+      fetchOptions.headers = getHeaders(headers);
+      const retryResponse = await fetch(`${API_BASE}${url}`, fetchOptions);
+      
+      if (!retryResponse.ok && throwOnError) {
+        const text = await retryResponse.text().catch(() => '');
+        throw new Error(`${retryResponse.status}: ${text || retryResponse.statusText}`);
+      }
+      
+      return retryResponse;
+    } else {
+      // Не удалось обновить - разлогиниваем
+      clearTokens();
+      throw new Error('Session expired');
+    }
+  }
+  
   if (!response.ok && throwOnError) {
     const text = await response.text().catch(() => '');
     throw new Error(`${response.status}: ${text || response.statusText}`);
   }
+  
+  return response;
+}
 
-  // Парсим JSON только если есть тело ответа
+// ============================================
+// 3. Обновление токена
+// ============================================
+
+let refreshPromise = null;
+
+async function refreshToken() {
+  // Если уже идет обновление - ждем его
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+  
+  refreshPromise = (async () => {
+    const refresh = getRefreshToken();
+    if (!refresh) return false;
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/token/refresh/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh }),
+      });
+      
+      if (!response.ok) {
+        clearTokens();
+        return false;
+      }
+      
+      const data = await response.json();
+      setTokens(data.access, null); // refresh не обновляем
+      return true;
+    } catch (error) {
+      clearTokens();
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  
+  return refreshPromise;
+}
+
+// ============================================
+// 4. Основные HTTP методы (обертка над fetchWithAuth)
+// ============================================
+
+async function httpGet(url, options = {}) {
+  const { throwOnError = true, headers = {} } = options;
+  return fetchWithAuth(url, {
+    method: 'GET',
+    headers,
+    throwOnError,
+  });
+}
+
+async function httpPost(url, data = {}, options = {}) {
+  const { throwOnError = true, headers = {} } = options;
+  const response = await fetchWithAuth(url, {
+    method: 'POST',
+    data,
+    headers,
+    throwOnError,
+  });
+  
+  // Парсим JSON если есть
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json') && response.status !== 204) {
     return response.json();
@@ -190,47 +166,95 @@ async function httpDelete(url, options = {}) {
   return null;
 }
 
-// ============================================
-// 4. Утилиты для работы с ответами
-// ============================================
-
-async function handleResponse(response) {
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`${response.status}: ${text || response.statusText}`);
-  }
-
+async function httpPut(url, data = {}, options = {}) {
+  const { throwOnError = true, headers = {} } = options;
+  const response = await fetchWithAuth(url, {
+    method: 'PUT',
+    data,
+    headers,
+    throwOnError,
+  });
+  
   const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
+  if (contentType.includes('application/json') && response.status !== 204) {
     return response.json();
   }
   
   return null;
 }
 
-function handleError(error) {
-  console.error('API Error:', error);
-  // Можно добавить логирование или отправку ошибок в сервис мониторинга
-  throw error;
+async function httpPatch(url, data = {}, options = {}) {
+  const { throwOnError = true, headers = {} } = options;
+  const response = await fetchWithAuth(url, {
+    method: 'PATCH',
+    data,
+    headers,
+    throwOnError,
+  });
+  
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json') && response.status !== 204) {
+    return response.json();
+  }
+  
+  return null;
+}
+
+async function httpDelete(url, options = {}) {
+  const { data, throwOnError = true, headers = {} } = options;
+  const fetchOptions = {
+    method: 'DELETE',
+    headers,
+    throwOnError,
+  };
+  
+  if (data !== undefined) {
+    fetchOptions.data = data;
+  }
+  
+  const response = await fetchWithAuth(url, fetchOptions);
+  
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json') && response.status !== 204) {
+    return response.json();
+  }
+  
+  return null;
+}
+
+// src/api/http.js - добавляем в конец файла
+
+// ============================================
+// 5. Утилиты для работы с ответами
+// ============================================
+
+function handleResponse(response) {
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  
+  return response.text();
 }
 
 // ============================================
-// 5. Экспорты
+// 6. Экспорты (добавляем handleResponse)
 // ============================================
 
 export {
-  // Основные методы
   httpGet,
   httpPost,
   httpPut,
   httpPatch,
   httpDelete,
-  
-  // Утилиты
-  ensureCsrf,
-  getCookie,
-  setCookie,
-  deleteCookie,
-  handleResponse,
-  handleError,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+  clearTokens,
+  refreshToken,
+  handleResponse, // 👈 Добавляем сюда
 };
