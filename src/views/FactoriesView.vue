@@ -3,30 +3,39 @@
   <div class="factories-view">
     <div class="view-header">
       <h1>Фабрики</h1>
-      <button class="primary" @click="openCreateDialog">+ Добавить фабрику</button>
+      <button class="primary" @click="openCreateDialog" :disabled="store.loading">+ Добавить фабрику</button>
     </div>
     
-    <div v-if="loading" class="loading-state">
+    <div v-if="store.loading" class="loading-state">
       <p>Загрузка...</p>
     </div>
     
-    <div v-else-if="factories.length === 0" class="empty-state panel">
-      <p class="muted">Нет заводов. Создайте первый!</p>
+    <div v-else-if="store.sortedItems.length === 0" class="empty-state panel">
+      <p class="muted">Нет фабрик. Создайте первую!</p>
     </div>
     
     <div v-else class="factories-grid">
-      <div v-for="factory in factories" :key="factory.id" class="factory-card panel">
+      <div v-for="factory in store.sortedItems" :key="factory.id" class="factory-card panel">
         <div class="factory-header">
           <h3>{{ factory.name }}</h3>
           <div class="factory-actions">
             <button @click="openEditDialog(factory)">✏️</button>
-            <button class="danger" @click="deleteFactory(factory.id)">🗑️</button>
+            <button class="danger" @click="handleDelete(factory.id)">🗑️</button>
           </div>
         </div>
-        <p class="muted">{{ factory.description || 'Нет описания' }}</p>
+        
+        <!-- Адрес -->
+        <p class="muted" v-if="factory.address">
+          📍 {{ factory.address }}
+        </p>
+        
+        <!-- Контакты -->
+        <p class="muted" v-if="factory.contacts">
+          📞 {{ factory.contacts }}
+        </p>
+
         <div class="factory-meta">
-          <span>📍 {{ factory.location || 'Не указано' }}</span>
-          <span>📅 {{ formatDate(factory.created_at) }}</span>
+          <span>🆔 ID: {{ factory.id }}</span>
         </div>
       </div>
     </div>
@@ -54,20 +63,20 @@
         </div>
 
         <div class="form-row">
-          <label>Локация</label>
+          <label>Адрес</label>
           <input
-            v-model.trim="form.location"
+            v-model.trim="form.address"
             type="text"
-            placeholder="Город / адрес"
+            placeholder="Город, улица, дом"
           />
         </div>
 
         <div class="form-row">
-          <label>Описание</label>
+          <label>Контакты</label>
           <textarea
-            v-model.trim="form.description"
+            v-model.trim="form.contacts"
             rows="3"
-            placeholder="Краткое описание завода"
+            placeholder="Телефон, email, сайт..."
           />
         </div>
 
@@ -77,8 +86,8 @@
 
         <div class="modal-actions">
           <button type="button" @click="closeCreateDialog">Отмена</button>
-          <button class="primary" type="submit" :disabled="submitting">
-            {{ submitting ? 'Создание...' : 'Создать' }}
+          <button class="primary" type="submit" :disabled="store.saving">
+            {{ store.saving ? 'Создание...' : 'Создать' }}
           </button>
         </div>
       </form>
@@ -89,7 +98,7 @@
   <div v-if="showEdit" class="modal-backdrop" @click.self="closeEditDialog">
     <div class="modal panel">
       <div class="modal-header">
-        <h3>Редактировать завод</h3>
+        <h3>Редактировать фабрику</h3>
         <button class="icon-btn" @click="closeEditDialog" aria-label="Закрыть">✖</button>
       </div>
 
@@ -99,7 +108,7 @@
           <input
             v-model.trim="editForm.name"
             type="text"
-            placeholder="Напр. Северный фабрику"
+            placeholder="Напр. Северный завод"
             :class="{ 'has-error': editErrors.name }"
             required
           />
@@ -107,20 +116,20 @@
         </div>
 
         <div class="form-row">
-          <label>Локация</label>
+          <label>Адрес</label>
           <input
-            v-model.trim="editForm.location"
+            v-model.trim="editForm.address"
             type="text"
-            placeholder="Город / адрес"
+            placeholder="Город, улица, дом"
           />
         </div>
 
         <div class="form-row">
-          <label>Описание</label>
+          <label>Контакты</label>
           <textarea
-            v-model.trim="editForm.description"
+            v-model.trim="editForm.contacts"
             rows="3"
-            placeholder="Краткое описание завода"
+            placeholder="Телефон, email, сайт..."
           />
         </div>
 
@@ -130,8 +139,8 @@
 
         <div class="modal-actions">
           <button type="button" @click="closeEditDialog">Отмена</button>
-          <button class="primary" type="submit" :disabled="editSubmitting">
-            {{ editSubmitting ? 'Сохранение...' : 'Сохранить' }}
+          <button class="primary" type="submit" :disabled="store.saving">
+            {{ store.saving ? 'Сохранение...' : 'Сохранить' }}
           </button>
         </div>
       </form>
@@ -141,72 +150,40 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getFactories, createFactory, updateFactory, deleteFactory as deleteFactoryApi } from '@/api/factories';
+import { useFactoriesStore } from '@/stores/factories.store'; // Импортируем стор
 
-const factories = ref([]);
-const loading = ref(false);
+const store = useFactoriesStore();
 
-// Create state
+// UI State for Modals
 const showCreate = ref(false);
-const submitting = ref(false);
-const submitError = ref('');
+const showEdit = ref(false);
+
+// Form States
 const form = ref({
   name: '',
-  location: '',
-  description: ''
+  address: '',
+  contacts: ''
 });
 const errors = ref({});
+const submitError = ref('');
 
-// Edit state
-const showEdit = ref(false);
-const editSubmitting = ref(false);
-const editSubmitError = ref('');
 const editForm = ref({
   id: null,
   name: '',
-  location: '',
-  description: ''
+  address: '',
+  contacts: ''
 });
 const editErrors = ref({});
+const editSubmitError = ref('');
 
-async function loadFactories() {
-  loading.value = true;
-  try {
-    const data = await getFactories();
-    // Ensure we always have an array
-    if (Array.isArray(data)) {
-      factories.value = data;
-    } else if (data && typeof data === 'object') {
-      // If response is an object with items property
-      factories.value = data.items || data.results || [];
-    } else {
-      factories.value = [];
-    }
-  } catch (error) {
-    console.error('Failed to load factories:', error);
-    factories.value = [];
-  } finally {
-    loading.value = false;
-  }
-}
+// --- Actions ---
 
-async function deleteFactory(id) {
-  if (!confirm('Удалить фабрику?')) return;
-  try {
-    await deleteFactoryApi(id);
-    factories.value = factories.value.filter(f => f.id !== id);
-  } catch (error) {
-    console.error('Failed to delete factory:', error);
-    alert('Ошибка при удалении завода');
-  }
+async function loadData() {
+  await store.fetchFactories();
 }
 
 function openCreateDialog() {
-  form.value = {
-    name: '',
-    location: '',
-    description: ''
-  };
+  form.value = { name: '', address: '', contacts: '' };
   errors.value = {};
   submitError.value = '';
   showCreate.value = true;
@@ -214,39 +191,24 @@ function openCreateDialog() {
 
 function closeCreateDialog() {
   showCreate.value = false;
-  submitting.value = false;
-  submitError.value = '';
 }
 
 async function submitCreate() {
-  // Валидация
   errors.value = {};
   if (!form.value.name.trim()) {
     errors.value.name = 'Название обязательно';
     return;
   }
 
-  submitting.value = true;
-  submitError.value = '';
-
   try {
-    const newFactory = await createFactory({
+    await store.createFactory({
       name: form.value.name.trim(),
-      location: form.value.location.trim() || null,
-      description: form.value.description.trim() || null
+      address: form.value.address.trim(),
+      contacts: form.value.contacts.trim()
     });
-    
-    // Ensure factories.value is an array before pushing
-    if (!Array.isArray(factories.value)) {
-      factories.value = [];
-    }
-    factories.value.push(newFactory);
     closeCreateDialog();
   } catch (error) {
-    console.error('Failed to create factory:', error);
-    submitError.value = error.message || 'Ошибка при создании завода';
-  } finally {
-    submitting.value = false;
+    submitError.value = error.message || 'Ошибка при создании';
   }
 }
 
@@ -254,8 +216,8 @@ function openEditDialog(factory) {
   editForm.value = {
     id: factory.id,
     name: factory.name,
-    location: factory.location || '',
-    description: factory.description || ''
+    address: factory.address || '',
+    contacts: factory.contacts || ''
   };
   editErrors.value = {};
   editSubmitError.value = '';
@@ -264,53 +226,39 @@ function openEditDialog(factory) {
 
 function closeEditDialog() {
   showEdit.value = false;
-  editSubmitting.value = false;
-  editSubmitError.value = '';
 }
 
 async function submitEdit() {
-  // Валидация
   editErrors.value = {};
   if (!editForm.value.name.trim()) {
     editErrors.value.name = 'Название обязательно';
     return;
   }
 
-  editSubmitting.value = true;
-  editSubmitError.value = '';
-
   try {
-    const updatedFactory = await updateFactory(editForm.value.id, {
+    await store.updateFactory(editForm.value.id, {
       name: editForm.value.name.trim(),
-      location: editForm.value.location.trim() || null,
-      description: editForm.value.description.trim() || null
+      address: editForm.value.address.trim(),
+      contacts: editForm.value.contacts.trim()
     });
-    
-    // Ensure factories.value is an array before finding index
-    if (!Array.isArray(factories.value)) {
-      factories.value = [];
-    }
-    const index = factories.value.findIndex(f => f.id === editForm.value.id);
-    if (index !== -1) {
-      factories.value[index] = updatedFactory;
-    }
-    
     closeEditDialog();
   } catch (error) {
-    console.error('Failed to update factory:', error);
-    editSubmitError.value = error.message || 'Ошибка при обновлении завода';
-  } finally {
-    editSubmitting.value = false;
+    editSubmitError.value = error.message || 'Ошибка при обновлении';
   }
 }
 
-function formatDate(date) {
-  if (!date) return '—';
-  return new Date(date).toLocaleDateString('ru-RU');
+async function handleDelete(id) {
+  if (!confirm('Удалить фабрику? Это действие нельзя отменить.')) return;
+  
+  try {
+    await store.deleteFactory(id);
+  } catch (error) {
+    alert(error.message || 'Ошибка при удалении');
+  }
 }
 
 onMounted(() => {
-  loadFactories();
+  loadData();
 });
 </script>
 

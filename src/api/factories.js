@@ -5,11 +5,13 @@ const BASE_URL = '/api/supplies/factories/';
 
 export async function getFactories() {
   const response = await httpGet(BASE_URL);
-  const data = await response.json(); // 👈 Добавляем .json()
-  return data.items ?? data;
+  // DRF обычно возвращает массив напрямую для ListAPIView или объект с results
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data.results || data.items || []);
 }
 
 export async function createFactory(payload) {
+  // payload должен содержать: name, address, contacts
   return await httpPost(BASE_URL, payload);
 }
 

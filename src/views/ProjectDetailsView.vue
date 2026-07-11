@@ -2,6 +2,7 @@
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
+import { useFactoriesStore } from '@/stores/factories.store'
 import {
   getTransactions,
   createTransaction,
@@ -11,6 +12,7 @@ import {
 } from '@/services/finance.service'
 
 const store = useProjectsStore()
+const factoriesStore = useFactoriesStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -32,6 +34,21 @@ const clients = computed(() => store.clients)
 const managers = computed(() => store.managers)
 const statuses = computed(() => store.statuses)
 
+// ОТЛАДКА: проверяем, что приходит из стора
+const factories = computed(() => {
+  const items = factoriesStore.items
+  console.log('🔍 Factories raw:', items)
+  console.log('🔍 Is array?', Array.isArray(items))
+  
+  if (!Array.isArray(items)) {
+    return []
+  }
+  
+  const sorted = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  console.log('🔍 Factories sorted:', sorted)
+  return sorted
+})
+
 /* безопасные алиасы */
 const planned = computed(() => finance.value?.planned || {})
 const fact = computed(() => finance.value?.fact || {})
@@ -48,7 +65,6 @@ function getTypeId(code) {
   return list.find(t => t.code === code)?.id
 }
 
-// НОВАЯ ФУНКЦИЯ: получение названия типа операции по ID
 function getOperationTypeName(typeId) {
   const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
   return list.find(t => t.id === typeId)?.name || '—'
@@ -62,8 +78,8 @@ const projectExpenses = computed(() => {
   )
 })
 
-const CLIENT_PAYMENT_TYPE_ID = 2
-const FACTORY_PAYMENT_TYPE_ID = 3
+const CLIENT_PAYMENT_TYPE_ID = 1
+const FACTORY_PAYMENT_TYPE_ID = 2
 
 const clientPayments = computed(() =>
   transactions.value.filter(
@@ -86,6 +102,13 @@ onMounted(async () => {
     await store.initProjectDetails(projectId)
     await loadOperationTypes()
     await loadTransactions()
+    
+    // ОТЛАДКА: добавляем try-catch и логирование
+    console.log('🔄 Loading factories...')
+    await factoriesStore.fetchFactories()
+    console.log('✅ Factories loaded:', factoriesStore.items)
+  } catch (error) {
+    console.error('❌ Error during initialization:', error)
   } finally {
     loading.value = false
   }
@@ -121,7 +144,6 @@ async function loadTransactions() {
 /* EXPENSE MODAL */
 /* ===================== */
 const showExpenseModal = ref(false)
-// УБРАНО поле name
 const expenseForm = reactive({
   amount: '',
   date: ''
@@ -147,7 +169,6 @@ async function saveExpense() {
     typeId = created.id
   }
 
-  // УБРАНО поле name из createTransaction
   await createTransaction({
     amount: Number(expenseForm.amount),
     date: expenseForm.date,
@@ -236,11 +257,15 @@ async function deleteClientPayment(id) {
 /* ===================== */
 const showFactoryPaymentModal = ref(false)
 const factoryPaymentForm = reactive({
+  counterparty: null,
   date: '',
   amount: ''
 })
 
 function openFactoryPaymentModal() {
+  factoryPaymentForm.counterparty = null
+  factoryPaymentForm.date = ''
+  factoryPaymentForm.amount = ''
   showFactoryPaymentModal.value = true
 }
 function closeFactoryPaymentModal() {
@@ -248,11 +273,9 @@ function closeFactoryPaymentModal() {
 }
 
 async function saveFactoryPayment() {
-  const projectFactoryOrClientId = store.currentProject?.client || null
-
   await createTransaction({
     project: projectId,
-    counterparty: projectFactoryOrClientId,
+    counterparty: factoryPaymentForm.counterparty ? Number(factoryPaymentForm.counterparty) : null,
     finance_operation_type: FACTORY_PAYMENT_TYPE_ID,
     date: factoryPaymentForm.date,
     amount: Number(factoryPaymentForm.amount)
@@ -503,7 +526,6 @@ function formatDate(value) {
 
                 <tbody>
                   <tr v-for="e in projectExpenses" :key="e.id">
-                    <!-- ИЗМЕНЕНО: используем getOperationTypeName вместо e.name -->
                     <td>{{ getOperationTypeName(e.finance_operation_type) }}</td>
                     <td>{{ formatDate(e.date) }}</td>
                     <td>{{ formatMoney(e.amount) }}</td>
@@ -587,6 +609,7 @@ function formatDate(value) {
               <table class="project-table">
                 <thead>
                   <tr>
+                    <th>Фабрика</th>
                     <th>Дата</th>
                     <th>Сумма</th>
                     <th class="ta-right">Действия</th>
@@ -595,6 +618,7 @@ function formatDate(value) {
 
                 <tbody>
                   <tr v-for="p in factoryPayments" :key="p.id">
+                    <td>{{ p.counterparty_name || '—' }}</td>
                     <td>{{ formatDate(p.date) }}</td>
                     <td>{{ formatMoney(p.amount) }}</td>
                     <td class="ta-right">
@@ -704,7 +728,6 @@ function formatDate(value) {
           <button class="icon-btn" @click="closeExpenseModal">✕</button>
         </div>
 
-        <!-- ИЗМЕНЕНО: убрано поле "Название" -->
         <div class="form-grid">
           <div class="form-field">
             <label>Сумма</label>
@@ -858,13 +881,39 @@ function formatDate(value) {
 
     <!-- MODAL FACTORY PAYMENT -->
     <div v-if="showFactoryPaymentModal" class="modal" @click.self="closeFactoryPaymentModal">
-      <div class="modal__card modal__card--sm">
+      <div class="modal__card modal__card--md">
         <div class="modal__header">
           <h3>Оплата фабрике</h3>
           <button class="icon-btn" @click="closeFactoryPaymentModal">✕</button>
         </div>
 
         <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label>Фабрика</label>
+            <select 
+              v-model="factoryPaymentForm.counterparty" 
+              :disabled="factoriesStore.loading"
+            >
+              <option value="" disabled>
+                {{ factoriesStore.loading ? '⏳ Загрузка...' : 'Выберите фабрику' }}
+              </option>
+              <option v-for="f in factories" :key="f.id" :value="f.id">
+                {{ f.name }}
+              </option>
+            </select>
+            
+            <!-- Статус загрузки фабрик -->
+            <small v-if="factoriesStore.loading" style="color: orange; display: block; margin-top: 4px;">
+              ⏳ Загрузка фабрик...
+            </small>
+            <small v-else-if="factories.length === 0" style="color: red; display: block; margin-top: 4px;">
+              ⚠️ Нет доступных фабрик (загружено: {{ factoriesStore.items?.length || 0 }})
+            </small>
+            <small v-else style="color: green; display: block; margin-top: 4px;">
+              ✅ Загружено фабрик: {{ factories.length }}
+            </small>
+          </div>
+
           <div class="form-field">
             <label>Дата</label>
             <input v-model="factoryPaymentForm.date" type="date" />

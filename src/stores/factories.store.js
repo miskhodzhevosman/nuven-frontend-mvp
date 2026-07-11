@@ -21,7 +21,19 @@ export const useFactoriesStore = defineStore('factories', {
       this.error = null
 
       try {
-        this.items = await getFactories()
+        const response = await getFactories()
+        console.log('🔍 Raw API response:', response) // ОТЛАДКА
+        
+        // ТАКАЯ ЖЕ ОБРАБОТКА КАК ВО ВЬЮХЕ
+        if (Array.isArray(response)) {
+          this.items = response
+        } else if (response && typeof response === 'object') {
+          this.items = response.items || response.results || []
+        } else {
+          this.items = []
+        }
+        
+        console.log('✅ Processed items:', this.items) // ОТЛАДКА
         return this.items
       } catch (error) {
         this.error = error?.message || 'Не удалось загрузить фабрики'
@@ -38,6 +50,9 @@ export const useFactoriesStore = defineStore('factories', {
 
       try {
         const created = await createFactory(payload)
+        if (!Array.isArray(this.items)) {
+          this.items = []
+        }
         this.items.push(created)
         return created
       } catch (error) {
@@ -55,6 +70,9 @@ export const useFactoriesStore = defineStore('factories', {
 
       try {
         const updated = await updateFactory(id, payload)
+        if (!Array.isArray(this.items)) {
+          this.items = []
+        }
         const index = this.items.findIndex(item => item.id === id)
         if (index !== -1) {
           this.items[index] = updated
@@ -75,6 +93,9 @@ export const useFactoriesStore = defineStore('factories', {
 
       try {
         await deleteFactory(id)
+        if (!Array.isArray(this.items)) {
+          this.items = []
+        }
         this.items = this.items.filter(item => item.id !== id)
       } catch (error) {
         this.error = error?.message || 'Не удалось удалить фабрику'
@@ -85,7 +106,6 @@ export const useFactoriesStore = defineStore('factories', {
       }
     },
 
-    // Очистка состояния
     clear() {
       this.items = []
       this.error = null
@@ -93,17 +113,25 @@ export const useFactoriesStore = defineStore('factories', {
   },
 
   getters: {
-    // Получить фабрику по ID
     getFactoryById: (state) => (id) => {
+      if (!Array.isArray(state.items)) {
+        return undefined
+      }
       return state.items.find(item => item.id === id)
     },
 
-    // Количество фабрик
-    totalCount: (state) => state.items.length,
+    totalCount: (state) => {
+      if (!Array.isArray(state.items)) {
+        return 0
+      }
+      return state.items.length
+    },
 
-    // Отсортированные фабрики
     sortedItems: (state) => {
-      return [...state.items].sort((a, b) => a.name.localeCompare(b.name))
+      if (!Array.isArray(state.items)) {
+        return []
+      }
+      return [...state.items].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     },
   },
 })
