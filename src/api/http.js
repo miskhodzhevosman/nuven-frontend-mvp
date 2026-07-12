@@ -1,5 +1,5 @@
 // src/api/http.js
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '';
 
 // ============================================
 // 1. Работа с токенами
