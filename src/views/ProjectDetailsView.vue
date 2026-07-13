@@ -10,6 +10,7 @@ import {
   getOperationTypes,
   createOperationType
 } from '@/services/finance.service'
+import { projectsService } from '@/services/projects.service'
 
 const store = useProjectsStore()
 const factoriesStore = useFactoriesStore()
@@ -34,18 +35,12 @@ const clients = computed(() => store.clients)
 const managers = computed(() => store.managers)
 const statuses = computed(() => store.statuses)
 
-// ОТЛАДКА: проверяем, что приходит из стора
 const factories = computed(() => {
   const items = factoriesStore.items
-  console.log('🔍 Factories raw:', items)
-  console.log('🔍 Is array?', Array.isArray(items))
-  
   if (!Array.isArray(items)) {
     return []
   }
-  
   const sorted = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  console.log('🔍 Factories sorted:', sorted)
   return sorted
 })
 
@@ -94,6 +89,22 @@ const factoryPayments = computed(() =>
 )
 
 /* ===================== */
+/* REFRESH ALL DATA */
+/* ===================== */
+async function refreshAllData() {
+  console.log('🔄 Refreshing all project data...')
+  try {
+    // Обновляем детали проекта (включая финансы)
+    await store.initProjectDetails(projectId)
+    // Обновляем транзакции
+    await loadTransactions()
+    console.log('✅ All data refreshed')
+  } catch (error) {
+    console.error('❌ Error refreshing data:', error)
+  }
+}
+
+/* ===================== */
 /* INIT */
 /* ===================== */
 onMounted(async () => {
@@ -102,11 +113,7 @@ onMounted(async () => {
     await store.initProjectDetails(projectId)
     await loadOperationTypes()
     await loadTransactions()
-    
-    // ОТЛАДКА: добавляем try-catch и логирование
-    console.log('🔄 Loading factories...')
     await factoriesStore.fetchFactories()
-    console.log('✅ Factories loaded:', factoriesStore.items)
   } catch (error) {
     console.error('❌ Error during initialization:', error)
   } finally {
@@ -150,35 +157,47 @@ const expenseForm = reactive({
 })
 
 function openExpenseModal() {
+  expenseForm.amount = ''
+  expenseForm.date = ''
   showExpenseModal.value = true
 }
+
 function closeExpenseModal() {
   showExpenseModal.value = false
 }
 
 async function saveExpense() {
-  let typeId = getTypeId('project_expense')
+  try {
+    let typeId = getTypeId('project_expense')
 
-  if (!typeId) {
-    const created = await createOperationType({
-      name: 'Project expense',
-      code: 'project_expense'
+    if (!typeId) {
+      const created = await createOperationType({
+        name: 'Project expense',
+        code: 'project_expense'
+      })
+      const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
+      operationTypes.value = [...list, created]
+      typeId = created.id
+    }
+
+    await createTransaction({
+      amount: Number(expenseForm.amount),
+      date: expenseForm.date,
+      project: projectId,
+      counterparty: null,
+      finance_operation_type: typeId
     })
-    const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
-    operationTypes.value = [...list, created]
-    typeId = created.id
+
+    closeExpenseModal()
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Expense created and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving expense:', error)
+    alert('Ошибка при сохранении расхода')
   }
-
-  await createTransaction({
-    amount: Number(expenseForm.amount),
-    date: expenseForm.date,
-    project: projectId,
-    counterparty: null,
-    finance_operation_type: typeId
-  })
-
-  closeExpenseModal()
-  await loadTransactions()
 }
 
 /* ===================== */
@@ -201,19 +220,177 @@ function openCreateItem() {
 }
 
 async function saveItem() {
-  await store.createProjectItem({
-    project: projectId,
-    ...itemForm
-  })
-  showItemModal.value = false
+  try {
+    await store.createProjectItem({
+      project: projectId,
+      ...itemForm
+    })
+    
+    showItemModal.value = false
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Item created and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving item:', error)
+    alert('Ошибка при сохранении позиции')
+  }
 }
 
 /* ===================== */
 /* DELETE EXPENSE */
 /* ===================== */
 async function deleteExpense(id) {
-  await deleteTransaction(id)
-  await loadTransactions()
+  if (!confirm('Удалить расход?')) return
+  
+  try {
+    await deleteTransaction(id)
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Expense deleted and data refreshed')
+  } catch (error) {
+    console.error('❌ Error deleting expense:', error)
+    alert('Ошибка при удалении расхода')
+  }
+}
+
+/* ===================== */
+/* DELETE ITEM */
+/* ===================== */
+async function deleteItem(id) {
+  if (!confirm('Удалить позицию?')) return
+  
+  try {
+    await store.deleteProjectItem(id)
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Item deleted and data refreshed')
+  } catch (error) {
+    console.error('❌ Error deleting item:', error)
+    alert('Ошибка при удалении позиции')
+  }
+}
+
+// ===================== */
+/* CREATE NOMENCLATURE */
+/* ===================== */
+const showCreateNomenclatureModal = ref(false)
+const createNomenclatureForm = reactive({
+  name: '',
+  technical_name: '',
+  article: '',
+  current_cost_price: '',
+  current_sale_price: '',
+  factory: null,
+})
+
+const factoriesForNomenclature = computed(() => {
+  const items = factoriesStore.items
+  if (!Array.isArray(items)) return []
+  return [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+})
+
+function openCreateNomenclature() {
+  createNomenclatureForm.name = ''
+  createNomenclatureForm.technical_name = ''
+  createNomenclatureForm.article = ''
+  createNomenclatureForm.current_cost_price = ''
+  createNomenclatureForm.current_sale_price = ''
+  createNomenclatureForm.factory = null
+  
+  if (factoriesStore.items.length === 0) {
+    factoriesStore.fetchFactories()
+  }
+  
+  showCreateNomenclatureModal.value = true
+}
+
+function closeCreateNomenclature() {
+  showCreateNomenclatureModal.value = false
+}
+
+async function saveNewNomenclature() {
+  try {
+    const payload = {
+      type: 'PRODUCT',
+      name: createNomenclatureForm.name,
+      technical_name: createNomenclatureForm.technical_name || createNomenclatureForm.name,
+      article: createNomenclatureForm.article || '',
+      current_cost_price: Number(createNomenclatureForm.current_cost_price) || 0,
+      current_sale_price: Number(createNomenclatureForm.current_sale_price) || 0,
+      factory: createNomenclatureForm.factory ? Number(createNomenclatureForm.factory) : null,
+    }
+    
+    const result = await store.createNomenclature(payload)
+    console.log('📦 Nomenclature created:', result)
+    
+    let newId = null
+    
+    if (result) {
+      if (result.id) newId = result.id
+      else if (result.pk) newId = result.pk
+      else if (result.uuid) newId = result.uuid
+      else if (result._id) newId = result._id
+      else if (result.ID) newId = result.ID
+      else if (result.nomenclature_id) newId = result.nomenclature_id
+      else if (result.object_id) newId = result.object_id
+      
+      if (!newId && result.data) {
+        newId = result.data.id || result.data.pk || result.data.uuid
+      }
+      
+      if (!newId && Array.isArray(result) && result.length > 0) {
+        const first = result[0]
+        newId = first.id || first.pk || first.uuid
+        if (newId) {
+          Object.assign(result, first)
+        }
+      }
+    }
+    
+    // Если ID не найден, перезагружаем список
+    if (!newId) {
+      console.log('⚠️ ID not found, reloading nomenclatures...')
+      await store.loadNomenclatures()
+      
+      const found = store.nomenclatures.find(n => n.name === createNomenclatureForm.name)
+      if (found) {
+        newId = found.id || found.pk || found.uuid
+        console.log('✅ Found in list:', newId)
+        if (result) {
+          Object.assign(result, found)
+        }
+      }
+    }
+    
+    if (!newId) {
+      throw new Error('Не удалось получить ID созданного товара')
+    }
+    
+    // Добавляем в список, если его там нет
+    if (result && !store.nomenclatures.find(n => (n.id || n.pk) === newId)) {
+      if (!result.id) {
+        result.id = newId
+      }
+      store.nomenclatures = [...store.nomenclatures, result]
+    }
+    
+    // Устанавливаем выбранный товар
+    itemForm.nomenclature = newId
+    
+    closeCreateNomenclature()
+    
+    console.log('✅ Nomenclature created with ID:', newId)
+    
+  } catch (error) {
+    console.error('❌ Error creating nomenclature:', error)
+    alert('Ошибка при создании товара: ' + (error.message || 'Неизвестная ошибка'))
+  }
 }
 
 /* ===================== */
@@ -226,30 +403,53 @@ const clientPaymentForm = reactive({
 })
 
 function openClientPaymentModal() {
+  clientPaymentForm.date = ''
+  clientPaymentForm.amount = ''
   showClientPaymentModal.value = true
 }
+
 function closeClientPaymentModal() {
   showClientPaymentModal.value = false
 }
 
 async function saveClientPayment() {
-  const projectClientId = store.currentProject?.client || null
+  try {
+    const projectClientId = store.currentProject?.client || null
 
-  await createTransaction({
-    project: projectId,
-    counterparty: projectClientId,
-    finance_operation_type: CLIENT_PAYMENT_TYPE_ID,
-    date: clientPaymentForm.date,
-    amount: Number(clientPaymentForm.amount)
-  })
+    await createTransaction({
+      project: projectId,
+      counterparty: projectClientId,
+      finance_operation_type: CLIENT_PAYMENT_TYPE_ID,
+      date: clientPaymentForm.date,
+      amount: Number(clientPaymentForm.amount)
+    })
 
-  closeClientPaymentModal()
-  await loadTransactions()
+    closeClientPaymentModal()
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Client payment created and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving client payment:', error)
+    alert('Ошибка при сохранении оплаты')
+  }
 }
 
 async function deleteClientPayment(id) {
-  await deleteTransaction(id)
-  await loadTransactions()
+  if (!confirm('Удалить оплату клиента?')) return
+  
+  try {
+    await deleteTransaction(id)
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Client payment deleted and data refreshed')
+  } catch (error) {
+    console.error('❌ Error deleting client payment:', error)
+    alert('Ошибка при удалении оплаты')
+  }
 }
 
 /* ===================== */
@@ -268,26 +468,47 @@ function openFactoryPaymentModal() {
   factoryPaymentForm.amount = ''
   showFactoryPaymentModal.value = true
 }
+
 function closeFactoryPaymentModal() {
   showFactoryPaymentModal.value = false
 }
 
 async function saveFactoryPayment() {
-  await createTransaction({
-    project: projectId,
-    counterparty: factoryPaymentForm.counterparty ? Number(factoryPaymentForm.counterparty) : null,
-    finance_operation_type: FACTORY_PAYMENT_TYPE_ID,
-    date: factoryPaymentForm.date,
-    amount: Number(factoryPaymentForm.amount)
-  })
+  try {
+    await createTransaction({
+      project: projectId,
+      counterparty: factoryPaymentForm.counterparty ? Number(factoryPaymentForm.counterparty) : null,
+      finance_operation_type: FACTORY_PAYMENT_TYPE_ID,
+      date: factoryPaymentForm.date,
+      amount: Number(factoryPaymentForm.amount)
+    })
 
-  closeFactoryPaymentModal()
-  await loadTransactions()
+    closeFactoryPaymentModal()
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Factory payment created and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving factory payment:', error)
+    alert('Ошибка при сохранении оплаты')
+  }
 }
 
 async function deleteFactoryPayment(id) {
-  await deleteTransaction(id)
-  await loadTransactions()
+  if (!confirm('Удалить оплату фабрике?')) return
+  
+  try {
+    await deleteTransaction(id)
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Factory payment deleted and data refreshed')
+  } catch (error) {
+    console.error('❌ Error deleting factory payment:', error)
+    alert('Ошибка при удалении оплаты')
+  }
 }
 
 /* ===================== */
@@ -321,15 +542,25 @@ function closeProjectModal() {
 }
 
 async function saveProject() {
-  await store.updateProject(projectId, {
-    name: projectForm.name,
-    geography: projectForm.geography,
-    client: Number(projectForm.client),
-    tech_manager: Number(projectForm.tech_manager),
-    status: Number(projectForm.status),
-  })
+  try {
+    await store.updateProject(projectId, {
+      name: projectForm.name,
+      geography: projectForm.geography,
+      client: Number(projectForm.client),
+      tech_manager: Number(projectForm.tech_manager),
+      status: Number(projectForm.status),
+    })
 
-  showProjectModal.value = false
+    showProjectModal.value = false
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Project updated and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving project:', error)
+    alert('Ошибка при сохранении проекта')
+  }
 }
 
 /* ===================== */
@@ -357,6 +588,51 @@ function formatMoney(value) {
 function formatDate(value) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('ru-RU')
+}
+
+/* ===================== */
+/* EDIT ITEM */
+/* ===================== */
+const editingItem = ref(null)
+
+function openEditItem(item) {
+  editingItem.value = item
+  itemForm.nomenclature = item.nomenclature
+  itemForm.quantity = item.quantity
+  itemForm.fixed_cost_price = item.fixed_cost_price
+  itemForm.fixed_sale_price = item.fixed_sale_price
+  showItemModal.value = true
+}
+
+async function saveItemEdit() {
+  try {
+    if (editingItem.value) {
+      // Обновление существующей позиции
+      await store.updateProjectItem(editingItem.value.id, {
+        nomenclature: itemForm.nomenclature,
+        quantity: itemForm.quantity,
+        fixed_cost_price: itemForm.fixed_cost_price,
+        fixed_sale_price: itemForm.fixed_sale_price,
+      })
+      editingItem.value = null
+    } else {
+      // Создание новой позиции
+      await store.createProjectItem({
+        project: projectId,
+        ...itemForm
+      })
+    }
+    
+    showItemModal.value = false
+    
+    // 🔄 Обновляем все данные
+    await refreshAllData()
+    
+    console.log('✅ Item saved and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving item:', error)
+    alert('Ошибка при сохранении позиции')
+  }
 }
 </script>
 
@@ -811,33 +1087,49 @@ function formatDate(value) {
     <div v-if="showItemModal" class="modal" @click.self="showItemModal = false">
       <div class="modal__card modal__card--md">
         <div class="modal__header">
-          <h3>Новая позиция проекта</h3>
+          <h3>{{ editingItem ? 'Редактирование позиции' : 'Новая позиция проекта' }}</h3>
           <button class="icon-btn" @click="showItemModal = false">✕</button>
         </div>
 
         <div class="form-grid">
           <div class="form-field form-field--full">
-            <label>Номенклатура</label>
-            <select v-model="itemForm.nomenclature">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+              <label style="margin-bottom: 0; font-weight: 500;">Номенклатура *</label>
+              <button 
+                type="button" 
+                class="btn btn--sm btn--primary" 
+                @click="openCreateNomenclature"
+                style="padding: 2px 12px; font-size: 13px; white-space: nowrap;"
+              >
+                + Создать товар
+              </button>
+            </div>
+            
+            <select v-model="itemForm.nomenclature" style="width: 100%;">
+              <option :value="null" disabled>Выберите товар</option>
               <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
-                {{ n.name }}
+                {{ n.name }} {{ n.article ? `(арт. ${n.article})` : '' }}
               </option>
             </select>
+            
+            <small v-if="store.nomenclatures.length === 0" style="color: #999; display: block; margin-top: 4px;">
+              Нет доступных товаров. Создайте новый.
+            </small>
           </div>
 
           <div class="form-field">
             <label>Количество</label>
-            <input type="number" v-model="itemForm.quantity" />
+            <input type="number" v-model="itemForm.quantity" min="1" />
           </div>
 
           <div class="form-field">
             <label>Себестоимость</label>
-            <input type="number" v-model="itemForm.fixed_cost_price" />
+            <input type="number" v-model="itemForm.fixed_cost_price" min="0" step="0.01" />
           </div>
 
           <div class="form-field">
             <label>Цена продажи</label>
-            <input type="number" v-model="itemForm.fixed_sale_price" />
+            <input type="number" v-model="itemForm.fixed_sale_price" min="0" step="0.01" />
           </div>
         </div>
 
@@ -845,8 +1137,80 @@ function formatDate(value) {
           <button class="btn btn--ghost" @click="showItemModal = false">
             Отмена
           </button>
-          <button class="btn btn--primary" @click="saveItem">
+          <button 
+            class="btn btn--primary" 
+            @click="editingItem ? saveItemEdit() : saveItem()" 
+            :disabled="!itemForm.nomenclature"
+          >
             Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CREATE NOMENCLATURE -->
+    <div v-if="showCreateNomenclatureModal" class="modal" @click.self="closeCreateNomenclature">
+      <div class="modal__card modal__card--md">
+        <div class="modal__header">
+          <h3>Создание нового товара</h3>
+          <button class="icon-btn" @click="closeCreateNomenclature">✕</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label>Название товара *</label>
+            <input v-model="createNomenclatureForm.name" placeholder="Введите название" />
+          </div>
+
+          <div class="form-field">
+            <label>Техническое название</label>
+            <input v-model="createNomenclatureForm.technical_name" placeholder="Опционально" />
+          </div>
+
+          <div class="form-field">
+            <label>Артикул</label>
+            <input v-model="createNomenclatureForm.article" placeholder="Опционально" />
+          </div>
+
+          <div class="form-field">
+            <label>Себестоимость</label>
+            <input 
+              v-model="createNomenclatureForm.current_cost_price" 
+              type="number" 
+              step="0.01"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div class="form-field">
+            <label>Цена продажи</label>
+            <input 
+              v-model="createNomenclatureForm.current_sale_price" 
+              type="number" 
+              step="0.01"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div class="form-field form-field--full">
+            <label>Фабрика (опционально)</label>
+            <select v-model="createNomenclatureForm.factory">
+              <option :value="null">Не выбрано</option>
+              <option v-for="f in factoriesForNomenclature" :key="f.id" :value="f.id">
+                {{ f.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" @click="closeCreateNomenclature">Отмена</button>
+          <button 
+            class="btn btn--primary" 
+            @click="saveNewNomenclature"
+            :disabled="!createNomenclatureForm.name || store.saving"
+          >
+            {{ store.saving ? 'Сохранение...' : 'Создать товар' }}
           </button>
         </div>
       </div>
@@ -894,7 +1258,7 @@ function formatDate(value) {
               v-model="factoryPaymentForm.counterparty" 
               :disabled="factoriesStore.loading"
             >
-              <option value="" disabled>
+              <option :value="null" disabled>
                 {{ factoriesStore.loading ? '⏳ Загрузка...' : 'Выберите фабрику' }}
               </option>
               <option v-for="f in factories" :key="f.id" :value="f.id">
@@ -902,12 +1266,11 @@ function formatDate(value) {
               </option>
             </select>
             
-            <!-- Статус загрузки фабрик -->
             <small v-if="factoriesStore.loading" style="color: orange; display: block; margin-top: 4px;">
               ⏳ Загрузка фабрик...
             </small>
             <small v-else-if="factories.length === 0" style="color: red; display: block; margin-top: 4px;">
-              ⚠️ Нет доступных фабрик (загружено: {{ factoriesStore.items?.length || 0 }})
+              ⚠️ Нет доступных фабрик
             </small>
             <small v-else style="color: green; display: block; margin-top: 4px;">
               ✅ Загружено фабрик: {{ factories.length }}
@@ -933,8 +1296,25 @@ function formatDate(value) {
     </div>
   </div>
 </template>
-
 <style scoped>
+
+/* Для кнопки создания товара в модалке */
+.btn--sm {
+  padding: 4px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.form-field__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.form-field__header label {
+  margin-bottom: 0;
+}
 .project-page {
   min-height: 100vh;
   padding: 24px;

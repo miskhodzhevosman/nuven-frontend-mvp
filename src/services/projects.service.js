@@ -119,5 +119,8 @@ export const projectsService = {
     const response = await httpGet('/api/crm/project-statuses/')
     const data = await handleResponse(response)
     return extractArray(data)
-  }
+  },
+  async createNomenclature(payload) {
+  return await httpPost('/api/supplies/nomenclatures/', payload)
+}
 }

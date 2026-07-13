@@ -1,5 +1,5 @@
 // src/api/http.js
-const API_BASE = '';
+const API_BASE = 'http://127.0.0.1:8000/';
 
 // ============================================
 // 1. Работа с токенами
@@ -148,6 +148,7 @@ async function httpGet(url, options = {}) {
   });
 }
 
+// api/http.js
 async function httpPost(url, data = {}, options = {}) {
   const { throwOnError = true, headers = {} } = options;
   const response = await fetchWithAuth(url, {
@@ -157,10 +158,18 @@ async function httpPost(url, data = {}, options = {}) {
     throwOnError,
   });
   
-  // Парсим JSON если есть
+  // Логируем ВСЁ
+  console.log(`📡 POST ${url}`);
+  console.log('Статус:', response.status);
+  console.log('Заголовки:', [...response.headers.entries()]);
+  
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json') && response.status !== 204) {
-    return response.json();
+    const json = await response.json();
+    console.log('📦 JSON ответ:', json);
+    console.log('🆔 ID в ответе:', json?.id);
+    console.log('Ключи ответа:', Object.keys(json));
+    return json;
   }
   
   return null;

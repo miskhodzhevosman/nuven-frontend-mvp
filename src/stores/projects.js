@@ -284,12 +284,40 @@ export const useProjectsStore = defineStore('projects', {
         this.deletingProjectItemId = null
       }
     },
-
+async loadNomenclatures() {
+  try {
+    const nomenclatures = await projectsService.getNomenclatures()
+    this.nomenclatures = nomenclatures
+    return nomenclatures
+  } catch (e) {
+    console.error('❌ Error loading nomenclatures:', e)
+    throw e
+  }
+},
     clearCurrentProject() {
       this.currentProject = null
       this.currentProjectFinance = null
       this.currentProjectItems = []
       this.currentProjectExpenses = []
-    }
+    },
+    // stores/projects.js
+async createNomenclature(payload) {
+  this.saving = true
+  try {
+    console.log('📤 Отправка номенклатуры:', payload)
+    const created = await projectsService.createNomenclature(payload)
+    console.log('📥 Получен ответ от сервера:', created)
+    console.log('🆔 ID в ответе:', created?.id)
+    console.log('🔍 Полный объект:', JSON.stringify(created, null, 2))
+    
+    this.nomenclatures.push(created)
+    return created
+  } catch (e) {
+    console.error('❌ Error creating nomenclature:', e)
+    throw e
+  } finally {
+    this.saving = false
+  }
+}
   }
 })
