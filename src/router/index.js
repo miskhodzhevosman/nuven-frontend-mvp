@@ -7,7 +7,7 @@ import { getAccessToken } from '@/api/http';
 const Login = () => import('@/views/Login.vue');
 const DashboardLayout = () => import('@/layouts/DashboardLayout.vue');
 const HomeView = () => import('@/views/HomeView.vue');
-const FactoriesView = () => import('@/views/FactoriesView.vue');
+const FactoriesView = () => import('@/supply/views/FactoriesView.vue');
 const ProjectsView = () => import('@/views/ProjectsView.vue');
 const ProjectDetailsView = () => import('@/views/ProjectDetailsView.vue');
 
