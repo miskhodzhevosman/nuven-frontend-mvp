@@ -1,129 +1,54 @@
 <template>
   <div class="dashboard">
-    <h1>Дашборд</h1>
+    <div class="dashboard-header">
+      <h1>Финансовый дашборд</h1>
+      <Button 
+        icon="pi pi-refresh" 
+        label="Обновить" 
+        @click="store.fetchReport()" 
+        :loading="store.loading"
+        class="p-button-outlined"
+      />
+    </div>
 
+    <!-- Состояния загрузки/ошибки -->
     <div v-if="store.loading" class="loading-state">
-      <div class="spinner"></div>
+      <ProgressSpinner />
       <span>Загрузка данных...</span>
     </div>
 
     <div v-else-if="store.error" class="error-state">
-      {{ store.error }}
-      <button class="btn btn--primary" @click="store.fetchReport()">
-        Попробовать снова
-      </button>
+      <i class="pi pi-exclamation-triangle" style="font-size: 2rem; color: #e74c3c;"></i>
+      <p>{{ store.error }}</p>
+      <Button label="Попробовать снова" @click="store.fetchReport()" />
     </div>
 
     <template v-else-if="store.report">
-      <!-- Плитки -->
-      <div class="tiles">
-        <div class="tile">
-          <div class="tile__label">Выручка</div>
-          <div class="tile__value">{{ formatMoney(store.report.revenue) }}</div>
-        </div>
-
-        <div class="tile">
-          <div class="tile__label">Чистая прибыль</div>
-          <div class="tile__value">{{ formatMoney(store.report.net_profit) }}</div>
-        </div>
-
-        <div class="tile">
-          <div class="tile__label">Дебиторка</div>
-          <div class="tile__value">{{ formatMoney(store.report.cashflow?.client_received) }}</div>
-        </div>
-
-        <div class="tile">
-          <div class="tile__label">Кредиторка</div>
-          <div class="tile__value">{{ formatMoney(store.report.cashflow?.factory_paid) }}</div>
-        </div>
-      </div>
-
-      <!-- Таблица -->
-      <Table
-        :columns="columns"
-        :rows="rows"
-        :loading="store.loading"
-        row-key="key"
-      />
-
+      <!-- Виджет метрик -->
+      <FinanceMetricsWidget :report="store.report" />
+      
+      <!-- Виджет графиков и таблиц -->
+      <FinanceChartsWidget :report="store.report" />
     </template>
 
     <div v-else class="empty-state">
-      <div class="empty-state__icon">📊</div>
-      <div class="empty-state__title">Нет данных</div>
-      <div class="empty-state__text">Финансовый отчёт пока пуст</div>
+      <i class="pi pi-chart-line" style="font-size: 3rem; color: #9AA0A6;"></i>
+      <h3>Нет данных</h3>
+      <p>Финансовый отчёт пока пуст</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
-import Table from '@/components/Table.vue'
+import { onMounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance.store'
+import Button from 'primevue/button'
+import ProgressSpinner from 'primevue/progressspinner'
+import FinanceMetricsWidget from '@/widgets/FinanceMetricsWidget/index.vue'
+import FinanceChartsWidget from '@/widgets/FinanceChartsWidget/index.vue'
 
 const store = useFinanceStore()
 
-const columns = [
-  { key: 'name', label: 'Показатель' },
-  { key: 'value', label: 'Значение' }
-]
-
-const rows = computed(() => {
-  const r = store.report
-  if (!r) return []
-
-  return [
-    { key: 'revenue', name: 'Выручка', value: formatMoney(r.revenue) },
-    { key: 'net_profit', name: 'Чистая прибыль', value: formatMoney(r.net_profit) },
-    { key: 'gross_profit', name: 'Валовая прибыль', value: formatMoney(r.gross_profit) },
-    { key: 'cogs', name: 'Себестоимость', value: formatMoney(r.cogs) },
-    { key: 'operation_expenses', name: 'Операционные расходы', value: formatMoney(r.operation_expenses) },
-    { key: 'project_expenses', name: 'Проектные расходы', value: formatMoney(r.project_expenses) },
-    { key: 'client_received', name: 'Дебиторка', value: formatMoney(r.cashflow?.client_received) },
-    { key: 'factory_paid', name: 'Кредиторка', value: formatMoney(r.cashflow?.factory_paid) },
-  ]
-})
-
-/**
- * Форматирование денег
- */
-function formatMoney(value) {
-  if (value === null || value === undefined || value === '') {
-    return '—'
-  }
-
-  const num = Number(value)
-  if (Number.isNaN(num)) return value
-
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'CNY',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num)
-}
-
-/**
- * Форматирование процентов
- */
-function formatPercent(value) {
-  if (value === null || value === undefined || value === '') {
-    return '—'
-  }
-
-  const num = Number(value)
-  if (Number.isNaN(num)) return value
-
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(num / 100)
-}
-
-/**
- * Загрузка данных при монтировании
- */
 onMounted(() => {
   store.fetchReport()
 })
@@ -131,80 +56,77 @@ onMounted(() => {
 
 <style scoped>
 .dashboard {
-  padding: 20px;
-  background: #0E0F12;
+  padding: 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.dashboard-header h1 {
   color: #D0D2D5;
+  font-size: 1.75rem;
+  font-weight: 600;
 }
 
-h1 {
-  margin-bottom: 16px;
-  color: #C9A86A;
-}
-
-/* TILES */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.tile {
-  border: 1px solid #2A2D33;
-  border-radius: 12px;
-  padding: 14px;
-  background: #16181C;
-  transition: 0.15s ease;
-}
-
-.tile:hover {
-  border-color: #C9A86A;
-  transform: translateY(-2px);
-}
-
-.label {
-  font-size: 12px;
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
   color: #9AA0A6;
 }
 
-.value {
-  font-size: 20px;
-  font-weight: 600;
-  margin-top: 6px;
+.loading-state span {
+  margin-top: 16px;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
   color: #D0D2D5;
 }
 
-/* TABLE WRAPPER (если есть кастомный Table) */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #16181C;
-  border-radius: 12px;
-  overflow: hidden;
+.error-state p {
+  margin: 16px 0 24px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #9AA0A6;
+}
+
+.empty-state h3 {
+  margin: 16px 0 8px;
   color: #D0D2D5;
 }
 
-th,
-td {
-  padding: 10px;
-  border-bottom: 1px solid #2A2D33;
-}
-
-th {
-  color: #C9A86A;
-  text-align: left;
-}
-
-/* RESPONSIVE */
-@media (max-width: 1024px) {
-  .tiles {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 16px;
   }
-}
 
-@media (max-width: 600px) {
-  .tiles {
-    grid-template-columns: 1fr;
+  .dashboard-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.5rem;
   }
 }
 </style>

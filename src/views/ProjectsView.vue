@@ -2,301 +2,308 @@
   <div class="projects-page">
     <div class="page-header">
       <h1>Проекты</h1>
-
-      <button class="primary-btn" @click="openCreateModal">
-        + Создать проект
-      </button>
+      <Button 
+        label="Создать проект" 
+        icon="pi pi-plus" 
+        @click="openCreateModal"
+        :disabled="store.loading"
+      />
     </div>
 
     <!-- Теги/плитки статусов -->
     <div class="status-tiles">
-      <button
+      <Button
         v-for="tile in store.statusTiles"
         :key="tile.id"
-        class="status-tile"
-        :class="{ active: store.activeStatusId === tile.id }"
+        :label="`${tile.name} (${tile.count})`"
+        :severity="store.activeStatusId === tile.id ? 'primary' : 'secondary'"
+        :outlined="store.activeStatusId !== tile.id"
+        size="small"
+        class="status-tile-btn"
         @click="store.setActiveStatus(tile.id)"
-      >
-        <span class="status-name">{{ tile.name }}</span>
-        <span class="status-count">{{ tile.count }}</span>
-      </button>
+      />
     </div>
 
     <!-- Таблица проектов -->
-    <Table
-      :columns="columns"
-      :rows="tableRows"
-      :loading="store.loading || financeLoading"
-      row-key="id"
-    >
-      <template #cell-name="{ row }">
-        <button class="link-cell" @click="goToProject(row.id)">
-          {{ row.name || '—' }}
-        </button>
-      </template>
+    <div class="table-wrapper">
+      <DataTable
+        :value="tableRows"
+        :loading="store.loading || financeLoading"
+        dataKey="id"
+        class="p-datatable-sm"
+        stripedRows
+        :paginator="true"
+        :rows="10"
+        :rowsPerPageOptions="[5, 10, 25, 50]"
+        paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+        currentPageReportTemplate="Показано {first} - {last} из {totalRecords}"
+      >
+        <Column field="name" header="Проект" style="min-width: 150px">
+          <template #body="{ data }">
+            <Button 
+              :label="data.name || '—'" 
+              class="link-cell p-button-text" 
+              @click="goToProject(data.id)"
+            />
+          </template>
+        </Column>
 
-      <template #cell-client_name="{ value }">
-        {{ value || '—' }}
-      </template>
+        <Column field="client_name" header="Клиент">
+          <template #body="{ data }">
+            <span>{{ data.client_name || '—' }}</span>
+          </template>
+        </Column>
 
-      <template #cell-manager_name="{ value }">
-        {{ value || '—' }}
-      </template>
+        <Column field="manager_name" header="Менеджер">
+          <template #body="{ data }">
+            <span>{{ data.manager_name || '—' }}</span>
+          </template>
+        </Column>
 
-      <template #cell-geography="{ value }">
-        {{ value || '—' }}
-      </template>
+        <Column field="geography" header="Страна">
+          <template #body="{ data }">
+            <span>{{ data.geography || '—' }}</span>
+          </template>
+        </Column>
 
-      <template #cell-amount="{ value }">
-        {{ formatMoney(value) }}
-      </template>
+        <Column field="amount" header="Сумма">
+          <template #body="{ data }">
+            <span class="text-positive">{{ formatMoney(data.amount) }}</span>
+          </template>
+        </Column>
 
-      <template #cell-margin_value="{ value }">
-        {{ value === '—' ? '—' : `${formatPercent(value)}%` }}
-      </template>
+        <Column field="margin_value" header="Маржа">
+          <template #body="{ data }">
+            <Tag 
+              :value="data.margin_value === '—' ? '—' : `${formatPercent(data.margin_value)}%`"
+              :severity="getMarginSeverity(data.margin_value)"
+              :rounded="true"
+            />
+          </template>
+        </Column>
 
-      <template #cell-paid="{ value }">
-        {{ formatMoney(value) }}
-      </template>
+        <Column field="paid" header="Оплачено">
+          <template #body="{ data }">
+            <span>{{ formatMoney(data.paid) }}</span>
+          </template>
+        </Column>
 
-      <template #cell-deadline="{ value }">
-        {{ formatDate(value) }}
-      </template>
+        <Column field="deadline" header="Срок">
+          <template #body="{ data }">
+            <span>{{ formatDate(data.deadline) }}</span>
+          </template>
+        </Column>
 
-      <template #cell-status_name="{ value }">
-        <span class="status-badge">
-          {{ value || '—' }}
-        </span>
-      </template>
-    </Table>
+        <Column field="status_name" header="Статус">
+          <template #body="{ data }">
+            <Tag 
+              :value="data.status_name || '—'" 
+              :severity="getStatusSeverity(data.status_name)"
+              :rounded="true"
+            />
+          </template>
+        </Column>
+      </DataTable>
+    </div>
 
     <!-- Модалка создания проекта -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>Создать проект</h2>
-          <button class="icon-btn" @click="closeModal">✕</button>
+    <Dialog
+      v-model:visible="showModal"
+      header="Создать проект"
+      :modal="true"
+      :style="{ width: '600px' }"
+      class="p-fluid"
+      @hide="resetForm"
+    >
+      <form @submit.prevent="handleSubmit">
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Название проекта <span class="req">*</span></label>
+            <InputText
+              id="name"
+              v-model="form.name"
+              placeholder="Введите название проекта"
+              :class="{ 'p-invalid': errors.name }"
+              required
+            />
+            <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
+          </div>
+
+          <div class="field">
+            <label for="geography">География</label>
+            <InputText
+              id="geography"
+              v-model="form.geography"
+              placeholder="Например: Казахстан"
+            />
+          </div>
+
+          <div class="field">
+            <label for="client">Клиент <span class="req">*</span></label>
+            <div class="field-with-action">
+              <Select
+                id="client"
+                v-model="form.client"
+                :options="store.clients"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Выберите клиента"
+                :class="{ 'p-invalid': errors.client }"
+                required
+              />
+              <Button 
+                icon="pi pi-plus" 
+                label="Новый"
+                size="small"
+                @click="openClientModal"
+                class="action-btn"
+              />
+            </div>
+            <small v-if="errors.client" class="p-error">{{ errors.client }}</small>
+          </div>
+
+          <div class="field">
+            <label for="tech_manager">Тех. менеджер <span class="req">*</span></label>
+            <div class="field-with-action">
+              <Select
+                id="tech_manager"
+                v-model="form.tech_manager"
+                :options="store.managers"
+                optionLabel="full_name"
+                optionValue="id"
+                placeholder="Выберите менеджера"
+                :class="{ 'p-invalid': errors.tech_manager }"
+                required
+              />
+              <Button 
+                icon="pi pi-plus" 
+                label="Новый"
+                size="small"
+                @click="openManagerModal"
+                class="action-btn"
+              />
+            </div>
+            <small v-if="errors.tech_manager" class="p-error">{{ errors.tech_manager }}</small>
+          </div>
+
+          <div class="field">
+            <label for="status">Статус <span class="req">*</span></label>
+            <Select
+              id="status"
+              v-model="form.status"
+              :options="store.statuses"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Выберите статус"
+              :class="{ 'p-invalid': errors.status }"
+              required
+            />
+            <small v-if="errors.status" class="p-error">{{ errors.status }}</small>
+          </div>
         </div>
 
-        <form class="project-form" @submit.prevent="handleSubmit">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="name">Название проекта *</label>
-              <input
-                id="name"
-                v-model="form.name"
-                type="text"
-                required
-                placeholder="Введите название проекта"
-              />
-            </div>
+        <div v-if="errorMessage" class="p-message p-message-error">
+          <i class="pi pi-exclamation-circle"></i>
+          {{ errorMessage }}
+        </div>
 
-            <div class="form-group">
-              <label for="geography">География</label>
-              <input
-                id="geography"
-                v-model="form.geography"
-                type="text"
-                placeholder="Например: Казахстан"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="client">Клиент *</label>
-              <select id="client" v-model="form.client" required>
-                <option disabled value="">Выберите клиента</option>
-                <option
-                  v-for="client in store.clients"
-                  :key="client.id"
-                  :value="client.id"
-                >
-                  {{ client.name }}
-                </option>
-              </select>
-
-              <button
-                type="button"
-                class="inline-action-btn"
-                @click="openClientModal"
-              >
-                + Создать клиента
-              </button>
-            </div>
-
-            <div class="form-group">
-              <label for="tech_manager">Тех. менеджер *</label>
-              <select id="tech_manager" v-model="form.tech_manager" required>
-                <option disabled value="">Выберите менеджера</option>
-                <option
-                  v-for="manager in store.managers"
-                  :key="manager.id"
-                  :value="manager.id"
-                >
-                  {{ manager.full_name }}
-                </option>
-              </select>
-
-              <button
-                type="button"
-                class="inline-action-btn"
-                @click="openManagerModal"
-              >
-                + Создать тех. менеджера
-              </button>
-            </div>
-
-            <div class="form-group">
-              <label for="status">Статус *</label>
-              <select id="status" v-model="form.status" required>
-                <option disabled value="">Выберите статус</option>
-                <option
-                  v-for="status in store.statuses"
-                  :key="status.id"
-                  :value="status.id"
-                >
-                  {{ status.name }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <div v-if="errorMessage" class="form-error">
-            {{ errorMessage }}
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="secondary-btn" @click="closeModal">
-              Отмена
-            </button>
-
-            <button type="submit" class="primary-btn" :disabled="store.saving">
-              {{ store.saving ? 'Сохранение...' : 'Создать' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showModal = false" class="p-button-text" />
+          <Button 
+            label="Создать" 
+            icon="pi pi-check" 
+            type="submit" 
+            :loading="store.saving"
+            :disabled="store.saving"
+          />
+        </div>
+      </form>
+    </Dialog>
 
     <!-- Модалка создания клиента -->
-    <div
-      v-if="showClientModal"
-      class="modal-overlay"
-      @click.self="closeClientModal"
+    <Dialog
+      v-model:visible="showClientModal"
+      header="Создать клиента"
+      :modal="true"
+      :style="{ width: '450px' }"
+      class="p-fluid"
     >
-      <div class="modal modal-small">
-        <div class="modal-header">
-          <h2>Создать клиента</h2>
-          <button class="icon-btn" @click="closeClientModal">✕</button>
+      <form @submit.prevent="handleCreateClient">
+        <div class="field">
+          <label for="client-name">Название <span class="req">*</span></label>
+          <InputText
+            id="client-name"
+            v-model="clientForm.name"
+            required
+          />
         </div>
 
-        <form class="project-form" @submit.prevent="handleCreateClient">
-          <div class="form-group">
-            <label for="client-name">Название *</label>
-            <input
-              id="client-name"
-              v-model="clientForm.name"
-              type="text"
-              required
-            />
-          </div>
+        <div class="field">
+          <label for="client-contacts">Контакты</label>
+          <InputText
+            id="client-contacts"
+            v-model="clientForm.contacts"
+          />
+        </div>
 
-          <div class="form-group">
-            <label for="client-contacts">Контакты</label>
-            <input
-              id="client-contacts"
-              v-model="clientForm.contacts"
-              type="text"
-            />
-          </div>
-
-          <div class="modal-actions">
-            <button
-              type="button"
-              class="secondary-btn"
-              @click="closeClientModal"
-            >
-              Отмена
-            </button>
-            <button type="submit" class="primary-btn">
-              Создать
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showClientModal = false" class="p-button-text" />
+          <Button label="Создать" icon="pi pi-check" type="submit" />
+        </div>
+      </form>
+    </Dialog>
 
     <!-- Модалка создания менеджера -->
-    <div
-      v-if="showManagerModal"
-      class="modal-overlay"
-      @click.self="closeManagerModal"
+    <Dialog
+      v-model:visible="showManagerModal"
+      header="Создать тех. менеджера"
+      :modal="true"
+      :style="{ width: '450px' }"
+      class="p-fluid"
     >
-      <div class="modal modal-small">
-        <div class="modal-header">
-          <h2>Создать тех. менеджера</h2>
-          <button class="icon-btn" @click="closeManagerModal">✕</button>
+      <form @submit.prevent="handleCreateManager">
+        <div class="field">
+          <label for="manager-name">ФИО <span class="req">*</span></label>
+          <InputText
+            id="manager-name"
+            v-model="managerForm.full_name"
+            required
+          />
         </div>
 
-        <form class="project-form" @submit.prevent="handleCreateManager">
-          <div class="form-group">
-            <label for="manager-name">ФИО *</label>
-            <input
-              id="manager-name"
-              v-model="managerForm.full_name"
-              type="text"
-              required
-            />
-          </div>
+        <div class="field">
+          <label for="manager-contacts">Контакты</label>
+          <InputText
+            id="manager-contacts"
+            v-model="managerForm.contacts"
+          />
+        </div>
 
-          <div class="form-group">
-            <label for="manager-contacts">Контакты</label>
-            <input
-              id="manager-contacts"
-              v-model="managerForm.contacts"
-              type="text"
-            />
-          </div>
-
-          <div class="modal-actions">
-            <button
-              type="button"
-              class="secondary-btn"
-              @click="closeManagerModal"
-            >
-              Отмена
-            </button>
-            <button type="submit" class="primary-btn">
-              Создать
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showManagerModal = false" class="p-button-text" />
+          <Button label="Создать" icon="pi pi-check" type="submit" />
+        </div>
+      </form>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import Table from '@/components/Table.vue'
 import { useProjectsStore } from '@/stores/projects'
 import { useFinanceStore } from '@/stores/finance.store'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Tag from 'primevue/tag'
 
 const router = useRouter()
 const store = useProjectsStore()
 const financeStore = useFinanceStore()
-
-const columns = [
-  { key: 'name', label: 'Проект' },
-  { key: 'client_name', label: 'Клиент' },
-  { key: 'manager_name', label: 'Менеджер' },
-  { key: 'geography', label: 'Страна' },
-  { key: 'amount', label: 'Сумма' },
-  { key: 'margin_value', label: 'Маржа' },
-  { key: 'paid', label: 'Оплачено' },
-  { key: 'deadline', label: 'Срок' },
-  { key: 'status_name', label: 'Статус' },
-]
 
 const tableRows = ref([])
 const financeLoading = ref(false)
@@ -305,13 +312,14 @@ const showModal = ref(false)
 const showClientModal = ref(false)
 const showManagerModal = ref(false)
 const errorMessage = ref('')
+const errors = reactive({})
 
 const getInitialForm = () => ({
   name: '',
   geography: '',
-  client: '',
-  tech_manager: '',
-  status: '',
+  client: null,
+  tech_manager: null,
+  status: null,
 })
 
 const form = reactive(getInitialForm())
@@ -329,16 +337,12 @@ const managerForm = reactive({
 function resetForm() {
   Object.assign(form, getInitialForm())
   errorMessage.value = ''
+  Object.keys(errors).forEach(key => delete errors[key])
 }
 
 function openCreateModal() {
   resetForm()
   showModal.value = true
-}
-
-function closeModal() {
-  showModal.value = false
-  resetForm()
 }
 
 function openClientModal() {
@@ -347,22 +351,36 @@ function openClientModal() {
   showClientModal.value = true
 }
 
-function closeClientModal() {
-  showClientModal.value = false
-}
-
 function openManagerModal() {
   managerForm.full_name = ''
   managerForm.contacts = ''
   showManagerModal.value = true
 }
 
-function closeManagerModal() {
-  showManagerModal.value = false
-}
-
 async function handleSubmit() {
   errorMessage.value = ''
+  Object.keys(errors).forEach(key => delete errors[key])
+
+  // Валидация
+  if (!form.name.trim()) {
+    errors.name = 'Введите название проекта'
+    return
+  }
+
+  if (!form.client) {
+    errors.client = 'Выберите клиента'
+    return
+  }
+
+  if (!form.tech_manager) {
+    errors.tech_manager = 'Выберите тех. менеджера'
+    return
+  }
+
+  if (!form.status) {
+    errors.status = 'Выберите статус'
+    return
+  }
 
   try {
     const payload = {
@@ -373,19 +391,12 @@ async function handleSubmit() {
       status: Number(form.status),
     }
 
-    if (!payload.name) {
-      errorMessage.value = 'Введите название проекта'
-      return
-    }
-
     await store.createProject(payload)
-    closeModal()
+    showModal.value = false
+    resetForm()
 
-    // после создания просто заново грузим страницу проектов;
-    // watcher ниже сам пересоберёт tableRows
     await store.initProjectsPage()
   } catch (error) {
-    // Обновлённая обработка ошибок для fetch
     errorMessage.value = error?.message || 'Не удалось создать проект'
     console.error('❌ Create project error:', error)
   }
@@ -400,10 +411,15 @@ async function handleCreateClient() {
     })
 
     form.client = created.id
-    closeClientModal()
+    showClientModal.value = false
+    await store.initProjectsPage()
   } catch (error) {
-    // Обновлённая обработка ошибок
-    alert(error?.message || 'Не удалось создать клиента')
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Ошибка', 
+      detail: error?.message || 'Не удалось создать клиента',
+      life: 3000 
+    })
     console.error('❌ Create client error:', error)
   }
 }
@@ -416,10 +432,15 @@ async function handleCreateManager() {
     })
 
     form.tech_manager = created.id
-    closeManagerModal()
+    showManagerModal.value = false
+    await store.initProjectsPage()
   } catch (error) {
-    // Обновлённая обработка ошибок
-    alert(error?.message || 'Не удалось создать менеджера')
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Ошибка', 
+      detail: error?.message || 'Не удалось создать менеджера',
+      life: 3000 
+    })
     console.error('❌ Create manager error:', error)
   }
 }
@@ -457,10 +478,26 @@ function formatDate(value) {
   return date.toLocaleDateString('ru-RU')
 }
 
-/**
- * Собираем строки таблицы на основе УЖЕ отфильтрованного store.projectTableRows
- * и дозаполняем финансовые поля.
- */
+function getMarginSeverity(value) {
+  if (value === '—' || value === null || value === undefined) return 'info'
+  const num = Number(value)
+  if (Number.isNaN(num)) return 'info'
+  if (num > 20) return 'success'
+  if (num > 10) return 'warning'
+  return 'danger'
+}
+
+function getStatusSeverity(status) {
+  const map = {
+    'Активный': 'success',
+    'В работе': 'info',
+    'Завершен': 'success',
+    'Приостановлен': 'warning',
+    'Отменен': 'danger'
+  }
+  return map[status] || 'info'
+}
+
 async function buildTableRows() {
   const sourceRows = Array.isArray(store.projectTableRows)
     ? store.projectTableRows
@@ -482,7 +519,6 @@ async function buildTableRows() {
           }
         } catch (error) {
           console.error(`❌ Ошибка загрузки финансов проекта ${row.id}:`, error)
-
           return {
             ...row,
             amount: row.amount ?? '—',
@@ -500,9 +536,6 @@ async function buildTableRows() {
   }
 }
 
-/**
- * 1) Первичная загрузка страницы
- */
 onMounted(async () => {
   try {
     await store.initProjectsPage()
@@ -511,12 +544,6 @@ onMounted(async () => {
   }
 })
 
-/**
- * 2) Самое важное:
- * каждый раз, когда меняется store.projectTableRows
- * (а он меняется и при initProjectsPage, и при переключении плитки),
- * мы заново собираем tableRows.
- */
 watch(
   () => store.projectTableRows,
   async () => {
@@ -534,16 +561,16 @@ watch(
   min-height: 100vh;
 }
 
-/* HEADER */
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
-  padding: 16px;
+  padding: 16px 20px;
   background: #16181C;
   border-radius: 12px;
+  border: 1px solid #2A2D33;
 }
 
 .page-header h1 {
@@ -552,237 +579,244 @@ watch(
   color: #C9A86A;
 }
 
-/* STATUS TILES */
 .status-tiles {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 20px;
 }
 
-.status-tile {
-  min-width: 140px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid #2A2D33;
+.status-tile-btn {
+  min-width: 120px;
+}
+
+.table-wrapper {
   background: #16181C;
-  color: #D0D2D5;
-  cursor: pointer;
-  transition: 0.15s ease;
+  border: 1px solid #2A2D33;
+  border-radius: 12px;
+  padding: 16px;
+  overflow: hidden;
 }
 
-.status-tile:hover {
-  border-color: #C9A86A;
-}
-
-.status-tile.active {
-  border-color: #C9A86A;
-  background: #0E0F12;
-}
-
-.status-name {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #D0D2D5;
-}
-
-.status-count {
-  color: #9AA0A6;
-  font-size: 14px;
-}
-
-/* TABLE LINK */
 .link-cell {
-  border: none;
-  background: transparent;
-  color: #C9A86A;
-  cursor: pointer;
-  padding: 0;
-  font: inherit;
-  text-align: left;
+  padding: 0 !important;
+  color: #C9A86A !important;
+  font-weight: 500;
 }
 
 .link-cell:hover {
-  color: #D0D2D5;
+  color: #D0D2D5 !important;
 }
 
-/* STATUS BADGE */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #0E0F12;
-  border: 1px solid #2A2D33;
-  font-size: 13px;
-  color: #D0D2D5;
+.text-positive {
+  color: #4CAF50;
+  font-weight: 500;
 }
 
-/* BUTTONS */
-.primary-btn,
-.secondary-btn,
-.icon-btn,
-.inline-action-btn {
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.15s ease;
-}
-
-.primary-btn {
-  background: #C9A86A;
-  color: #0E0F12;
-  padding: 10px 14px;
-}
-
-.primary-btn:hover {
-  filter: brightness(1.1);
-}
-
-.primary-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.secondary-btn {
-  background: #2A2D33;
-  color: #D0D2D5;
-  padding: 10px 14px;
-}
-
-.secondary-btn:hover {
-  background: #343842;
-}
-
-.inline-action-btn {
-  margin-top: 8px;
-  background: transparent;
-  color: #C9A86A;
-  padding: 0;
-}
-
-.inline-action-btn:hover {
-  color: #D0D2D5;
-}
-
-.icon-btn {
-  background: transparent;
-  font-size: 18px;
-  padding: 4px 8px;
-  color: #D0D2D5;
-}
-
-.icon-btn:hover {
-  color: #C9A86A;
-}
-
-/* MODAL */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+.field-with-action {
   display: flex;
+  gap: 8px;
   align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 16px;
 }
 
-.modal {
-  width: 100%;
-  max-width: 860px;
-  background: #16181C;
-  border: 1px solid #2A2D33;
-  border-radius: 14px;
-  padding: 20px;
-}
-
-.modal-small {
-  max-width: 520px;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #C9A86A;
-}
-
-/* FORM */
-.project-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.field-with-action .action-btn {
+  flex-shrink: 0;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
+  margin-bottom: 16px;
 }
 
-.form-group {
+.field {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-weight: 500;
+  font-size: 14px;
+  color: #D0D2D5;
+}
+
+.req {
+  color: #e74c3c;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #2A2D33;
+}
+
+.p-message-error {
+  padding: 10px;
+  background: rgba(201, 106, 106, 0.1);
+  color: #C96A6A;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 106, 106, 0.3);
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.form-group label {
-  font-weight: 600;
-  font-size: 14px;
+.p-error {
+  color: #e74c3c;
+  font-size: 12px;
+}
+
+/* PrimeVue overrides */
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  background: #1E2024;
+  color: #C9A86A;
+  border-color: #2A2D33;
+  padding: 12px 16px;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+  background: #16181C;
   color: #D0D2D5;
 }
 
-.form-group input,
-.form-group select {
-  min-height: 42px;
-  border: 1px solid #2A2D33;
-  border-radius: 10px;
-  padding: 0 12px;
-  font-size: 14px;
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  border-color: #2A2D33;
+  padding: 10px 16px;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:hover) {
+  background: #1E2024;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even)) {
+  background: #1A1C20;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even):hover) {
+  background: #1E2024;
+}
+
+:deep(.p-button.p-button-text.link-cell) {
+  color: #C9A86A;
+}
+
+:deep(.p-button.p-button-text.link-cell:hover) {
+  background: transparent;
+  color: #D0D2D5;
+}
+
+:deep(.p-dialog .p-dialog-header) {
+  background: #16181C;
+  color: #C9A86A;
+  border-color: #2A2D33;
+  padding: 20px 24px;
+}
+
+:deep(.p-dialog .p-dialog-content) {
+  background: #16181C;
+  color: #D0D2D5;
+  padding: 24px;
+}
+
+:deep(.p-dialog .p-dialog-footer) {
+  background: #16181C;
+  border-color: #2A2D33;
+  padding: 16px 24px;
+}
+
+:deep(.p-inputtext) {
   background: #0E0F12;
+  border-color: #2A2D33;
   color: #D0D2D5;
-  outline: none;
 }
 
-.form-group input:focus,
-.form-group select:focus {
+:deep(.p-inputtext:focus) {
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.2);
+}
+
+:deep(.p-inputtext.p-invalid) {
+  border-color: #e74c3c;
+}
+
+:deep(.p-select) {
+  background: #0E0F12;
+  border-color: #2A2D33;
+  color: #D0D2D5;
+}
+
+:deep(.p-select:not(.p-disabled):hover) {
   border-color: #C9A86A;
 }
 
-/* ERROR */
-.form-error {
-  color: #C96A6A;
-  font-size: 14px;
-  padding: 12px;
-  background: rgba(201, 106, 106, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(201, 106, 106, 0.3);
+:deep(.p-select.p-invalid) {
+  border-color: #e74c3c;
 }
 
-/* MODAL ACTIONS */
-.modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 8px;
+:deep(.p-select .p-select-label) {
+  color: #D0D2D5;
 }
 
-/* RESPONSIVE */
+:deep(.p-select-panel) {
+  background: #16181C;
+  border-color: #2A2D33;
+  color: #D0D2D5;
+}
+
+:deep(.p-select-item.p-highlight) {
+  background: rgba(201, 168, 106, 0.2);
+  color: #C9A86A;
+}
+
+:deep(.p-select-item:hover) {
+  background: #1E2024;
+}
+
+:deep(.p-tag) {
+  font-weight: 500;
+}
+
+:deep(.p-tag.p-tag-success) {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+:deep(.p-tag.p-tag-warning) {
+  background: rgba(255, 152, 0, 0.2);
+  color: #FF9800;
+}
+
+:deep(.p-tag.p-tag-danger) {
+  background: rgba(244, 67, 54, 0.2);
+  color: #F44336;
+}
+
+:deep(.p-tag.p-tag-info) {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196F3;
+}
+
+:deep(.p-button.p-button-secondary.p-button-outlined) {
+  border-color: #2A2D33;
+  color: #D0D2D5;
+}
+
+:deep(.p-button.p-button-secondary.p-button-outlined:hover) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+:deep(.p-button .p-button-label) {
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
   .projects-page {
     padding: 16px;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
   }
 
   .page-header {
@@ -790,12 +824,33 @@ watch(
     align-items: stretch;
   }
 
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .modal-actions {
-    flex-direction: column-reverse;
+    flex-direction: column;
   }
 
   .modal-actions button {
     width: 100%;
+  }
+
+  .field-with-action {
+    flex-direction: column;
+  }
+
+  .field-with-action .action-btn {
+    width: 100%;
+  }
+
+  .status-tiles {
+    gap: 4px;
+  }
+
+  .status-tile-btn {
+    min-width: 80px;
+    font-size: 12px;
   }
 }
 </style>

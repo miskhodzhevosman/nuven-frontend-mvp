@@ -1,3 +1,798 @@
+<template>
+  <div class="project-page">
+    <!-- HEADER -->
+    <header class="page-header">
+      <div class="page-header__left">
+        <Button 
+          label="← Назад к проектам" 
+          icon="pi pi-arrow-left"
+          @click="goBack" 
+          class="p-button-text"
+        />
+
+        <div>
+          <h1 class="page-title">{{ projectInfo?.name || 'Проект' }}</h1>
+          <div class="page-subtitle">
+            <Tag 
+              v-if="projectInfo"
+              :value="projectInfo.status_name"
+              :severity="getStatusSeverity(projectInfo.status)"
+              :rounded="true"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="page-header__right">
+        <Button 
+          label="Редактировать проект" 
+          icon="pi pi-pencil"
+          @click="openEditProject" 
+        />
+      </div>
+    </header>
+
+    <!-- LOADING -->
+    <div v-if="loading" class="loading-state">
+      <ProgressSpinner />
+      <span>Загрузка проекта...</span>
+    </div>
+
+    <template v-else-if="projectInfo">
+      <div class="project-layout">
+
+        <!-- LEFT -->
+        <div class="project-main">
+
+          <!-- INFO -->
+          <Card class="info-card">
+            <template #title>
+              <div class="card-header">
+                <h2 class="card-title">Информация о проекте</h2>
+              </div>
+            </template>
+            <template #content>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-item__label">Статус</span>
+                  <span class="info-item__value">
+                    <Tag 
+                      :value="projectInfo.status_name"
+                      :severity="getStatusSeverity(projectInfo.status)"
+                      :rounded="true"
+                    />
+                  </span>
+                </div>
+
+                <div class="info-item">
+                  <span class="info-item__label">Клиент</span>
+                  <span class="info-item__value">{{ projectInfo.client_name || '—' }}</span>
+                </div>
+
+                <div class="info-item">
+                  <span class="info-item__label">Менеджер</span>
+                  <span class="info-item__value">{{ projectInfo.manager_name || '—' }}</span>
+                </div>
+
+                <div class="info-item">
+                  <span class="info-item__label">География</span>
+                  <span class="info-item__value">{{ projectInfo.geography || '—' }}</span>
+                </div>
+
+                <div class="info-item">
+                  <span class="info-item__label">Создан</span>
+                  <span class="info-item__value">{{ formatDate(projectInfo.created_at) }}</span>
+                </div>
+              </div>
+            </template>
+          </Card>
+          
+          <!-- ITEMS -->
+          <Card class="items-card">
+            <template #title>
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Позиции проекта</h2>
+                  <p class="card-subtitle">Товары, количество и сумма продаж</p>
+                </div>
+                <Button 
+                  label="Добавить позицию" 
+                  icon="pi pi-plus"
+                  @click="openCreateItem" 
+                />
+              </div>
+            </template>
+            <template #content>
+              <div v-if="itemsRows.length" class="table-wrap">
+                <DataTable 
+                  :value="itemsRows" 
+                  dataKey="id"
+                  class="p-datatable-sm"
+                  stripedRows
+                >
+                  <Column field="nomenclature_name" header="Товар" style="min-width: 150px">
+                    <template #body="{ data }">
+                      <strong>{{ data.nomenclature_name }}</strong>
+                    </template>
+                  </Column>
+
+                  <Column field="quantity" header="Кол-во" style="width: 100px" />
+
+                  <Column field="fixed_cost_price" header="Себестоимость" style="width: 150px">
+                    <template #body="{ data }">
+                      {{ formatMoney(data.fixed_cost_price) }}
+                    </template>
+                  </Column>
+
+                  <Column field="fixed_sale_price" header="Цена продажи" style="width: 150px">
+                    <template #body="{ data }">
+                      {{ formatMoney(data.fixed_sale_price) }}
+                    </template>
+                  </Column>
+
+                  <Column field="total_amount" header="Сумма" style="width: 150px">
+                    <template #body="{ data }">
+                      <span class="text-positive">{{ formatMoney(data.total_amount) }}</span>
+                    </template>
+                  </Column>
+
+                  <Column header="Действия" style="width: 180px">
+                    <template #body="{ data }">
+                      <div class="table-actions">
+                        <Button 
+                          icon="pi pi-pencil" 
+                          class="p-button-rounded p-button-sm p-button-text" 
+                          @click="openEditItem(data)"
+                          tooltip="Редактировать"
+                          tooltipOptions="{ position: 'top' }"
+                        />
+                        <Button 
+                          icon="pi pi-trash" 
+                          class="p-button-rounded p-button-sm p-button-text p-button-danger" 
+                          @click="deleteItem(data.id)"
+                          :loading="store.deletingProjectItemId === data.id"
+                          tooltip="Удалить"
+                          tooltipOptions="{ position: 'top' }"
+                        />
+                      </div>
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <div v-else class="empty-state">
+                <i class="pi pi-box" style="font-size: 2rem; color: #9AA0A6;"></i>
+                <h4>Позиции ещё не добавлены</h4>
+                <p>Создайте первую позицию для этого проекта</p>
+              </div>
+            </template>
+          </Card>
+
+          <!-- PROJECT EXPENSES -->
+          <Card class="expenses-card">
+            <template #title>
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Проектные расходы</h2>
+                  <p class="card-subtitle">Расходы, привязанные к проекту</p>
+                </div>
+                <Button 
+                  label="Добавить расход" 
+                  icon="pi pi-plus"
+                  @click="openExpenseModal" 
+                />
+              </div>
+            </template>
+            <template #content>
+              <div v-if="projectExpenses?.length" class="table-wrap">
+                <DataTable 
+                  :value="projectExpenses" 
+                  dataKey="id"
+                  class="p-datatable-sm"
+                  stripedRows
+                >
+                  <Column header="Тип расхода">
+                    <template #body="{ data }">
+                      {{ getOperationTypeName(data.finance_operation_type) }}
+                    </template>
+                  </Column>
+
+                  <Column field="date" header="Дата">
+                    <template #body="{ data }">
+                      {{ formatDate(data.date) }}
+                    </template>
+                  </Column>
+
+                  <Column field="amount" header="Сумма">
+                    <template #body="{ data }">
+                      <span class="text-negative">{{ formatMoney(data.amount) }}</span>
+                    </template>
+                  </Column>
+
+                  <Column header="Действия" style="width: 100px">
+                    <template #body="{ data }">
+                      <Button 
+                        icon="pi pi-trash" 
+                        class="p-button-rounded p-button-sm p-button-text p-button-danger" 
+                        @click="deleteExpense(data.id)"
+                        tooltip="Удалить"
+                        tooltipOptions="{ position: 'top' }"
+                      />
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <div v-else class="empty-state">
+                <i class="pi pi-credit-card" style="font-size: 2rem; color: #9AA0A6;"></i>
+                <h4>Нет расходов</h4>
+                <p>Добавьте первый проектный расход</p>
+              </div>
+            </template>
+          </Card>
+
+          <!-- CLIENT PAYMENTS -->
+          <Card class="payments-card">
+            <template #title>
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Оплаты клиентов</h2>
+                  <p class="card-subtitle">Поступления от клиента по этому проекту</p>
+                </div>
+                <Button 
+                  label="Добавить оплату" 
+                  icon="pi pi-plus"
+                  @click="openClientPaymentModal" 
+                />
+              </div>
+            </template>
+            <template #content>
+              <div v-if="clientPayments?.length" class="table-wrap">
+                <DataTable 
+                  :value="clientPayments" 
+                  dataKey="id"
+                  class="p-datatable-sm"
+                  stripedRows
+                >
+                  <Column field="date" header="Дата">
+                    <template #body="{ data }">
+                      {{ formatDate(data.date) }}
+                    </template>
+                  </Column>
+
+                  <Column field="amount" header="Сумма">
+                    <template #body="{ data }">
+                      <span class="text-positive">{{ formatMoney(data.amount) }}</span>
+                    </template>
+                  </Column>
+
+                  <Column header="Действия" style="width: 100px">
+                    <template #body="{ data }">
+                      <Button 
+                        icon="pi pi-trash" 
+                        class="p-button-rounded p-button-sm p-button-text p-button-danger" 
+                        @click="deleteClientPayment(data.id)"
+                        tooltip="Удалить"
+                        tooltipOptions="{ position: 'top' }"
+                      />
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <div v-else class="empty-state">
+                <i class="pi pi-money-bill" style="font-size: 2rem; color: #9AA0A6;"></i>
+                <h4>Нет оплат клиента</h4>
+                <p>Добавьте первую оплату клиента</p>
+              </div>
+            </template>
+          </Card>
+
+          <!-- FACTORY PAYMENTS -->
+          <Card class="payments-card">
+            <template #title>
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Оплаты фабрикам</h2>
+                  <p class="card-subtitle">Платежи фабрикам по этому проекту</p>
+                </div>
+                <Button 
+                  label="Добавить оплату" 
+                  icon="pi pi-plus"
+                  @click="openFactoryPaymentModal" 
+                />
+              </div>
+            </template>
+            <template #content>
+              <div v-if="factoryPayments?.length" class="table-wrap">
+                <DataTable 
+                  :value="factoryPayments" 
+                  dataKey="id"
+                  class="p-datatable-sm"
+                  stripedRows
+                >
+                  <Column header="Фабрика">
+                    <template #body="{ data }">
+                      {{ data.counterparty_name || '—' }}
+                    </template>
+                  </Column>
+
+                  <Column field="date" header="Дата">
+                    <template #body="{ data }">
+                      {{ formatDate(data.date) }}
+                    </template>
+                  </Column>
+
+                  <Column field="amount" header="Сумма">
+                    <template #body="{ data }">
+                      <span class="text-negative">{{ formatMoney(data.amount) }}</span>
+                    </template>
+                  </Column>
+
+                  <Column header="Действия" style="width: 100px">
+                    <template #body="{ data }">
+                      <Button 
+                        icon="pi pi-trash" 
+                        class="p-button-rounded p-button-sm p-button-text p-button-danger" 
+                        @click="deleteFactoryPayment(data.id)"
+                        tooltip="Удалить"
+                        tooltipOptions="{ position: 'top' }"
+                      />
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <div v-else class="empty-state">
+                <i class="pi pi-building" style="font-size: 2rem; color: #9AA0A6;"></i>
+                <h4>Нет оплат фабрикам</h4>
+                <p>Добавьте первую оплату фабрике</p>
+              </div>
+            </template>
+          </Card>
+
+        </div>
+
+        <!-- RIGHT -->
+        <aside class="project-sidebar">
+          <Card class="finance-card">
+            <template #title>
+              <h2 class="card-title">Финансы</h2>
+            </template>
+            <template #content>
+              <div class="finance-blocks">
+
+                <!-- PLAN -->
+                <div class="finance-block">
+                  <h3>План</h3>
+
+                  <div class="finance-row">
+                    <span>Выручка</span>
+                    <strong class="text-positive">{{ formatMoney(planned?.revenue ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>COGS</span>
+                    <strong class="text-negative">{{ formatMoney(planned?.cogs ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>Валовая прибыль</span>
+                    <strong>{{ formatMoney(planned?.gross_profit ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>Маржа</span>
+                    <strong>
+                      <Tag 
+                        :value="`${planned?.margin ?? 0}%`"
+                        :severity="getMarginSeverity(planned?.margin)"
+                        :rounded="true"
+                        size="small"
+                      />
+                    </strong>
+                  </div>
+                </div>
+
+                <!-- FACT -->
+                <div class="finance-block">
+                  <h3>Факт</h3>
+
+                  <div class="finance-row">
+                    <span>Оплата от клиента</span>
+                    <strong class="text-positive">{{ formatMoney(fact?.client_received ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>Оплаты фабрикам</span>
+                    <strong class="text-negative">{{ formatMoney(fact?.factory_paid ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>Проектные расходы</span>
+                    <strong class="text-negative">{{ formatMoney(fact?.project_expenses ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>Операционные расходы</span>
+                    <strong class="text-negative">{{ formatMoney(fact?.operation_expenses ?? 0) }}</strong>
+                  </div>
+                </div>
+
+                <!-- CASHFLOW -->
+                <div class="finance-block">
+                  <h3>Cashflow</h3>
+
+                  <div class="finance-row">
+                    <span>Дебиторка</span>
+                    <strong>{{ formatMoney(cashflow?.accounts_receivable ?? 0) }}</strong>
+                  </div>
+
+                  <div class="finance-row">
+                    <span>Кредиторка</span>
+                    <strong>{{ formatMoney(cashflow?.accounts_payable ?? 0) }}</strong>
+                  </div>
+                </div>
+
+              </div>
+            </template>
+          </Card>
+        </aside>
+
+      </div>
+    </template>
+
+    <!-- MODALS -->
+    
+    <!-- EDIT PROJECT -->
+    <Dialog
+      v-model:visible="showProjectModal"
+      header="Редактирование проекта"
+      :modal="true"
+      :style="{ width: '500px' }"
+      class="p-fluid"
+      @hide="closeProjectModal"
+    >
+      <form @submit.prevent="saveProject">
+        <div class="field">
+          <label for="project-name">Название</label>
+          <InputText id="project-name" v-model="projectForm.name" />
+        </div>
+
+        <div class="field">
+          <label for="project-geography">География</label>
+          <InputText id="project-geography" v-model="projectForm.geography" />
+        </div>
+
+        <div class="field">
+          <label for="project-client">Клиент</label>
+          <Select 
+            id="project-client"
+            v-model="projectForm.client"
+            :options="clients"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Выберите клиента"
+          />
+        </div>
+
+        <div class="field">
+          <label for="project-manager">Менеджер</label>
+          <Select 
+            id="project-manager"
+            v-model="projectForm.tech_manager"
+            :options="managers"
+            optionLabel="full_name"
+            optionValue="id"
+            placeholder="Выберите менеджера"
+          />
+        </div>
+
+        <div class="field">
+          <label for="project-status">Статус</label>
+          <Select 
+            id="project-status"
+            v-model="projectForm.status"
+            :options="statuses"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Выберите статус"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showProjectModal = false" class="p-button-text" />
+          <Button label="Сохранить" icon="pi pi-check" type="submit" :loading="store.saving" />
+        </div>
+      </form>
+    </Dialog>
+
+    <!-- EXPENSE -->
+    <Dialog
+      v-model:visible="showExpenseModal"
+      header="Новый проектный расход"
+      :modal="true"
+      :style="{ width: '400px' }"
+      class="p-fluid"
+    >
+      <form @submit.prevent="saveExpense">
+        <div class="field">
+          <label for="expense-amount">Сумма</label>
+          <InputNumber 
+            id="expense-amount"
+            v-model="expenseForm.amount"
+            mode="currency"
+            currency="CNY"
+            locale="ru-RU"
+            min="0"
+          />
+        </div>
+
+        <div class="field">
+          <label for="expense-date">Дата</label>
+          <DatePicker 
+            id="expense-date"
+            v-model="expenseForm.date"
+            dateFormat="dd.mm.yy"
+            :showIcon="true"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showExpenseModal = false" class="p-button-text" />
+          <Button label="Сохранить" icon="pi pi-check" type="submit" />
+        </div>
+      </form>
+    </Dialog>
+
+    <!-- ITEM -->
+    <Dialog
+      v-model:visible="showItemModal"
+      :header="editingItem ? 'Редактирование позиции' : 'Новая позиция проекта'"
+      :modal="true"
+      :style="{ width: '500px' }"
+      class="p-fluid"
+      @hide="showItemModal = false"
+    >
+      <form @submit.prevent="editingItem ? saveItemEdit() : saveItem()">
+        <div class="field">
+          <label>Номенклатура *</label>
+          <div class="field-with-action">
+            <Select 
+              v-model="itemForm.nomenclature"
+              :options="store.nomenclatures"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Выберите товар"
+              class="flex-1"
+            />
+            <Button 
+              icon="pi pi-plus" 
+              label="Создать"
+              size="small"
+              @click="openCreateNomenclature"
+            />
+          </div>
+          <small v-if="store.nomenclatures.length === 0" class="text-muted">
+            Нет доступных товаров. Создайте новый.
+          </small>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Количество</label>
+            <InputNumber 
+              v-model="itemForm.quantity"
+              min="1"
+              :useGrouping="false"
+            />
+          </div>
+
+          <div class="field">
+            <label>Себестоимость</label>
+            <InputNumber 
+              v-model="itemForm.fixed_cost_price"
+              mode="currency"
+              currency="CNY"
+              locale="ru-RU"
+              min="0"
+            />
+          </div>
+
+          <div class="field">
+            <label>Цена продажи</label>
+            <InputNumber 
+              v-model="itemForm.fixed_sale_price"
+              mode="currency"
+              currency="CNY"
+              locale="ru-RU"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showItemModal = false" class="p-button-text" />
+          <Button 
+            label="Сохранить" 
+            icon="pi pi-check" 
+            type="submit"
+            :disabled="!itemForm.nomenclature"
+          />
+        </div>
+      </form>
+    </Dialog>
+
+    <!-- CREATE NOMENCLATURE -->
+    <Dialog
+      v-model:visible="showCreateNomenclatureModal"
+      header="Создание нового товара"
+      :modal="true"
+      :style="{ width: '500px' }"
+      class="p-fluid"
+      @hide="closeCreateNomenclature"
+    >
+      <form @submit.prevent="saveNewNomenclature">
+        <div class="field">
+          <label>Название товара *</label>
+          <InputText v-model="createNomenclatureForm.name" placeholder="Введите название" />
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Техническое название</label>
+            <InputText v-model="createNomenclatureForm.technical_name" placeholder="Опционально" />
+          </div>
+
+          <div class="field">
+            <label>Артикул</label>
+            <InputText v-model="createNomenclatureForm.article" placeholder="Опционально" />
+          </div>
+
+          <div class="field">
+            <label>Себестоимость</label>
+            <InputNumber 
+              v-model="createNomenclatureForm.current_cost_price"
+              mode="currency"
+              currency="CNY"
+              locale="ru-RU"
+              min="0"
+            />
+          </div>
+
+          <div class="field">
+            <label>Цена продажи</label>
+            <InputNumber 
+              v-model="createNomenclatureForm.current_sale_price"
+              mode="currency"
+              currency="CNY"
+              locale="ru-RU"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Фабрика (опционально)</label>
+          <Select 
+            v-model="createNomenclatureForm.factory"
+            :options="factoriesForNomenclature"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Не выбрано"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showCreateNomenclatureModal = false" class="p-button-text" />
+          <Button 
+            label="Создать товар" 
+            icon="pi pi-check" 
+            type="submit"
+            :disabled="!createNomenclatureForm.name || store.saving"
+            :loading="store.saving"
+          />
+        </div>
+      </form>
+    </Dialog>
+
+    <!-- CLIENT PAYMENT -->
+    <Dialog
+      v-model:visible="showClientPaymentModal"
+      header="Оплата клиента"
+      :modal="true"
+      :style="{ width: '400px' }"
+      class="p-fluid"
+    >
+      <form @submit.prevent="saveClientPayment">
+        <div class="field">
+          <label>Дата</label>
+          <DatePicker 
+            v-model="clientPaymentForm.date"
+            dateFormat="dd.mm.yy"
+            :showIcon="true"
+          />
+        </div>
+
+        <div class="field">
+          <label>Сумма</label>
+          <InputNumber 
+            v-model="clientPaymentForm.amount"
+            mode="currency"
+            currency="CNY"
+            locale="ru-RU"
+            min="0"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showClientPaymentModal = false" class="p-button-text" />
+          <Button label="Сохранить" icon="pi pi-check" type="submit" />
+        </div>
+      </form>
+    </Dialog>
+
+    <!-- FACTORY PAYMENT -->
+    <Dialog
+      v-model:visible="showFactoryPaymentModal"
+      header="Оплата фабрике"
+      :modal="true"
+      :style="{ width: '450px' }"
+      class="p-fluid"
+    >
+      <form @submit.prevent="saveFactoryPayment">
+        <div class="field">
+          <label>Фабрика</label>
+          <Select 
+            v-model="factoryPaymentForm.counterparty"
+            :options="factories"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Выберите фабрику"
+            :disabled="factoriesStore.loading"
+          />
+          <small v-if="factoriesStore.loading" class="text-warning">
+            ⏳ Загрузка фабрик...
+          </small>
+          <small v-else-if="factories.length === 0" class="text-danger">
+            ⚠️ Нет доступных фабрик
+          </small>
+          <small v-else class="text-success">
+            ✅ Загружено фабрик: {{ factories.length }}
+          </small>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Дата</label>
+            <DatePicker 
+              v-model="factoryPaymentForm.date"
+              dateFormat="dd.mm.yy"
+              :showIcon="true"
+            />
+          </div>
+
+          <div class="field">
+            <label>Сумма</label>
+            <InputNumber 
+              v-model="factoryPaymentForm.amount"
+              mode="currency"
+              currency="CNY"
+              locale="ru-RU"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <Button label="Отмена" icon="pi pi-times" @click="showFactoryPaymentModal = false" class="p-button-text" />
+          <Button label="Сохранить" icon="pi pi-check" type="submit" />
+        </div>
+      </form>
+    </Dialog>
+  </div>
+</template>
+
 <script setup>
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -10,7 +805,19 @@ import {
   getOperationTypes,
   createOperationType
 } from '@/services/finance.service'
-import { projectsService } from '@/services/projects.service'
+
+// PrimeVue Components
+import Button from 'primevue/button'
+import Card from 'primevue/card'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Select from 'primevue/select'
+import DatePicker from 'primevue/datepicker'
+import Tag from 'primevue/tag'
+import ProgressSpinner from 'primevue/progressspinner'
 
 const store = useProjectsStore()
 const factoriesStore = useFactoriesStore()
@@ -94,9 +901,7 @@ const factoryPayments = computed(() =>
 async function refreshAllData() {
   console.log('🔄 Refreshing all project data...')
   try {
-    // Обновляем детали проекта (включая финансы)
     await store.initProjectDetails(projectId)
-    // Обновляем транзакции
     await loadTransactions()
     console.log('✅ All data refreshed')
   } catch (error) {
@@ -152,18 +957,14 @@ async function loadTransactions() {
 /* ===================== */
 const showExpenseModal = ref(false)
 const expenseForm = reactive({
-  amount: '',
-  date: ''
+  amount: null,
+  date: null
 })
 
 function openExpenseModal() {
-  expenseForm.amount = ''
-  expenseForm.date = ''
+  expenseForm.amount = null
+  expenseForm.date = null
   showExpenseModal.value = true
-}
-
-function closeExpenseModal() {
-  showExpenseModal.value = false
 }
 
 async function saveExpense() {
@@ -188,11 +989,8 @@ async function saveExpense() {
       finance_operation_type: typeId
     })
 
-    closeExpenseModal()
-    
-    // 🔄 Обновляем все данные
+    showExpenseModal.value = false
     await refreshAllData()
-    
     console.log('✅ Expense created and data refreshed')
   } catch (error) {
     console.error('❌ Error saving expense:', error)
@@ -204,6 +1002,7 @@ async function saveExpense() {
 /* PROJECT ITEMS */
 /* ===================== */
 const showItemModal = ref(false)
+const editingItem = ref(null)
 const itemForm = reactive({
   nomenclature: null,
   quantity: 1,
@@ -212,10 +1011,20 @@ const itemForm = reactive({
 })
 
 function openCreateItem() {
+  editingItem.value = null
   itemForm.nomenclature = null
   itemForm.quantity = 1
   itemForm.fixed_cost_price = 0
   itemForm.fixed_sale_price = 0
+  showItemModal.value = true
+}
+
+function openEditItem(item) {
+  editingItem.value = item
+  itemForm.nomenclature = item.nomenclature
+  itemForm.quantity = item.quantity
+  itemForm.fixed_cost_price = item.fixed_cost_price
+  itemForm.fixed_sale_price = item.fixed_sale_price
   showItemModal.value = true
 }
 
@@ -227,11 +1036,29 @@ async function saveItem() {
     })
     
     showItemModal.value = false
-    
-    // 🔄 Обновляем все данные
     await refreshAllData()
-    
     console.log('✅ Item created and data refreshed')
+  } catch (error) {
+    console.error('❌ Error saving item:', error)
+    alert('Ошибка при сохранении позиции')
+  }
+}
+
+async function saveItemEdit() {
+  try {
+    if (editingItem.value) {
+      await store.updateProjectItem(editingItem.value.id, {
+        nomenclature: itemForm.nomenclature,
+        quantity: itemForm.quantity,
+        fixed_cost_price: itemForm.fixed_cost_price,
+        fixed_sale_price: itemForm.fixed_sale_price,
+      })
+      editingItem.value = null
+    }
+    
+    showItemModal.value = false
+    await refreshAllData()
+    console.log('✅ Item saved and data refreshed')
   } catch (error) {
     console.error('❌ Error saving item:', error)
     alert('Ошибка при сохранении позиции')
@@ -246,10 +1073,7 @@ async function deleteExpense(id) {
   
   try {
     await deleteTransaction(id)
-    
-    // 🔄 Обновляем все данные
     await refreshAllData()
-    
     console.log('✅ Expense deleted and data refreshed')
   } catch (error) {
     console.error('❌ Error deleting expense:', error)
@@ -265,10 +1089,7 @@ async function deleteItem(id) {
   
   try {
     await store.deleteProjectItem(id)
-    
-    // 🔄 Обновляем все данные
     await refreshAllData()
-    
     console.log('✅ Item deleted and data refreshed')
   } catch (error) {
     console.error('❌ Error deleting item:', error)
@@ -284,8 +1105,8 @@ const createNomenclatureForm = reactive({
   name: '',
   technical_name: '',
   article: '',
-  current_cost_price: '',
-  current_sale_price: '',
+  current_cost_price: null,
+  current_sale_price: null,
   factory: null,
 })
 
@@ -299,8 +1120,8 @@ function openCreateNomenclature() {
   createNomenclatureForm.name = ''
   createNomenclatureForm.technical_name = ''
   createNomenclatureForm.article = ''
-  createNomenclatureForm.current_cost_price = ''
-  createNomenclatureForm.current_sale_price = ''
+  createNomenclatureForm.current_cost_price = null
+  createNomenclatureForm.current_sale_price = null
   createNomenclatureForm.factory = null
   
   if (factoriesStore.items.length === 0) {
@@ -353,7 +1174,6 @@ async function saveNewNomenclature() {
       }
     }
     
-    // Если ID не найден, перезагружаем список
     if (!newId) {
       console.log('⚠️ ID not found, reloading nomenclatures...')
       await store.loadNomenclatures()
@@ -372,7 +1192,6 @@ async function saveNewNomenclature() {
       throw new Error('Не удалось получить ID созданного товара')
     }
     
-    // Добавляем в список, если его там нет
     if (result && !store.nomenclatures.find(n => (n.id || n.pk) === newId)) {
       if (!result.id) {
         result.id = newId
@@ -380,10 +1199,9 @@ async function saveNewNomenclature() {
       store.nomenclatures = [...store.nomenclatures, result]
     }
     
-    // Устанавливаем выбранный товар
     itemForm.nomenclature = newId
     
-    closeCreateNomenclature()
+    showCreateNomenclatureModal.value = false
     
     console.log('✅ Nomenclature created with ID:', newId)
     
@@ -398,18 +1216,14 @@ async function saveNewNomenclature() {
 /* ===================== */
 const showClientPaymentModal = ref(false)
 const clientPaymentForm = reactive({
-  date: '',
-  amount: ''
+  date: null,
+  amount: null
 })
 
 function openClientPaymentModal() {
-  clientPaymentForm.date = ''
-  clientPaymentForm.amount = ''
+  clientPaymentForm.date = null
+  clientPaymentForm.amount = null
   showClientPaymentModal.value = true
-}
-
-function closeClientPaymentModal() {
-  showClientPaymentModal.value = false
 }
 
 async function saveClientPayment() {
@@ -424,11 +1238,8 @@ async function saveClientPayment() {
       amount: Number(clientPaymentForm.amount)
     })
 
-    closeClientPaymentModal()
-    
-    // 🔄 Обновляем все данные
+    showClientPaymentModal.value = false
     await refreshAllData()
-    
     console.log('✅ Client payment created and data refreshed')
   } catch (error) {
     console.error('❌ Error saving client payment:', error)
@@ -441,10 +1252,7 @@ async function deleteClientPayment(id) {
   
   try {
     await deleteTransaction(id)
-    
-    // 🔄 Обновляем все данные
     await refreshAllData()
-    
     console.log('✅ Client payment deleted and data refreshed')
   } catch (error) {
     console.error('❌ Error deleting client payment:', error)
@@ -458,19 +1266,15 @@ async function deleteClientPayment(id) {
 const showFactoryPaymentModal = ref(false)
 const factoryPaymentForm = reactive({
   counterparty: null,
-  date: '',
-  amount: ''
+  date: null,
+  amount: null
 })
 
 function openFactoryPaymentModal() {
   factoryPaymentForm.counterparty = null
-  factoryPaymentForm.date = ''
-  factoryPaymentForm.amount = ''
+  factoryPaymentForm.date = null
+  factoryPaymentForm.amount = null
   showFactoryPaymentModal.value = true
-}
-
-function closeFactoryPaymentModal() {
-  showFactoryPaymentModal.value = false
 }
 
 async function saveFactoryPayment() {
@@ -483,11 +1287,8 @@ async function saveFactoryPayment() {
       amount: Number(factoryPaymentForm.amount)
     })
 
-    closeFactoryPaymentModal()
-    
-    // 🔄 Обновляем все данные
+    showFactoryPaymentModal.value = false
     await refreshAllData()
-    
     console.log('✅ Factory payment created and data refreshed')
   } catch (error) {
     console.error('❌ Error saving factory payment:', error)
@@ -500,10 +1301,7 @@ async function deleteFactoryPayment(id) {
   
   try {
     await deleteTransaction(id)
-    
-    // 🔄 Обновляем все данные
     await refreshAllData()
-    
     console.log('✅ Factory payment deleted and data refreshed')
   } catch (error) {
     console.error('❌ Error deleting factory payment:', error)
@@ -518,9 +1316,9 @@ const showProjectModal = ref(false)
 const projectForm = reactive({
   name: '',
   geography: '',
-  client: '',
-  tech_manager: '',
-  status: '',
+  client: null,
+  tech_manager: null,
+  status: null,
 })
 
 function openEditProject() {
@@ -529,9 +1327,9 @@ function openEditProject() {
   Object.assign(projectForm, {
     name: project.value.name ?? '',
     geography: project.value.geography ?? '',
-    client: project.value.client ?? '',
-    tech_manager: project.value.tech_manager ?? '',
-    status: project.value.status ?? '',
+    client: project.value.client ?? null,
+    tech_manager: project.value.tech_manager ?? null,
+    status: project.value.status ?? null,
   })
 
   showProjectModal.value = true
@@ -552,10 +1350,7 @@ async function saveProject() {
     })
 
     showProjectModal.value = false
-    
-    // 🔄 Обновляем все данные
     await refreshAllData()
-    
     console.log('✅ Project updated and data refreshed')
   } catch (error) {
     console.error('❌ Error saving project:', error)
@@ -566,15 +1361,24 @@ async function saveProject() {
 /* ===================== */
 /* HELPERS */
 /* ===================== */
-function statusBadgeClass(statusId) {
+function getStatusSeverity(statusId) {
   const status = store.statuses?.find(s => s.id === statusId)
   const name = (status?.name || '').toLowerCase()
 
-  if (name.includes('работ') || name.includes('process')) return 'status-badge--blue'
-  if (name.includes('заверш') || name.includes('done')) return 'status-badge--green'
-  if (name.includes('нов') || name.includes('draft')) return 'status-badge--gray'
-  if (name.includes('отмен') || name.includes('cancel')) return 'status-badge--red'
-  return 'status-badge--gray'
+  if (name.includes('работ') || name.includes('process') || name.includes('active')) return 'info'
+  if (name.includes('заверш') || name.includes('done')) return 'success'
+  if (name.includes('нов') || name.includes('draft')) return 'secondary'
+  if (name.includes('отмен') || name.includes('cancel')) return 'danger'
+  return 'info'
+}
+
+function getMarginSeverity(value) {
+  if (value === null || value === undefined) return 'info'
+  const num = Number(value)
+  if (Number.isNaN(num)) return 'info'
+  if (num > 20) return 'success'
+  if (num > 10) return 'warning'
+  return 'danger'
 }
 
 function goBack() {
@@ -582,1017 +1386,139 @@ function goBack() {
 }
 
 function formatMoney(value) {
-  return new Intl.NumberFormat('ru-RU').format(Number(value || 0))
+  if (value === null || value === undefined || value === '') return '—'
+  const num = Number(value)
+  if (Number.isNaN(num)) return value
+  return new Intl.NumberFormat('ru-RU').format(num)
 }
 
 function formatDate(value) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('ru-RU')
 }
-
-/* ===================== */
-/* EDIT ITEM */
-/* ===================== */
-const editingItem = ref(null)
-
-function openEditItem(item) {
-  editingItem.value = item
-  itemForm.nomenclature = item.nomenclature
-  itemForm.quantity = item.quantity
-  itemForm.fixed_cost_price = item.fixed_cost_price
-  itemForm.fixed_sale_price = item.fixed_sale_price
-  showItemModal.value = true
-}
-
-async function saveItemEdit() {
-  try {
-    if (editingItem.value) {
-      // Обновление существующей позиции
-      await store.updateProjectItem(editingItem.value.id, {
-        nomenclature: itemForm.nomenclature,
-        quantity: itemForm.quantity,
-        fixed_cost_price: itemForm.fixed_cost_price,
-        fixed_sale_price: itemForm.fixed_sale_price,
-      })
-      editingItem.value = null
-    } else {
-      // Создание новой позиции
-      await store.createProjectItem({
-        project: projectId,
-        ...itemForm
-      })
-    }
-    
-    showItemModal.value = false
-    
-    // 🔄 Обновляем все данные
-    await refreshAllData()
-    
-    console.log('✅ Item saved and data refreshed')
-  } catch (error) {
-    console.error('❌ Error saving item:', error)
-    alert('Ошибка при сохранении позиции')
-  }
-}
 </script>
 
-<template>
-  <div class="project-page">
-    <!-- HEADER -->
-    <header class="page-header">
-      <div class="page-header__left">
-        <button class="btn btn--ghost" @click="goBack">
-          ← Назад к проектам
-        </button>
-
-        <div>
-          <h1 class="page-title">{{ projectInfo?.name || 'Проект' }}</h1>
-          <div class="page-subtitle">
-            <span
-              v-if="projectInfo"
-              class="status-badge"
-              :class="statusBadgeClass(projectInfo.status)"
-            >
-              {{ projectInfo.status_name }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="page-header__right">
-        <button class="btn btn--primary" @click="openEditProject">
-          Редактировать проект
-        </button>
-      </div>
-    </header>
-
-    <!-- LOADING -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <span>Загрузка проекта...</span>
-    </div>
-
-    <template v-else-if="projectInfo">
-      <div class="project-layout">
-
-        <!-- LEFT -->
-        <div class="project-main">
-
-          <!-- INFO -->
-          <section class="card">
-            <div class="card__header">
-              <h2 class="card__title">Информация о проекте</h2>
-            </div>
-
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-item__label">Статус</span>
-                <span class="info-item__value">
-                  <span class="status-badge" :class="statusBadgeClass(projectInfo.status)">
-                    {{ projectInfo.status_name }}
-                  </span>
-                </span>
-              </div>
-
-              <div class="info-item">
-                <span class="info-item__label">Клиент</span>
-                <span class="info-item__value">{{ projectInfo.client_name }}</span>
-              </div>
-
-              <div class="info-item">
-                <span class="info-item__label">Менеджер</span>
-                <span class="info-item__value">{{ projectInfo.manager_name }}</span>
-              </div>
-
-              <div class="info-item">
-                <span class="info-item__label">География</span>
-                <span class="info-item__value">{{ projectInfo.geography || '—' }}</span>
-              </div>
-
-              <div class="info-item">
-                <span class="info-item__label">Создан</span>
-                <span class="info-item__value">{{ formatDate(projectInfo.created_at) }}</span>
-              </div>
-            </div>
-          </section>
-          
-          <!-- ITEMS -->
-          <section class="card">
-            <div class="card__header">
-              <div>
-                <h2 class="card__title">Позиции проекта</h2>
-                <p class="card__subtitle">Товары, количество и сумма продаж</p>
-              </div>
-
-              <button class="btn btn--primary" @click="openCreateItem">
-                + Добавить позицию
-              </button>
-            </div>
-
-            <div v-if="itemsRows.length" class="table-wrap">
-              <table class="project-table">
-                <thead>
-                  <tr>
-                    <th>Товар</th>
-                    <th>Кол-во</th>
-                    <th>Себестоимость</th>
-                    <th>Цена продажи</th>
-                    <th>Сумма</th>
-                    <th class="ta-right">Действия</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr v-for="item in itemsRows" :key="item.id">
-                    <td class="td-name">{{ item.nomenclature_name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>{{ formatMoney(item.fixed_cost_price) }}</td>
-                    <td>{{ formatMoney(item.fixed_sale_price) }}</td>
-                    <td class="td-amount">{{ formatMoney(item.total_amount) }}</td>
-                    <td class="ta-right">
-                      <div class="table-actions">
-                        <button class="btn btn--sm btn--ghost" @click="openEditItem(item)">
-                          Редактировать
-                        </button>
-                        <button
-                          class="btn btn--sm btn--danger"
-                          @click="deleteItem(item.id)"
-                          :disabled="store.deletingProjectItemId === item.id"
-                        >
-                          Удалить
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div v-else class="empty-state">
-              <div class="empty-state__title">Позиции ещё не добавлены</div>
-              <div class="empty-state__text">
-                Создайте первую позицию для этого проекта
-              </div>
-            </div>
-          </section>
-
-          <!-- PROJECT EXPENSES -->
-          <section class="card">
-            <div class="card__header">
-              <div>
-                <h2 class="card__title">Проектные расходы</h2>
-                <p class="card__subtitle">Расходы, привязанные к проекту</p>
-              </div>
-
-              <button class="btn btn--primary" @click="openExpenseModal">
-                + Добавить расход
-              </button>
-            </div>
-
-            <div v-if="projectExpenses?.length" class="table-wrap">
-              <table class="project-table">
-                <thead>
-                  <tr>
-                    <th>Тип расхода</th>
-                    <th>Дата</th>
-                    <th>Сумма</th>
-                    <th class="ta-right">Действия</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr v-for="e in projectExpenses" :key="e.id">
-                    <td>{{ getOperationTypeName(e.finance_operation_type) }}</td>
-                    <td>{{ formatDate(e.date) }}</td>
-                    <td>{{ formatMoney(e.amount) }}</td>
-                    <td class="ta-right">
-                      <button class="btn btn--sm btn--danger" @click="deleteExpense(e.id)">
-                        Удалить
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div v-else class="empty-state">
-              <div class="empty-state__title">Нет расходов</div>
-              <div class="empty-state__text">
-                Добавьте первый проектный расход
-              </div>
-            </div>
-          </section>
-
-          <!-- CLIENT PAYMENTS -->
-          <section class="card">
-            <div class="card__header">
-              <div>
-                <h2 class="card__title">Оплаты клиентов</h2>
-                <p class="card__subtitle">Поступления от клиента по этому проекту</p>
-              </div>
-
-              <button class="btn btn--primary" @click="openClientPaymentModal">
-                + Добавить оплату
-              </button>
-            </div>
-
-            <div v-if="clientPayments?.length" class="table-wrap">
-              <table class="project-table">
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Сумма</th>
-                    <th class="ta-right">Действия</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr v-for="p in clientPayments" :key="p.id">
-                    <td>{{ formatDate(p.date) }}</td>
-                    <td>{{ formatMoney(p.amount) }}</td>
-                    <td class="ta-right">
-                      <button class="btn btn--sm btn--danger" @click="deleteClientPayment(p.id)">
-                        Удалить
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div v-else class="empty-state">
-              <div class="empty-state__title">Нет оплат клиента</div>
-              <div class="empty-state__text">
-                Добавьте первую оплату клиента
-              </div>
-            </div>
-          </section>
-
-          <!-- FACTORY PAYMENTS -->
-          <section class="card">
-            <div class="card__header">
-              <div>
-                <h2 class="card__title">Оплаты фабрикам</h2>
-                <p class="card__subtitle">Платежи фабрикам по этому проекту</p>
-              </div>
-
-              <button class="btn btn--primary" @click="openFactoryPaymentModal">
-                + Добавить оплату
-              </button>
-            </div>
-
-            <div v-if="factoryPayments?.length" class="table-wrap">
-              <table class="project-table">
-                <thead>
-                  <tr>
-                    <th>Фабрика</th>
-                    <th>Дата</th>
-                    <th>Сумма</th>
-                    <th class="ta-right">Действия</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr v-for="p in factoryPayments" :key="p.id">
-                    <td>{{ p.counterparty_name || '—' }}</td>
-                    <td>{{ formatDate(p.date) }}</td>
-                    <td>{{ formatMoney(p.amount) }}</td>
-                    <td class="ta-right">
-                      <button class="btn btn--sm btn--danger" @click="deleteFactoryPayment(p.id)">
-                        Удалить
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div v-else class="empty-state">
-              <div class="empty-state__title">Нет оплат фабрикам</div>
-              <div class="empty-state__text">
-                Добавьте первую оплату фабрике
-              </div>
-            </div>
-          </section>
-
-        </div>
-
-        <!-- RIGHT -->
-        <aside class="project-sidebar">
-          <section class="card">
-            <h2 class="card__title">Финансы</h2>
-
-            <div class="finance-blocks">
-
-              <!-- PLAN -->
-              <div class="finance-block">
-                <h3>План</h3>
-
-                <div class="finance-row">
-                  <span>Выручка</span>
-                  <strong>{{ formatMoney(planned?.revenue ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>COGS</span>
-                  <strong>{{ formatMoney(planned?.cogs ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>Валовая прибыль</span>
-                  <strong>{{ formatMoney(planned?.gross_profit ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>Маржа</span>
-                  <strong>{{ planned?.margin ?? 0 }}%</strong>
-                </div>
-              </div>
-
-              <!-- FACT -->
-              <div class="finance-block">
-                <h3>Факт</h3>
-
-                <div class="finance-row">
-                  <span>Оплата от клиента</span>
-                  <strong>{{ formatMoney(fact?.client_received ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>Оплаты фабрикам</span>
-                  <strong>{{ formatMoney(fact?.factory_paid ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>Проектные расходы</span>
-                  <strong>{{ formatMoney(fact?.project_expenses ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>Операционные расходы</span>
-                  <strong>{{ formatMoney(fact?.operation_expenses ?? 0) }}</strong>
-                </div>
-              </div>
-
-              <!-- CASHFLOW -->
-              <div class="finance-block">
-                <h3>Cashflow</h3>
-
-                <div class="finance-row">
-                  <span>Дебиторка</span>
-                  <strong>{{ formatMoney(cashflow?.accounts_receivable ?? 0) }}</strong>
-                </div>
-
-                <div class="finance-row">
-                  <span>Кредиторка</span>
-                  <strong>{{ formatMoney(cashflow?.accounts_payable ?? 0) }}</strong>
-                </div>
-              </div>
-
-            </div>
-          </section>
-        </aside>
-
-      </div>
-    </template>
-
-    <!-- MODAL EXPENSE -->
-    <div v-if="showExpenseModal" class="modal" @click.self="closeExpenseModal">
-      <div class="modal__card modal__card--md">
-        <div class="modal__header">
-          <h3>Новый проектный расход</h3>
-          <button class="icon-btn" @click="closeExpenseModal">✕</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-field">
-            <label>Сумма</label>
-            <input v-model="expenseForm.amount" type="number" />
-          </div>
-
-          <div class="form-field">
-            <label>Дата</label>
-            <input v-model="expenseForm.date" type="date" />
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeExpenseModal">
-            Отмена
-          </button>
-          <button class="btn btn--primary" @click="saveExpense">
-            Сохранить
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL PROJECT -->
-    <div v-if="showProjectModal" class="modal" @click.self="closeProjectModal">
-      <div class="modal__card modal__card--md">
-        <div class="modal__header">
-          <h3>Редактирование проекта</h3>
-          <button class="icon-btn" @click="closeProjectModal">✕</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-field">
-            <label>Название</label>
-            <input v-model="projectForm.name" />
-          </div>
-
-          <div class="form-field">
-            <label>География</label>
-            <input v-model="projectForm.geography" />
-          </div>
-
-          <div class="form-field">
-            <label>Клиент</label>
-            <select v-model="projectForm.client">
-              <option v-for="c in clients" :key="c.id" :value="c.id">
-                {{ c.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label>Менеджер</label>
-            <select v-model="projectForm.tech_manager">
-              <option v-for="m in managers" :key="m.id" :value="m.id">
-                {{ m.full_name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-field form-field--full">
-            <label>Статус</label>
-            <select v-model="projectForm.status">
-              <option v-for="s in statuses" :key="s.id" :value="s.id">
-                {{ s.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeProjectModal">Отмена</button>
-          <button class="btn btn--primary" @click="saveProject">
-            Сохранить
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL ITEM -->
-    <div v-if="showItemModal" class="modal" @click.self="showItemModal = false">
-      <div class="modal__card modal__card--md">
-        <div class="modal__header">
-          <h3>{{ editingItem ? 'Редактирование позиции' : 'Новая позиция проекта' }}</h3>
-          <button class="icon-btn" @click="showItemModal = false">✕</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-field form-field--full">
-            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
-              <label style="margin-bottom: 0; font-weight: 500;">Номенклатура *</label>
-              <button 
-                type="button" 
-                class="btn btn--sm btn--primary" 
-                @click="openCreateNomenclature"
-                style="padding: 2px 12px; font-size: 13px; white-space: nowrap;"
-              >
-                + Создать товар
-              </button>
-            </div>
-            
-            <select v-model="itemForm.nomenclature" style="width: 100%;">
-              <option :value="null" disabled>Выберите товар</option>
-              <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
-                {{ n.name }} {{ n.article ? `(арт. ${n.article})` : '' }}
-              </option>
-            </select>
-            
-            <small v-if="store.nomenclatures.length === 0" style="color: #999; display: block; margin-top: 4px;">
-              Нет доступных товаров. Создайте новый.
-            </small>
-          </div>
-
-          <div class="form-field">
-            <label>Количество</label>
-            <input type="number" v-model="itemForm.quantity" min="1" />
-          </div>
-
-          <div class="form-field">
-            <label>Себестоимость</label>
-            <input type="number" v-model="itemForm.fixed_cost_price" min="0" step="0.01" />
-          </div>
-
-          <div class="form-field">
-            <label>Цена продажи</label>
-            <input type="number" v-model="itemForm.fixed_sale_price" min="0" step="0.01" />
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="showItemModal = false">
-            Отмена
-          </button>
-          <button 
-            class="btn btn--primary" 
-            @click="editingItem ? saveItemEdit() : saveItem()" 
-            :disabled="!itemForm.nomenclature"
-          >
-            Сохранить
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL CREATE NOMENCLATURE -->
-    <div v-if="showCreateNomenclatureModal" class="modal" @click.self="closeCreateNomenclature">
-      <div class="modal__card modal__card--md">
-        <div class="modal__header">
-          <h3>Создание нового товара</h3>
-          <button class="icon-btn" @click="closeCreateNomenclature">✕</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-field form-field--full">
-            <label>Название товара *</label>
-            <input v-model="createNomenclatureForm.name" placeholder="Введите название" />
-          </div>
-
-          <div class="form-field">
-            <label>Техническое название</label>
-            <input v-model="createNomenclatureForm.technical_name" placeholder="Опционально" />
-          </div>
-
-          <div class="form-field">
-            <label>Артикул</label>
-            <input v-model="createNomenclatureForm.article" placeholder="Опционально" />
-          </div>
-
-          <div class="form-field">
-            <label>Себестоимость</label>
-            <input 
-              v-model="createNomenclatureForm.current_cost_price" 
-              type="number" 
-              step="0.01"
-              placeholder="0.00"
-            />
-          </div>
-
-          <div class="form-field">
-            <label>Цена продажи</label>
-            <input 
-              v-model="createNomenclatureForm.current_sale_price" 
-              type="number" 
-              step="0.01"
-              placeholder="0.00"
-            />
-          </div>
-
-          <div class="form-field form-field--full">
-            <label>Фабрика (опционально)</label>
-            <select v-model="createNomenclatureForm.factory">
-              <option :value="null">Не выбрано</option>
-              <option v-for="f in factoriesForNomenclature" :key="f.id" :value="f.id">
-                {{ f.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeCreateNomenclature">Отмена</button>
-          <button 
-            class="btn btn--primary" 
-            @click="saveNewNomenclature"
-            :disabled="!createNomenclatureForm.name || store.saving"
-          >
-            {{ store.saving ? 'Сохранение...' : 'Создать товар' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL CLIENT PAYMENT -->
-    <div v-if="showClientPaymentModal" class="modal" @click.self="closeClientPaymentModal">
-      <div class="modal__card modal__card--sm">
-        <div class="modal__header">
-          <h3>Оплата клиента</h3>
-          <button class="icon-btn" @click="closeClientPaymentModal">✕</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-field">
-            <label>Дата</label>
-            <input v-model="clientPaymentForm.date" type="date" />
-          </div>
-
-          <div class="form-field">
-            <label>Сумма</label>
-            <input v-model="clientPaymentForm.amount" type="number" />
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeClientPaymentModal">Отмена</button>
-          <button class="btn btn--primary" @click="saveClientPayment">Сохранить</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL FACTORY PAYMENT -->
-    <div v-if="showFactoryPaymentModal" class="modal" @click.self="closeFactoryPaymentModal">
-      <div class="modal__card modal__card--md">
-        <div class="modal__header">
-          <h3>Оплата фабрике</h3>
-          <button class="icon-btn" @click="closeFactoryPaymentModal">✕</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-field form-field--full">
-            <label>Фабрика</label>
-            <select 
-              v-model="factoryPaymentForm.counterparty" 
-              :disabled="factoriesStore.loading"
-            >
-              <option :value="null" disabled>
-                {{ factoriesStore.loading ? '⏳ Загрузка...' : 'Выберите фабрику' }}
-              </option>
-              <option v-for="f in factories" :key="f.id" :value="f.id">
-                {{ f.name }}
-              </option>
-            </select>
-            
-            <small v-if="factoriesStore.loading" style="color: orange; display: block; margin-top: 4px;">
-              ⏳ Загрузка фабрик...
-            </small>
-            <small v-else-if="factories.length === 0" style="color: red; display: block; margin-top: 4px;">
-              ⚠️ Нет доступных фабрик
-            </small>
-            <small v-else style="color: green; display: block; margin-top: 4px;">
-              ✅ Загружено фабрик: {{ factories.length }}
-            </small>
-          </div>
-
-          <div class="form-field">
-            <label>Дата</label>
-            <input v-model="factoryPaymentForm.date" type="date" />
-          </div>
-
-          <div class="form-field">
-            <label>Сумма</label>
-            <input v-model="factoryPaymentForm.amount" type="number" />
-          </div>
-        </div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" @click="closeFactoryPaymentModal">Отмена</button>
-          <button class="btn btn--primary" @click="saveFactoryPayment">Сохранить</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
 <style scoped>
-
-/* Для кнопки создания товара в модалке */
-.btn--sm {
-  padding: 4px 12px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.form-field__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.form-field__header label {
-  margin-bottom: 0;
-}
 .project-page {
-  min-height: 100vh;
   padding: 24px;
   background: #0E0F12;
   color: #D0D2D5;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+  min-height: 100vh;
 }
 
 /* HEADER */
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   margin-bottom: 24px;
+  padding: 16px 20px;
+  background: #16181C;
+  border: 1px solid #2A2D33;
+  border-radius: 12px;
 }
 
 .page-header__left {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.page-header__right {
-  display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 20px;
 }
 
 .page-title {
   margin: 0;
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 24px;
   color: #C9A86A;
 }
 
 .page-subtitle {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
-/* LOADING */
 .loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 60px 20px;
-  color: #9AA0A6;
+  padding: 60px;
+  background: #16181C;
+  border: 1px solid #2A2D33;
+  border-radius: 12px;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #2A2D33;
-  border-top-color: #C9A86A;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* LAYOUT */
 .project-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
-  gap: 20px;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
 }
 
 .project-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .project-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* CARD */
-.card {
-  background: #16181C;
-  border: 1px solid #2A2D33;
-  border-radius: 16px;
-  padding: 18px;
-}
-
-.card__header {
+/* CARDS */
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
+  width: 100%;
 }
 
-.card__title {
+.card-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
   color: #C9A86A;
 }
 
-.card__subtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
+.card-subtitle {
+  margin: 4px 0 0 0;
   color: #9AA0A6;
+  font-size: 14px;
 }
 
-/* INFO */
+/* INFO GRID */
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border-radius: 12px;
-  background: #0E0F12;
-  border: 1px solid #2A2D33;
+  gap: 4px;
 }
 
 .info-item__label {
   font-size: 12px;
   color: #9AA0A6;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .info-item__value {
-  font-weight: 600;
+  font-weight: 500;
   color: #D0D2D5;
-  font-size: 14px;
-}
-
-/* STATUS */
-.status-badge {
-  display: inline-flex;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid #2A2D33;
-  background: #0E0F12;
-  color: #D0D2D5;
-}
-
-.status-badge--blue {
-  color: #6A9AC9;
-  border-color: #6A9AC9;
-  background: rgba(106, 154, 201, 0.1);
-}
-
-.status-badge--green {
-  color: #6AC98E;
-  border-color: #6AC98E;
-  background: rgba(106, 201, 142, 0.1);
-}
-
-.status-badge--gray {
-  color: #9AA0A6;
-  border-color: #2A2D33;
-  background: #0E0F12;
-}
-
-.status-badge--red {
-  color: #C96A6A;
-  border-color: #C96A6A;
-  background: rgba(201, 106, 106, 0.1);
-}
-
-/* EMPTY STATE */
-.empty-state {
-  padding: 40px 20px;
-  text-align: center;
-  border: 1px dashed #2A2D33;
-  border-radius: 12px;
-  background: #0E0F12;
-}
-
-.empty-state__title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #D0D2D5;
-  margin-bottom: 8px;
-}
-
-.empty-state__text {
-  font-size: 14px;
-  color: #9AA0A6;
-}
-
-/* TABLE */
-.table-wrap {
-  overflow-x: auto;
-  border-radius: 12px;
-  border: 1px solid #2A2D33;
-}
-
-.project-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #16181C;
-  min-width: 700px;
-}
-
-.project-table th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #9AA0A6;
-  padding: 12px;
-  border-bottom: 1px solid #2A2D33;
-  background: #0E0F12;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.project-table td {
-  padding: 12px;
-  border-bottom: 1px solid #2A2D33;
-  color: #D0D2D5;
-  font-size: 14px;
-}
-
-.project-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.project-table tbody tr:hover td {
-  background: #0E0F12;
-}
-
-.td-name {
-  color: #C9A86A;
-  font-weight: 600;
-}
-
-.td-amount {
-  font-weight: 700;
-  color: #D0D2D5;
-}
-
-.ta-right {
-  text-align: right;
-}
-
-.table-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
 }
 
 /* FINANCE */
 .finance-blocks {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.finance-block {
-  padding: 12px;
-  border-radius: 12px;
-  background: #0E0F12;
-  border: 1px solid #2A2D33;
+  gap: 16px;
 }
 
 .finance-block h3 {
-  margin: 0 0 10px;
+  margin: 0 0 8px 0;
   font-size: 14px;
-  font-weight: 700;
-  color: #C9A86A;
+  color: #9AA0A6;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1600,220 +1526,306 @@ async function saveItemEdit() {
 .finance-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #2A2D33;
-}
-
-.finance-row:last-child {
-  border-bottom: none;
+  padding: 6px 0;
+  border-bottom: 1px solid #1E2024;
 }
 
 .finance-row span {
   color: #9AA0A6;
-  font-size: 13px;
 }
 
 .finance-row strong {
   color: #D0D2D5;
-  font-size: 14px;
-  font-weight: 600;
 }
 
-/* BUTTONS */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #2A2D33;
-  background: #0E0F12;
-  color: #D0D2D5;
-  padding: 10px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.15s ease;
-}
-
-.btn:hover {
-  background: #16181C;
-  border-color: #C9A86A;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn--primary {
-  background: #C9A86A;
-  color: #0E0F12;
-  border-color: #C9A86A;
-}
-
-.btn--primary:hover {
-  background: #D4B57A;
-  border-color: #D4B57A;
-}
-
-.btn--ghost {
-  background: transparent;
-  border-color: transparent;
-}
-
-.btn--ghost:hover {
-  background: #16181C;
-  border-color: #2A2D33;
-}
-
-.btn--danger {
-  background: #7A2E2E;
-  border-color: #7A2E2E;
-  color: #D0D2D5;
-}
-
-.btn--danger:hover {
-  background: #8A3E3E;
-  border-color: #8A3E3E;
-}
-
-.btn--sm {
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-/* MODAL */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
+/* TABLE ACTIONS */
+.table-actions {
   display: flex;
-  align-items: center;
+  gap: 4px;
   justify-content: center;
-  padding: 16px;
-  z-index: 1000;
 }
 
-.modal__card {
-  width: 100%;
-  max-width: 720px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #16181C;
-  border: 1px solid #2A2D33;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+.text-positive {
+  color: #4CAF50;
 }
 
-.modal__card--md {
-  max-width: 560px;
+.text-negative {
+  color: #F44336;
 }
 
-.modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #2A2D33;
-}
-
-.modal__header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #C9A86A;
-}
-
-.icon-btn {
-  background: transparent;
-  border: 0;
+.text-muted {
   color: #9AA0A6;
-  cursor: pointer;
-  font-size: 20px;
-  padding: 4px 8px;
-  transition: color 0.15s ease;
 }
 
-.icon-btn:hover {
+.text-warning {
+  color: #FF9800;
+}
+
+.text-danger {
+  color: #F44336;
+}
+
+.text-success {
+  color: #4CAF50;
+}
+
+/* EMPTY STATE */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.empty-state h4 {
+  margin: 0;
   color: #D0D2D5;
 }
 
-.modal__actions {
+.empty-state p {
+  margin: 0;
+  color: #9AA0A6;
+}
+
+/* MODAL ACTIONS */
+.modal-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #2A2D33;
 }
 
-/* FORM */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.field label {
+  font-weight: 500;
+  font-size: 14px;
+  color: #D0D2D5;
+}
+
+.field-with-action {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-with-action .flex-1 {
+  flex: 1;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-field--full {
-  grid-column: 1 / -1;
-}
-
-.form-field label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #9AA0A6;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-input,
-select {
-  height: 42px;
-  border-radius: 10px;
+/* PrimeVue overrides */
+:deep(.p-card) {
+  background: #16181C;
   border: 1px solid #2A2D33;
-  background: #0E0F12;
+  border-radius: 12px;
   color: #D0D2D5;
-  padding: 0 12px;
-  font-size: 14px;
-  font-family: inherit;
-  transition: border-color 0.15s ease;
 }
 
-input:focus,
-select:focus {
-  outline: none;
+:deep(.p-card .p-card-title) {
+  color: #C9A86A;
+}
+
+:deep(.p-card .p-card-body) {
+  padding: 20px;
+}
+
+:deep(.p-card .p-card-content) {
+  padding: 0;
+}
+
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  background: #1E2024;
+  color: #C9A86A;
+  border-color: #2A2D33;
+  padding: 10px 12px;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+  background: #16181C;
+  color: #D0D2D5;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  border-color: #2A2D33;
+  padding: 8px 12px;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:hover) {
+  background: #1E2024;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even)) {
+  background: #1A1C20;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even):hover) {
+  background: #1E2024;
+}
+
+:deep(.p-dialog .p-dialog-header) {
+  background: #16181C;
+  color: #C9A86A;
+  border-color: #2A2D33;
+}
+
+:deep(.p-dialog .p-dialog-content) {
+  background: #16181C;
+  color: #D0D2D5;
+}
+
+:deep(.p-dialog .p-dialog-footer) {
+  background: #16181C;
+  border-color: #2A2D33;
+}
+
+:deep(.p-inputtext) {
+  background: #0E0F12;
+  border-color: #2A2D33;
+  color: #D0D2D5;
+}
+
+:deep(.p-inputtext:focus) {
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.2);
+}
+
+:deep(.p-select) {
+  background: #0E0F12;
+  border-color: #2A2D33;
+  color: #D0D2D5;
+}
+
+:deep(.p-select:not(.p-disabled):hover) {
   border-color: #C9A86A;
 }
 
-input:disabled,
-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+:deep(.p-select .p-select-label) {
+  color: #D0D2D5;
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  opacity: 1;
+:deep(.p-select-panel) {
+  background: #16181C;
+  border-color: #2A2D33;
+  color: #D0D2D5;
 }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
+:deep(.p-select-item.p-highlight) {
+  background: rgba(201, 168, 106, 0.2);
+  color: #C9A86A;
+}
+
+:deep(.p-select-item:hover) {
+  background: #1E2024;
+}
+
+:deep(.p-inputnumber .p-inputnumber-input) {
+  background: #0E0F12;
+  border-color: #2A2D33;
+  color: #D0D2D5;
+}
+
+:deep(.p-inputnumber .p-inputnumber-input:focus) {
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.2);
+}
+
+:deep(.p-datepicker) {
+  background: #0E0F12;
+  border-color: #2A2D33;
+}
+
+:deep(.p-datepicker .p-datepicker-header) {
+  background: #16181C;
+  color: #D0D2D5;
+}
+
+:deep(.p-datepicker table td) {
+  color: #D0D2D5;
+}
+
+:deep(.p-datepicker table td.p-datepicker-today) {
+  background: rgba(201, 168, 106, 0.2);
+}
+
+:deep(.p-datepicker table td.p-datepicker-today span) {
+  color: #C9A86A;
+}
+
+:deep(.p-button.p-button-text) {
+  color: #C9A86A;
+}
+
+:deep(.p-button.p-button-text:hover) {
+  background: rgba(201, 168, 106, 0.1);
+}
+
+:deep(.p-button.p-button-danger.p-button-text) {
+  color: #F44336;
+}
+
+:deep(.p-button.p-button-danger.p-button-text:hover) {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+:deep(.p-tag.p-tag-success) {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+:deep(.p-tag.p-tag-warning) {
+  background: rgba(255, 152, 0, 0.2);
+  color: #FF9800;
+}
+
+:deep(.p-tag.p-tag-danger) {
+  background: rgba(244, 67, 54, 0.2);
+  color: #F44336;
+}
+
+:deep(.p-tag.p-tag-info) {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196F3;
+}
+
+:deep(.p-tag.p-tag-secondary) {
+  background: rgba(158, 158, 158, 0.2);
+  color: #9E9E9E;
+}
+
+:deep(.p-progressspinner-circle) {
+  stroke: #C9A86A;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
   .project-layout {
     grid-template-columns: 1fr;
   }
 
-  .form-grid,
-  .info-grid {
-    grid-template-columns: 1fr;
+  .project-sidebar {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .project-page {
+    padding: 16px;
   }
 
   .page-header {
@@ -1821,60 +1833,31 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: stretch;
   }
 
-  .page-header__right {
+  .page-header__left {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
     width: 100%;
   }
 
-  .page-header__right .btn {
-    width: 100%;
-  }
-
-  .table-actions {
+  .card-header {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .table-actions .btn {
-    width: 100%;
-  }
-
-  .modal__actions {
-    flex-direction: column-reverse;
-  }
-
-  .modal__actions .btn {
-    width: 100%;
-  }
-}
-
-@media (max-width: 640px) {
-  .project-page {
-    padding: 16px;
-  }
-
-  .page-title {
-    font-size: 22px;
-  }
-
-  .card {
-    padding: 14px;
-  }
-
-  .card__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .card__header .btn {
-    width: 100%;
-  }
-
-  .table-wrap {
-    border-radius: 8px;
-  }
-
-  .project-table {
-    min-width: 600px;
+    gap: 12px;
   }
 }
 </style>

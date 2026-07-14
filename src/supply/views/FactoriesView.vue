@@ -3,7 +3,12 @@
   <div class="factories-view">
     <div class="view-header">
       <h1>Фабрики</h1>
-      <button class="primary" @click="openCreateDialog" :disabled="store.loading">+ Добавить фабрику</button>
+      <Button 
+        label="Добавить фабрику" 
+        icon="pi pi-plus" 
+        @click="openCreateDialog" 
+        :disabled="store.loading"
+      />
     </div>
     
     <div v-if="store.loading" class="loading-state">
@@ -14,143 +19,188 @@
       <p class="muted">Нет фабрик. Создайте первую!</p>
     </div>
     
-    <div v-else class="factories-grid">
-      <div v-for="factory in store.sortedItems" :key="factory.id" class="factory-card panel">
-        <div class="factory-header">
-          <h3>{{ factory.name }}</h3>
-          <div class="factory-actions">
-            <button @click="openEditDialog(factory)">✏️</button>
-            <button class="danger" @click="handleDelete(factory.id)">🗑️</button>
-          </div>
-        </div>
+    <div v-else class="table-wrapper">
+      <DataTable 
+        :value="store.sortedItems" 
+        dataKey="id"
+        class="p-datatable-sm"
+        stripedRows
+        :paginator="true"
+        :rows="10"
+        :rowsPerPageOptions="[5, 10, 25]"
+        paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+        currentPageReportTemplate="Показано {first} - {last} из {totalRecords}"
+      >
+        <Column field="id" header="ID" style="width: 80px">
+          <template #body="{ data }">
+            <span class="text-muted">{{ data.id }}</span>
+          </template>
+        </Column>
         
-        <!-- Адрес -->
-        <p class="muted" v-if="factory.address">
-          📍 {{ factory.address }}
-        </p>
+        <Column field="name" header="Название" style="min-width: 200px">
+          <template #body="{ data }">
+            <strong>{{ data.name }}</strong>
+          </template>
+        </Column>
         
-        <!-- Контакты -->
-        <p class="muted" v-if="factory.contacts">
-          📞 {{ factory.contacts }}
-        </p>
-
-        <div class="factory-meta">
-          <span>🆔 ID: {{ factory.id }}</span>
-        </div>
-      </div>
+        <Column field="address" header="Адрес" style="min-width: 200px">
+          <template #body="{ data }">
+            <span>{{ data.address || '—' }}</span>
+          </template>
+        </Column>
+        
+        <Column field="contacts" header="Контакты" style="min-width: 200px">
+          <template #body="{ data }">
+            <span>{{ data.contacts || '—' }}</span>
+          </template>
+        </Column>
+        
+        <Column header="Действия" style="width: 150px">
+          <template #body="{ data }">
+            <div class="actions-cell">
+              <Button 
+                icon="pi pi-pencil" 
+                class="p-button-rounded p-button-sm p-button-text" 
+                @click="openEditDialog(data)"
+                tooltip="Редактировать"
+                tooltipOptions="{ position: 'top' }"
+              />
+              <Button 
+                icon="pi pi-trash" 
+                class="p-button-rounded p-button-sm p-button-text p-button-danger" 
+                @click="handleDelete(data.id)"
+                tooltip="Удалить"
+                tooltipOptions="{ position: 'top' }"
+              />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
     </div>
-  </div>
 
-  <!-- Модалка создания -->
-  <div v-if="showCreate" class="modal-backdrop" @click.self="closeCreateDialog">
-    <div class="modal panel">
-      <div class="modal-header">
-        <h3>Добавить фабрику</h3>
-        <button class="icon-btn" @click="closeCreateDialog" aria-label="Закрыть">✖</button>
-      </div>
-
-      <form class="col" @submit.prevent="submitCreate">
-        <div class="form-row">
-          <label>Название <span class="req">*</span></label>
-          <input
-            v-model.trim="form.name"
-            type="text"
+    <!-- Диалог создания -->
+    <Dialog 
+      v-model:visible="showCreate" 
+      header="Добавить фабрику"
+      :modal="true"
+      :style="{ width: '450px' }"
+      class="p-fluid"
+    >
+      <div class="form-content">
+        <div class="field">
+          <label for="create-name">Название <span class="req">*</span></label>
+          <InputText 
+            id="create-name" 
+            v-model="form.name" 
             placeholder="Напр. Северный завод"
-            :class="{ 'has-error': errors.name }"
-            required
+            :class="{ 'p-invalid': errors.name }"
           />
-          <small v-if="errors.name" class="err">{{ errors.name }}</small>
+          <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
         </div>
 
-        <div class="form-row">
-          <label>Адрес</label>
-          <input
-            v-model.trim="form.address"
-            type="text"
+        <div class="field">
+          <label for="create-address">Адрес</label>
+          <InputText 
+            id="create-address" 
+            v-model="form.address" 
             placeholder="Город, улица, дом"
           />
         </div>
 
-        <div class="form-row">
-          <label>Контакты</label>
-          <textarea
-            v-model.trim="form.contacts"
-            rows="3"
+        <div class="field">
+          <label for="create-contacts">Контакты</label>
+          <Textarea 
+            id="create-contacts" 
+            v-model="form.contacts" 
+            rows="3" 
             placeholder="Телефон, email, сайт..."
           />
         </div>
 
-        <div v-if="submitError" class="alert-danger">
+        <div v-if="submitError" class="p-message p-message-error">
           {{ submitError }}
         </div>
-
-        <div class="modal-actions">
-          <button type="button" @click="closeCreateDialog">Отмена</button>
-          <button class="primary" type="submit" :disabled="store.saving">
-            {{ store.saving ? 'Создание...' : 'Создать' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Модалка редактирования -->
-  <div v-if="showEdit" class="modal-backdrop" @click.self="closeEditDialog">
-    <div class="modal panel">
-      <div class="modal-header">
-        <h3>Редактировать фабрику</h3>
-        <button class="icon-btn" @click="closeEditDialog" aria-label="Закрыть">✖</button>
       </div>
 
-      <form class="col" @submit.prevent="submitEdit">
-        <div class="form-row">
-          <label>Название <span class="req">*</span></label>
-          <input
-            v-model.trim="editForm.name"
-            type="text"
+      <template #footer>
+        <Button label="Отмена" icon="pi pi-times" @click="closeCreateDialog" class="p-button-text" />
+        <Button 
+          label="Создать" 
+          icon="pi pi-check" 
+          @click="submitCreate" 
+          :loading="store.saving"
+          :disabled="store.saving"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Диалог редактирования -->
+    <Dialog 
+      v-model:visible="showEdit" 
+      header="Редактировать фабрику"
+      :modal="true"
+      :style="{ width: '450px' }"
+      class="p-fluid"
+    >
+      <div class="form-content">
+        <div class="field">
+          <label for="edit-name">Название <span class="req">*</span></label>
+          <InputText 
+            id="edit-name" 
+            v-model="editForm.name" 
             placeholder="Напр. Северный завод"
-            :class="{ 'has-error': editErrors.name }"
-            required
+            :class="{ 'p-invalid': editErrors.name }"
           />
-          <small v-if="editErrors.name" class="err">{{ editErrors.name }}</small>
+          <small v-if="editErrors.name" class="p-error">{{ editErrors.name }}</small>
         </div>
 
-        <div class="form-row">
-          <label>Адрес</label>
-          <input
-            v-model.trim="editForm.address"
-            type="text"
+        <div class="field">
+          <label for="edit-address">Адрес</label>
+          <InputText 
+            id="edit-address" 
+            v-model="editForm.address" 
             placeholder="Город, улица, дом"
           />
         </div>
 
-        <div class="form-row">
-          <label>Контакты</label>
-          <textarea
-            v-model.trim="editForm.contacts"
-            rows="3"
+        <div class="field">
+          <label for="edit-contacts">Контакты</label>
+          <Textarea 
+            id="edit-contacts" 
+            v-model="editForm.contacts" 
+            rows="3" 
             placeholder="Телефон, email, сайт..."
           />
         </div>
 
-        <div v-if="editSubmitError" class="alert-danger">
+        <div v-if="editSubmitError" class="p-message p-message-error">
           {{ editSubmitError }}
         </div>
+      </div>
 
-        <div class="modal-actions">
-          <button type="button" @click="closeEditDialog">Отмена</button>
-          <button class="primary" type="submit" :disabled="store.saving">
-            {{ store.saving ? 'Сохранение...' : 'Сохранить' }}
-          </button>
-        </div>
-      </form>
-    </div>
+      <template #footer>
+        <Button label="Отмена" icon="pi pi-times" @click="closeEditDialog" class="p-button-text" />
+        <Button 
+          label="Сохранить" 
+          icon="pi pi-check" 
+          @click="submitEdit" 
+          :loading="store.saving"
+          :disabled="store.saving"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useFactoriesStore } from '@/stores/factories.store'; // Импортируем стор
+import { useFactoriesStore } from '@/stores/factories.store';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
 
 const store = useFactoriesStore();
 
@@ -264,8 +314,9 @@ onMounted(() => {
 
 <style scoped>
 .factories-view {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 20px;
 }
 
 .view-header {
@@ -278,132 +329,53 @@ onMounted(() => {
 .view-header h1 {
   font-size: 28px;
   font-weight: 700;
+  margin: 0;
 }
 
-.factories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-.factory-card {
+.table-wrapper {
+  background: white;
+  border-radius: 8px;
   padding: 20px;
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-.factory-card:hover {
-  border-color: #2a3040;
-  transform: translateY(-2px);
-}
-
-.factory-header {
+.actions-cell {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 8px;
+  gap: 4px;
+  justify-content: center;
 }
 
-.factory-header h3 {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.factory-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.factory-actions button {
-  padding: 6px 10px;
-  font-size: 14px;
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-}
-
-.factory-actions button:hover {
-  border-color: var(--border);
-}
-
-.factory-meta {
-  display: flex;
-  gap: 16px;
-  margin-top: 12px;
-  font-size: 14px;
-  color: var(--muted);
+.text-muted {
+  color: #6c757d;
 }
 
 .empty-state, .loading-state {
   padding: 60px;
   text-align: center;
-}
-
-.loading-state p {
-  color: var(--muted);
-}
-
-/* Modal styles */
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: rgb(20, 18, 18);
+  background: white;
   border-radius: 8px;
-  padding: 24px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+.muted {
+  color: #6c757d;
 }
 
-.modal-header h3 {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-}
-
-.icon-btn:hover {
-  background: var(--hover);
-  border-radius: 4px;
-}
-
-.col {
+/* Form styles */
+.form-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  padding: 4px 0;
 }
 
-.form-row {
+.field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.form-row label {
+.field label {
   font-weight: 500;
   font-size: 14px;
 }
@@ -412,31 +384,16 @@ onMounted(() => {
   color: #e74c3c;
 }
 
-.form-row input,
-.form-row textarea {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.2s;
+.p-invalid {
+  border-color: #e74c3c;
 }
 
-.form-row input:focus,
-.form-row textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.has-error {
-  border-color: #e74c3c !important;
-}
-
-.err {
+.p-error {
   color: #e74c3c;
   font-size: 12px;
 }
 
-.alert-danger {
+.p-message-error {
   padding: 10px;
   background: #fee;
   color: #c0392b;
@@ -444,47 +401,52 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 8px;
+/* PrimeVue overrides */
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  background: #f8f9fa;
+  font-weight: 600;
+  padding: 12px 16px;
 }
 
-.modal-actions button {
-  padding: 8px 20px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  background: rgb(22, 20, 20);
-  transition: all 0.2s;
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  padding: 10px 16px;
 }
 
-.modal-actions button:hover {
-  background: var(--hover);
+:deep(.p-datatable .p-datatable-tbody > tr) {
+  transition: background-color 0.2s;
 }
 
-.modal-actions button.primary {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
+:deep(.p-datatable .p-datatable-tbody > tr:hover) {
+  background-color: #f8f9fa;
 }
 
-.modal-actions button.primary:hover {
-  background: var(--primary-dark);
+:deep(.p-button.p-button-text) {
+  color: #6c757d;
 }
 
-.modal-actions button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+:deep(.p-button.p-button-text:hover) {
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.danger {
+:deep(.p-button.p-button-danger.p-button-text) {
   color: #e74c3c;
 }
 
-.danger:hover {
-  background: #fee !important;
+:deep(.p-button.p-button-danger.p-button-text:hover) {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+:deep(.p-dialog .p-dialog-header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+:deep(.p-dialog .p-dialog-content) {
+  padding: 24px;
+}
+
+:deep(.p-dialog .p-dialog-footer) {
+  padding: 16px 24px;
+  border-top: 1px solid #e9ecef;
 }
 </style>
