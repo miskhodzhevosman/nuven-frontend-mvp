@@ -317,6 +317,7 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
+  background: #0d1117;
 }
 
 .view-header {
@@ -330,14 +331,16 @@ onMounted(() => {
   font-size: 28px;
   font-weight: 700;
   margin: 0;
+  color: #e6edf3;
 }
 
 .table-wrapper {
-  background: white;
+  background: #161b22;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  border: 1px solid #30363d;
 }
 
 .actions-cell {
@@ -347,18 +350,19 @@ onMounted(() => {
 }
 
 .text-muted {
-  color: #6c757d;
+  color: #8b949e;
 }
 
 .empty-state, .loading-state {
   padding: 60px;
   text-align: center;
-  background: white;
+  background: #161b22;
   border-radius: 8px;
+  border: 1px solid #30363d;
 }
 
 .muted {
-  color: #6c757d;
+  color: #8b949e;
 }
 
 /* Form styles */
@@ -378,75 +382,86 @@ onMounted(() => {
 .field label {
   font-weight: 500;
   font-size: 14px;
+  color: #e6edf3;
 }
 
 .req {
-  color: #e74c3c;
+  color: #f85149;
 }
 
 .p-invalid {
-  border-color: #e74c3c;
+  border-color: #f85149;
 }
 
 .p-error {
-  color: #e74c3c;
+  color: #f85149;
   font-size: 12px;
 }
 
 .p-message-error {
   padding: 10px;
-  background: #fee;
-  color: #c0392b;
+  background: #2d1b1e;
+  color: #f85149;
   border-radius: 4px;
   font-size: 14px;
 }
 
 /* PrimeVue overrides */
 :deep(.p-datatable .p-datatable-thead > tr > th) {
-  background: #f8f9fa;
+  background: #0d1117;
   font-weight: 600;
   padding: 12px 16px;
+  color: #e6edf3;
+  border-color: #30363d;
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
   padding: 10px 16px;
+  color: #e6edf3;
+  border-color: #30363d;
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr) {
+  background: #161b22;
   transition: background-color 0.2s;
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr:hover) {
-  background-color: #f8f9fa;
+  background-color: #1c2333;
 }
 
 :deep(.p-button.p-button-text) {
-  color: #6c757d;
+  color: #8b949e;
 }
 
 :deep(.p-button.p-button-text:hover) {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 :deep(.p-button.p-button-danger.p-button-text) {
-  color: #e74c3c;
+  color: #f85149;
 }
 
 :deep(.p-button.p-button-danger.p-button-text:hover) {
-  background: rgba(231, 76, 60, 0.1);
+  background: rgba(248, 81, 73, 0.15);
 }
 
 :deep(.p-dialog .p-dialog-header) {
   padding: 20px 24px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #30363d;
+  background: #161b22;
+  color: #e6edf3;
 }
 
 :deep(.p-dialog .p-dialog-content) {
   padding: 24px;
+  background: #161b22;
+  color: #e6edf3;
 }
 
 :deep(.p-dialog .p-dialog-footer) {
   padding: 16px 24px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid #30363d;
+  background: #161b22;
 }
 </style>

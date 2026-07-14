@@ -4,7 +4,7 @@
     <header class="page-header">
       <div class="page-header__left">
         <Button 
-          label="← Назад к проектам" 
+          label="Назад к проектам" 
           icon="pi pi-arrow-left"
           @click="goBack" 
           class="p-button-text"
@@ -981,13 +981,19 @@ async function saveExpense() {
       typeId = created.id
     }
 
+        // Преобразуем дату в формат YYYY-MM-DD
+    const dateString = expenseForm.date 
+      ? new Date(expenseForm.date).toISOString().split('T')[0] 
+      : null;
+
     await createTransaction({
       amount: Number(expenseForm.amount),
-      date: expenseForm.date,
+      date: dateString,
       project: projectId,
       counterparty: null,
       finance_operation_type: typeId
     })
+
 
     showExpenseModal.value = false
     await refreshAllData()
@@ -1230,11 +1236,16 @@ async function saveClientPayment() {
   try {
     const projectClientId = store.currentProject?.client || null
 
+        // Преобразуем дату в формат YYYY-MM-DD
+    const dateString = clientPaymentForm.date 
+      ? new Date(clientPaymentForm.date).toISOString().split('T')[0] 
+      : null;
+
     await createTransaction({
       project: projectId,
       counterparty: projectClientId,
       finance_operation_type: CLIENT_PAYMENT_TYPE_ID,
-      date: clientPaymentForm.date,
+      date: dateString,
       amount: Number(clientPaymentForm.amount)
     })
 
@@ -1279,11 +1290,16 @@ function openFactoryPaymentModal() {
 
 async function saveFactoryPayment() {
   try {
+        // Преобразуем дату в формат YYYY-MM-DD
+    const dateString = factoryPaymentForm.date 
+      ? new Date(factoryPaymentForm.date).toISOString().split('T')[0] 
+      : null;
+
     await createTransaction({
       project: projectId,
       counterparty: factoryPaymentForm.counterparty ? Number(factoryPaymentForm.counterparty) : null,
       finance_operation_type: FACTORY_PAYMENT_TYPE_ID,
-      date: factoryPaymentForm.date,
+      date: dateString,
       amount: Number(factoryPaymentForm.amount)
     })
 
