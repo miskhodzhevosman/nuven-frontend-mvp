@@ -11,6 +11,9 @@ import 'primeicons/primeicons.css';
 // Если используешь Tailwind/свои стили — подключай после темы, чтобы переопределить
 import './styles/main.css'
 
+import './assets/styles/variables.css'
+import './assets/styles/utilities.css'
+
 
 // Импортируем Chart.js для правильной работы
 import { registerables } from 'chart.js';

@@ -1,0 +1,63 @@
+/* Text Colors */
+.text-positive {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.text-negative {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.text-muted {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+/* Layout Utilities */
+.flex {
+  display: flex;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.field-with-action {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.action-btn {
+  white-space: nowrap;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}

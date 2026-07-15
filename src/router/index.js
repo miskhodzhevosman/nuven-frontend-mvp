@@ -10,6 +10,7 @@ const HomeView = () => import('@/views/HomeView.vue');
 const FactoriesView = () => import('@/supply/views/FactoriesView.vue');
 const ProjectsView = () => import('@/views/ProjectsView.vue');
 const ProjectDetailsView = () => import('@/views/ProjectDetailsView.vue');
+const NewProjectDetailsView = () => import('@/views/projects/ProjectView.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -43,7 +44,7 @@ const router = createRouter({
         {
           path: 'projects/:id',
           name: 'project-details',
-          component: ProjectDetailsView
+          component: NewProjectDetailsView
         }
         // 👇 Добавляй свои страницы сюда:
         // { 
