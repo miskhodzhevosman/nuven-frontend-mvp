@@ -44,6 +44,23 @@ export const projectsService = {
   },
 
   // =========================
+  // Локации (География)
+  // =========================
+  async searchLocations(query) {
+    // Ищем локации по названию, фильтруем только города
+    const response = await httpGet(`/api/supplies/locations/?search=${query}&type=CITY`)
+    const data = await handleResponse(response)
+    return extractArray(data)
+  },
+
+  async getCountries() {
+    // Получаем список стран для возможного использования
+    const response = await httpGet('/api/supplies/locations/?type=COUNTRY')
+    const data = await handleResponse(response)
+    return extractArray(data)
+  },
+
+  // =========================
   // Финансы проекта
   // =========================
   async getProjectFinance(projectId) {
@@ -112,6 +129,10 @@ export const projectsService = {
     return extractArray(data)
   },
 
+  async createNomenclature(payload) {
+    return await httpPost('/api/supplies/nomenclatures/', payload)
+  },
+  
   // =========================
   // Статусы проекта
   // =========================
@@ -120,7 +141,4 @@ export const projectsService = {
     const data = await handleResponse(response)
     return extractArray(data)
   },
-  async createNomenclature(payload) {
-  return await httpPost('/api/supplies/nomenclatures/', payload)
-}
 }

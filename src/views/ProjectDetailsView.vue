@@ -76,7 +76,9 @@
 
                 <div class="info-item">
                   <span class="info-item__label">География</span>
-                  <span class="info-item__value">{{ projectInfo.geography || '—' }}</span>
+                  <span class="info-item__value">
+                    {{ projectInfo.full_location_name || '—' }}
+                  </span>
                 </div>
 
                 <div class="info-item">
@@ -445,6 +447,7 @@
     <!-- MODALS -->
     
     <!-- EDIT PROJECT -->
+    <!-- EDIT PROJECT -->
     <Dialog
       v-model:visible="showProjectModal"
       header="Редактирование проекта"
@@ -460,8 +463,26 @@
         </div>
 
         <div class="field">
-          <label for="project-geography">География</label>
-          <InputText id="project-geography" v-model="projectForm.geography" />
+          <label for="project-location">География (Город)</label>
+          <AutoComplete
+            id="project-location"
+            v-model="selectedLocationForEdit"
+            :suggestions="store.locations"
+            @complete="handleLocationSearch"
+            field="full_path"
+            placeholder="Начните вводить город..."
+            dropdown
+            forceSelection
+            optionLabel="full_path"
+            optionValue="id"
+          >
+            <template #option="slotProps">
+              <div class="flex flex-col">
+                <span class="font-bold">{{ slotProps.option.name }}</span>
+                <small class="text-muted">{{ slotProps.option.full_path }}</small>
+              </div>
+            </template>
+          </AutoComplete>
         </div>
 
         <div class="field">
@@ -887,6 +908,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import AutoComplete from 'primevue/autocomplete' // Добавлен импорт
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -1059,7 +1081,7 @@ async function saveExpense() {
       typeId = created.id
     }
 
-        // Преобразуем дату в формат YYYY-MM-DD
+    // Преобразуем дату в формат YYYY-MM-DD
     const dateString = expenseForm.date 
       ? new Date(expenseForm.date).toISOString().split('T')[0] 
       : null;
@@ -1153,8 +1175,6 @@ async function saveItemEdit() {
 /* ===================== */
 /* CREATE FACTORY */
 /* ===================== */
-
-// const factoriesStore = useFactoriesStore()
 
 // Состояние для модалки фабрики
 const showFactoryModal = ref(false)
@@ -1386,7 +1406,7 @@ async function saveClientPayment() {
   try {
     const projectClientId = store.currentProject?.client || null
 
-        // Преобразуем дату в формат YYYY-MM-DD
+    // Преобразуем дату в формат YYYY-MM-DD
     const dateString = clientPaymentForm.date 
       ? new Date(clientPaymentForm.date).toISOString().split('T')[0] 
       : null;
@@ -1440,7 +1460,7 @@ function openFactoryPaymentModal() {
 
 async function saveFactoryPayment() {
   try {
-        // Преобразуем дату в формат YYYY-MM-DD
+    // Преобразуем дату в формат YYYY-MM-DD
     const dateString = factoryPaymentForm.date 
       ? new Date(factoryPaymentForm.date).toISOString().split('T')[0] 
       : null;
@@ -1479,37 +1499,67 @@ async function deleteFactoryPayment(id) {
 /* PROJECT EDIT MODAL */
 /* ===================== */
 const showProjectModal = ref(false)
+
+// Форма теперь содержит location (ID) вместо geography (строка)
 const projectForm = reactive({
   name: '',
-  geography: '',
+  location: null, 
   client: null,
   tech_manager: null,
   status: null,
 })
+
+// Переменная для хранения объекта локации в AutoComplete
+const selectedLocationForEdit = ref(null)
 
 function openEditProject() {
   if (!project.value) return
 
   Object.assign(projectForm, {
     name: project.value.name ?? '',
-    geography: project.value.geography ?? '',
+    location: project.value.location ?? null, // ID локации
     client: project.value.client ?? null,
     tech_manager: project.value.tech_manager ?? null,
     status: project.value.status ?? null,
   })
+
+  // Инициализация AutoComplete
+  // Если бэкенд возвращает полный объект location внутри project, используем его.
+  // Если только ID, то создаем временный объект для отображения.
+  if (project.value.location) {
+    // Проверяем, есть ли уже полный объект в данных проекта (зависит от сериализатора бэкенда)
+    if (typeof project.value.location === 'object' && project.value.location.full_path) {
+       selectedLocationForEdit.value = project.value.location
+    } else {
+       // Фолбэк: если пришел только ID, пытаемся восстановить отображение из projectInfo
+       selectedLocationForEdit.value = {
+         id: project.value.location,
+         name: projectInfo.value.full_location_name?.split(',')[0] || '',
+         full_path: projectInfo.value.full_location_name || ''
+       }
+    }
+  } else {
+    selectedLocationForEdit.value = null
+  }
 
   showProjectModal.value = true
 }
 
 function closeProjectModal() {
   showProjectModal.value = false
+  selectedLocationForEdit.value = null
+}
+
+// Обработчик поиска локаций
+async function handleLocationSearch(event) {
+  await store.searchLocations(event.query)
 }
 
 async function saveProject() {
   try {
     await store.updateProject(projectId, {
       name: projectForm.name,
-      geography: projectForm.geography,
+      location: selectedLocationForEdit.value ? selectedLocationForEdit.value.id : null,
       client: Number(projectForm.client),
       tech_manager: Number(projectForm.tech_manager),
       status: Number(projectForm.status),

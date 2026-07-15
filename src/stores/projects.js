@@ -9,6 +9,7 @@ export const useProjectsStore = defineStore('projects', {
     managers: [],
     statuses: [],
     nomenclatures: [],
+    locations: [], // Список подсказок для поиска географии
 
     loading: false,
     saving: false,
@@ -21,6 +22,8 @@ export const useProjectsStore = defineStore('projects', {
 
     activeStatusId: 'all',
     deletingProjectItemId: null,
+    
+    _searchTimeout: null, // Приватное поле для таймера debounce
   }),
 
   getters: {
@@ -119,6 +122,35 @@ export const useProjectsStore = defineStore('projects', {
   actions: {
     setActiveStatus(statusId) {
       this.activeStatusId = statusId
+    },
+
+    async searchLocations(query) {
+      // Очищаем предыдущий таймер, если пользователь продолжает печатать
+      if (this._searchTimeout) {
+        clearTimeout(this._searchTimeout);
+      }
+
+      // Если поле очистили, сразу очищаем список и выходим
+      if (!query) {
+        this.locations = [];
+        return [];
+      }
+
+      // Возвращаем Promise, который выполнится после задержки
+      return new Promise((resolve) => {
+        this._searchTimeout = setTimeout(async () => {
+          try {
+            // Убрали проверку query.length < 2, теперь работает с 1 буквы
+            const results = await projectsService.searchLocations(query);
+            this.locations = results;
+            resolve(results);
+          } catch (e) {
+            console.error('❌ Error searching locations:', e);
+            this.locations = [];
+            resolve([]);
+          }
+        }, 300); // Задержка 300мс перед отправкой запроса
+      });
     },
 
     async safeLoadStatuses() {
@@ -284,40 +316,40 @@ export const useProjectsStore = defineStore('projects', {
         this.deletingProjectItemId = null
       }
     },
-async loadNomenclatures() {
-  try {
-    const nomenclatures = await projectsService.getNomenclatures()
-    this.nomenclatures = nomenclatures
-    return nomenclatures
-  } catch (e) {
-    console.error('❌ Error loading nomenclatures:', e)
-    throw e
-  }
-},
+
+    async loadNomenclatures() {
+      try {
+        const nomenclatures = await projectsService.getNomenclatures()
+        this.nomenclatures = nomenclatures
+        return nomenclatures
+      } catch (e) {
+        console.error('❌ Error loading nomenclatures:', e)
+        throw e
+      }
+    },
+
+    async createNomenclature(payload) {
+      this.saving = true
+      try {
+        console.log('📤 Отправка номенклатуры:', payload)
+        const created = await projectsService.createNomenclature(payload)
+        console.log('📥 Получен ответ от сервера:', created)
+        
+        this.nomenclatures.push(created)
+        return created
+      } catch (e) {
+        console.error('❌ Error creating nomenclature:', e)
+        throw e
+      } finally {
+        this.saving = false
+      }
+    },
+
     clearCurrentProject() {
       this.currentProject = null
       this.currentProjectFinance = null
       this.currentProjectItems = []
       this.currentProjectExpenses = []
     },
-    // stores/projects.js
-async createNomenclature(payload) {
-  this.saving = true
-  try {
-    console.log('📤 Отправка номенклатуры:', payload)
-    const created = await projectsService.createNomenclature(payload)
-    console.log('📥 Получен ответ от сервера:', created)
-    console.log('🆔 ID в ответе:', created?.id)
-    console.log('🔍 Полный объект:', JSON.stringify(created, null, 2))
-    
-    this.nomenclatures.push(created)
-    return created
-  } catch (e) {
-    console.error('❌ Error creating nomenclature:', e)
-    throw e
-  } finally {
-    this.saving = false
-  }
-}
   }
 })

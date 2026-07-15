@@ -134,13 +134,28 @@
             <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
           </div>
 
+                    <!-- Замени старый InputText на AutoComplete -->
           <div class="field">
-            <label for="geography">География</label>
-            <InputText
-              id="geography"
-              v-model="form.geography"
-              placeholder="Например: Казахстан"
-            />
+            <label for="location-search">География (Город) <span class="req">*</span></label>
+            <AutoComplete
+              id="location-search"
+              v-model="selectedLocation"
+              :suggestions="store.locations"
+              @complete="handleLocationSearch"
+              field="name"
+              placeholder="Начните вводить город..."
+              dropdown
+              forceSelection
+              optionLabel="name"
+              :class="{ 'p-invalid': errors.location }"
+            >
+              <template #option="slotProps">
+                <div class="flex items-center gap-2">
+                  <span>{{ slotProps.option.name }}</span>
+                </div>
+              </template>
+            </AutoComplete>
+            <small v-if="errors.location" class="p-error">{{ errors.location }}</small>
           </div>
 
           <div class="field">
@@ -305,6 +320,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import AutoComplete from 'primevue/autocomplete'
 
 const router = useRouter()
 const store = useProjectsStore()
@@ -321,11 +337,14 @@ const errors = reactive({})
 
 const getInitialForm = () => ({
   name: '',
-  geography: '',
+  location: null, // Теперь это ID локации
   client: null,
   tech_manager: null,
   status: null,
 })
+
+// Добавь переменную для отображения выбранного объекта в AutoComplete
+const selectedLocation = ref(null)
 
 const form = reactive(getInitialForm())
 
@@ -341,6 +360,7 @@ const managerForm = reactive({
 
 function resetForm() {
   Object.assign(form, getInitialForm())
+  selectedLocation.value = null
   errorMessage.value = ''
   Object.keys(errors).forEach(key => delete errors[key])
 }
@@ -366,9 +386,14 @@ async function handleSubmit() {
   errorMessage.value = ''
   Object.keys(errors).forEach(key => delete errors[key])
 
-  // Валидация
   if (!form.name.trim()) {
     errors.name = 'Введите название проекта'
+    return
+  }
+
+  // Валидация локации
+  if (!selectedLocation.value) {
+    errors.location = 'Выберите город из списка'
     return
   }
 
@@ -390,7 +415,7 @@ async function handleSubmit() {
   try {
     const payload = {
       name: form.name.trim(),
-      geography: form.geography.trim(),
+      location: selectedLocation.value.id, // Отправляем ID
       client: Number(form.client),
       tech_manager: Number(form.tech_manager),
       status: Number(form.status),
@@ -399,12 +424,17 @@ async function handleSubmit() {
     await store.createProject(payload)
     showModal.value = false
     resetForm()
+    selectedLocation.value = null // Сброс визуального выбора
 
     await store.initProjectsPage()
   } catch (error) {
     errorMessage.value = error?.message || 'Не удалось создать проект'
     console.error('❌ Create project error:', error)
   }
+}
+
+async function handleLocationSearch(event) {
+  await store.searchLocations(event.query)
 }
 
 async function handleCreateClient() {
