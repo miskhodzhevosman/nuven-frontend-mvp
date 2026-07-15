@@ -313,7 +313,7 @@
                 >
                   <Column header="Фабрика">
                     <template #body="{ data }">
-                      {{ data.counterparty_name || '—' }}
+                      {{ getFactoryName(data.counterparty) }}
                     </template>
                   </Column>
 
@@ -794,6 +794,7 @@
     </Dialog>
 
     <!-- FACTORY PAYMENT -->
+        <!-- FACTORY PAYMENT -->
     <Dialog
       v-model:visible="showFactoryPaymentModal"
       header="Оплата фабрике"
@@ -804,14 +805,24 @@
       <form @submit.prevent="saveFactoryPayment">
         <div class="field">
           <label>Фабрика</label>
-          <Select 
-            v-model="factoryPaymentForm.counterparty"
-            :options="factories"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Выберите фабрику"
-            :disabled="factoriesStore.loading"
-          />
+          <div class="field-with-action">
+            <Select 
+              v-model="factoryPaymentForm.counterparty"
+              :options="factories"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Выберите фабрику"
+              :disabled="factoriesStore.loading"
+              class="flex-1"
+            />
+            <Button 
+              icon="pi pi-plus" 
+              label="Новая"
+              size="small"
+              @click="openFactoryModalFromPayment"
+              class="action-btn"
+            />
+          </div>
           <small v-if="factoriesStore.loading" class="text-warning">
             ⏳ Загрузка фабрик...
           </small>
@@ -886,6 +897,12 @@ const route = useRoute()
 const router = useRouter()
 
 const projectId = Number(route.params.id)
+
+function getFactoryName(factoryId) {
+  if (!factoryId) return '—'
+  const factory = factories.value.find(f => f.id === factoryId)
+  return factory ? factory.name : 'Неизвестная фабрика'
+}
 
 /* ===================== */
 /* LOADING */
@@ -1160,7 +1177,6 @@ function openFactoryModal() {
 async function handleCreateFactory() {
   factoryErrorMessage.value = ''
 
-  // Валидация
   if (!factoryForm.name.trim()) {
     factoryErrorMessage.value = 'Введите название фабрики'
     return
@@ -1173,78 +1189,21 @@ async function handleCreateFactory() {
       contacts: factoryForm.contacts.trim(),
     }
 
-    console.log('📤 Sending factory creation payload:', payload)
-
-    // 1. Создаем фабрику
     const created = await factoriesStore.createFactory(payload)
     
-    console.log('📥 Raw response from createFactory:', created)
-    console.log('🔍 Type of response:', typeof created)
-    
-    // Проверяем, что вообще вернулось
-    if (!created) {
-      throw new Error('API вернул пустой ответ при создании фабрики')
-    }
-
-    // Ищем ID в разных возможных полях
-    let factoryId = null
-    
-    if (created.id) {
-      factoryId = created.id
-      console.log('✅ Found ID in created.id:', factoryId)
-    } else if (created.pk) {
-      factoryId = created.pk
-      console.log('✅ Found ID in created.pk:', factoryId)
-    } else if (created._id) {
-      factoryId = created._id
-      console.log('✅ Found ID in created._id:', factoryId)
-    } else if (created.uuid) {
-      factoryId = created.uuid
-      console.log('✅ Found ID in created.uuid:', factoryId)
-    } else {
-      console.warn('⚠️ ID not found in response object. Keys:', Object.keys(created))
-    }
-
     showFactoryModal.value = false
     
-    // 2. Принудительно обновляем список всех фабрик в сторе
-    console.log('🔄 Fetching updated factories list...')
     await factoriesStore.fetchFactories()
-    
-    console.log('📋 Current factories in store:', factoriesStore.items)
-    console.log('📋 Computed factories for nomenclature:', factoriesForNomenclature.value)
-    
-    // 3. Ждем обновления DOM и реактивных зависимостей
     await nextTick()
     
-    // 4. Если нашли ID, пробуем выбрать
-    if (factoryId) {
-      // Проверяем, есть ли эта фабрика в обновленном списке
-      const factoryInList = factoriesForNomenclature.value.find(f => f.id === factoryId)
-      
-      if (factoryInList) {
-        createNomenclatureForm.factory = factoryId
-        console.log('✅ Factory successfully selected in form:', factoryId)
-        console.log('🎯 Current form factory value:', createNomenclatureForm.factory)
-      } else {
-        console.error('❌ Factory with ID', factoryId, 'not found in updated list!')
-        console.log('🔍 Available factory IDs:', factoriesForNomenclature.value.map(f => f.id))
-        
-        // Пробуем найти по имени как запасной вариант
-        const factoryByName = factoriesForNomenclature.value.find(
-          f => f.name === payload.name
-        )
-        
-        if (factoryByName) {
-          console.log('✅ Found factory by name, selecting it:', factoryByName.id)
-          createNomenclatureForm.factory = factoryByName.id
-        } else {
-          factoryErrorMessage.value = 'Фабрика создана, но не выбрана автоматически. Выберите вручную.'
-        }
-      }
-    } else {
-      console.error('❌ Could not determine factory ID from response')
-      factoryErrorMessage.value = 'Фабрика создана, но не удалось получить её ID. Выберите вручную.'
+    // Выбираем созданную фабрику в форме номенклатуры (если открыта)
+    if (showCreateNomenclatureModal.value) {
+      createNomenclatureForm.factory = created.id
+    }
+    
+    // Выбираем созданную фабрику в форме оплаты фабрике (если открыта)
+    if (showFactoryPaymentModal.value) {
+      factoryPaymentForm.counterparty = created.id
     }
     
   } catch (error) {
@@ -1253,6 +1212,14 @@ async function handleCreateFactory() {
   }
 }
 
+
+function openFactoryModalFromPayment() {
+  factoryForm.name = ''
+  factoryForm.address = ''
+  factoryForm.contacts = ''
+  factoryErrorMessage.value = ''
+  showFactoryModal.value = true
+}
 
 /* ===================== */
 /* DELETE EXPENSE */
