@@ -624,56 +624,57 @@
     </Dialog>
 
     <!-- CREATE NOMENCLATURE -->
-    <Dialog
-      v-model:visible="showCreateNomenclatureModal"
-      header="Создание нового товара"
-      :modal="true"
-      :style="{ width: '500px' }"
-      class="p-fluid"
-      @hide="closeCreateNomenclature"
-    >
-      <form @submit.prevent="saveNewNomenclature">
+<Dialog
+    v-model:visible="showCreateNomenclatureModal"
+    header="Создание нового товара"
+    :modal="true"
+    :style="{ width: '500px' }"
+    class="p-fluid"
+    @hide="closeCreateNomenclature"
+  >
+    <form @submit.prevent="saveNewNomenclature">
+      <div class="field">
+        <label>Название товара *</label>
+        <InputText v-model="createNomenclatureForm.name" placeholder="Введите название" />
+      </div>
+
+      <div class="form-grid">
         <div class="field">
-          <label>Название товара *</label>
-          <InputText v-model="createNomenclatureForm.name" placeholder="Введите название" />
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Техническое название</label>
-            <InputText v-model="createNomenclatureForm.technical_name" placeholder="Опционально" />
-          </div>
-
-          <div class="field">
-            <label>Артикул</label>
-            <InputText v-model="createNomenclatureForm.article" placeholder="Опционально" />
-          </div>
-
-          <div class="field">
-            <label>Себестоимость</label>
-            <InputNumber 
-              v-model="createNomenclatureForm.current_cost_price"
-              mode="currency"
-              currency="CNY"
-              locale="ru-RU"
-              min="0"
-            />
-          </div>
-
-          <div class="field">
-            <label>Цена продажи</label>
-            <InputNumber 
-              v-model="createNomenclatureForm.current_sale_price"
-              mode="currency"
-              currency="CNY"
-              locale="ru-RU"
-              min="0"
-            />
-          </div>
+          <label>Техническое название</label>
+          <InputText v-model="createNomenclatureForm.technical_name" placeholder="Опционально" />
         </div>
 
         <div class="field">
-          <label>Фабрика (опционально)</label>
+          <label>Артикул</label>
+          <InputText v-model="createNomenclatureForm.article" placeholder="Опционально" />
+        </div>
+
+        <div class="field">
+          <label>Себестоимость</label>
+          <InputNumber 
+            v-model="createNomenclatureForm.current_cost_price"
+            mode="currency"
+            currency="CNY"
+            locale="ru-RU"
+            min="0"
+          />
+        </div>
+
+        <div class="field">
+          <label>Цена продажи</label>
+          <InputNumber 
+            v-model="createNomenclatureForm.current_sale_price"
+            mode="currency"
+            currency="CNY"
+            locale="ru-RU"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Фабрика (опционально)</label>
+        <div class="field-with-action">
           <Select 
             v-model="createNomenclatureForm.factory"
             :options="factoriesForNomenclature"
@@ -681,20 +682,80 @@
             optionValue="id"
             placeholder="Не выбрано"
           />
-        </div>
-
-        <div class="modal-actions">
-          <Button label="Отмена" icon="pi pi-times" @click="showCreateNomenclatureModal = false" class="p-button-text" />
           <Button 
-            label="Создать товар" 
-            icon="pi pi-check" 
-            type="submit"
-            :disabled="!createNomenclatureForm.name || store.saving"
-            :loading="store.saving"
+            icon="pi pi-plus" 
+            label="Новая"
+            size="small"
+            @click="openFactoryModal"
+            class="action-btn"
           />
         </div>
-      </form>
-    </Dialog>
+      </div>
+
+      <div class="modal-actions">
+        <Button label="Отмена" icon="pi pi-times" @click="showCreateNomenclatureModal = false" class="p-button-text" />
+        <Button 
+          label="Создать товар" 
+          icon="pi pi-check" 
+          type="submit"
+          :disabled="!createNomenclatureForm.name || store.saving"
+          :loading="store.saving"
+        />
+      </div>
+    </form>
+  </Dialog>
+
+  <!-- Модалка создания фабрики -->
+  <Dialog
+    v-model:visible="showFactoryModal"
+    header="Создать фабрику"
+    :modal="true"
+    :style="{ width: '450px' }"
+    class="p-fluid"
+  >
+    <form @submit.prevent="handleCreateFactory">
+      <div class="field">
+        <label for="factory-name">Название <span class="req">*</span></label>
+        <InputText
+          id="factory-name"
+          v-model="factoryForm.name"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="factory-address">Адрес</label>
+        <InputText
+          id="factory-address"
+          v-model="factoryForm.address"
+        />
+      </div>
+
+      <div class="field">
+        <label for="factory-contacts">Контакты</label>
+        <InputText
+          id="factory-contacts"
+          v-model="factoryForm.contacts"
+        />
+      </div>
+
+      <div v-if="factoryErrorMessage" class="p-message p-message-error">
+        <i class="pi pi-exclamation-circle"></i>
+        {{ factoryErrorMessage }}
+      </div>
+
+      <div class="modal-actions">
+        <Button label="Отмена" icon="pi pi-times" @click="showFactoryModal = false" class="p-button-text" />
+        <Button 
+          label="Создать" 
+          icon="pi pi-check" 
+          type="submit"
+          :loading="factoriesStore.saving"
+          :disabled="factoriesStore.saving"
+        />
+      </div>
+    </form>
+  </Dialog>
 
     <!-- CLIENT PAYMENT -->
     <Dialog
@@ -794,7 +855,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useFactoriesStore } from '@/stores/factories.store'
@@ -1070,6 +1131,128 @@ async function saveItemEdit() {
     alert('Ошибка при сохранении позиции')
   }
 }
+
+
+/* ===================== */
+/* CREATE FACTORY */
+/* ===================== */
+
+// const factoriesStore = useFactoriesStore()
+
+// Состояние для модалки фабрики
+const showFactoryModal = ref(false)
+const factoryErrorMessage = ref('')
+
+const factoryForm = reactive({
+  name: '',
+  address: '',
+  contacts: '',
+})
+
+function openFactoryModal() {
+  factoryForm.name = ''
+  factoryForm.address = ''
+  factoryForm.contacts = ''
+  factoryErrorMessage.value = ''
+  showFactoryModal.value = true
+}
+
+async function handleCreateFactory() {
+  factoryErrorMessage.value = ''
+
+  // Валидация
+  if (!factoryForm.name.trim()) {
+    factoryErrorMessage.value = 'Введите название фабрики'
+    return
+  }
+
+  try {
+    const payload = {
+      name: factoryForm.name.trim(),
+      address: factoryForm.address.trim(),
+      contacts: factoryForm.contacts.trim(),
+    }
+
+    console.log('📤 Sending factory creation payload:', payload)
+
+    // 1. Создаем фабрику
+    const created = await factoriesStore.createFactory(payload)
+    
+    console.log('📥 Raw response from createFactory:', created)
+    console.log('🔍 Type of response:', typeof created)
+    
+    // Проверяем, что вообще вернулось
+    if (!created) {
+      throw new Error('API вернул пустой ответ при создании фабрики')
+    }
+
+    // Ищем ID в разных возможных полях
+    let factoryId = null
+    
+    if (created.id) {
+      factoryId = created.id
+      console.log('✅ Found ID in created.id:', factoryId)
+    } else if (created.pk) {
+      factoryId = created.pk
+      console.log('✅ Found ID in created.pk:', factoryId)
+    } else if (created._id) {
+      factoryId = created._id
+      console.log('✅ Found ID in created._id:', factoryId)
+    } else if (created.uuid) {
+      factoryId = created.uuid
+      console.log('✅ Found ID in created.uuid:', factoryId)
+    } else {
+      console.warn('⚠️ ID not found in response object. Keys:', Object.keys(created))
+    }
+
+    showFactoryModal.value = false
+    
+    // 2. Принудительно обновляем список всех фабрик в сторе
+    console.log('🔄 Fetching updated factories list...')
+    await factoriesStore.fetchFactories()
+    
+    console.log('📋 Current factories in store:', factoriesStore.items)
+    console.log('📋 Computed factories for nomenclature:', factoriesForNomenclature.value)
+    
+    // 3. Ждем обновления DOM и реактивных зависимостей
+    await nextTick()
+    
+    // 4. Если нашли ID, пробуем выбрать
+    if (factoryId) {
+      // Проверяем, есть ли эта фабрика в обновленном списке
+      const factoryInList = factoriesForNomenclature.value.find(f => f.id === factoryId)
+      
+      if (factoryInList) {
+        createNomenclatureForm.factory = factoryId
+        console.log('✅ Factory successfully selected in form:', factoryId)
+        console.log('🎯 Current form factory value:', createNomenclatureForm.factory)
+      } else {
+        console.error('❌ Factory with ID', factoryId, 'not found in updated list!')
+        console.log('🔍 Available factory IDs:', factoriesForNomenclature.value.map(f => f.id))
+        
+        // Пробуем найти по имени как запасной вариант
+        const factoryByName = factoriesForNomenclature.value.find(
+          f => f.name === payload.name
+        )
+        
+        if (factoryByName) {
+          console.log('✅ Found factory by name, selecting it:', factoryByName.id)
+          createNomenclatureForm.factory = factoryByName.id
+        } else {
+          factoryErrorMessage.value = 'Фабрика создана, но не выбрана автоматически. Выберите вручную.'
+        }
+      }
+    } else {
+      console.error('❌ Could not determine factory ID from response')
+      factoryErrorMessage.value = 'Фабрика создана, но не удалось получить её ID. Выберите вручную.'
+    }
+    
+  } catch (error) {
+    factoryErrorMessage.value = error?.message || 'Не удалось создать фабрику'
+    console.error('❌ Create factory error:', error)
+  }
+}
+
 
 /* ===================== */
 /* DELETE EXPENSE */
