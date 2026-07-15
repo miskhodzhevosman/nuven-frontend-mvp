@@ -13,7 +13,7 @@
           Фабрики
         </RouterLink>
         
-        <RouterLink to="/projects" exact-active-class="active">
+        <RouterLink to="/projects" exact-active-class="active" data-tour="projects">
           Проекты
         </RouterLink>
         

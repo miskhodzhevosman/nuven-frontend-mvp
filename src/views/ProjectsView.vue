@@ -7,6 +7,7 @@
         icon="pi pi-plus" 
         @click="openCreateModal"
         :disabled="store.loading"
+        data-tour="project-create-btn"
       />
     </div>
 
@@ -37,7 +38,10 @@
         :rowsPerPageOptions="[5, 10, 25, 50]"
         paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
         currentPageReportTemplate="Показано {first} - {last} из {totalRecords}"
+        sortField="created_at" 
+        :sortOrder="-1"
       >
+        <!-- Остальные колонки без изменений -->
         <Column field="name" header="Проект" style="min-width: 150px">
           <template #body="{ data }">
             <Button 
@@ -114,6 +118,7 @@
       :style="{ width: '600px' }"
       class="p-fluid"
       @hide="resetForm"
+      data-tour="project=create-form"
     >
       <form @submit.prevent="handleSubmit">
         <div class="form-grid">
@@ -281,7 +286,7 @@
 
         <div class="modal-actions">
           <Button label="Отмена" icon="pi pi-times" @click="showManagerModal = false" class="p-button-text" />
-          <Button label="Создать" icon="pi pi-check" type="submit" />
+          <Button label="Создать" icon="pi pi-check" type="submit" data-tour="project-create-form-button"/>
         </div>
       </form>
     </Dialog>

@@ -11,9 +11,15 @@ import 'primeicons/primeicons.css';
 // Если используешь Tailwind/свои стили — подключай после темы, чтобы переопределить
 import './styles/main.css'
 
+
 // Импортируем Chart.js для правильной работы
 import { registerables } from 'chart.js';
 import Chart from 'chart.js/auto';
+
+// Driver.js
+import { driver } from "driver.js";
+import './styles/driver.css'  // Локальная копия стилей
+
 
 // Регистрируем все компоненты Chart.js
 Chart.register(...registerables);
@@ -21,6 +27,7 @@ Chart.register(...registerables);
 const app = createApp(App)
 const pinia = createPinia()
 
+app.config.globalProperties.$driver = driver
 app.use(pinia)
 app.use(router)
 
