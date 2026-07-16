@@ -706,7 +706,8 @@ watch(
   font-size: 12px;
 }
 
-/* PrimeVue overrides */
+/* --- PrimeVue overrides (Fixed Contrast) --- */
+
 :deep(.p-datatable .p-datatable-thead > tr > th) {
   background: #1E2024;
   color: #C9A86A;
@@ -714,9 +715,11 @@ watch(
   padding: 12px 16px;
 }
 
+/* Base Row Style */
 :deep(.p-datatable .p-datatable-tbody > tr) {
-  background: #16181C;
+  background: #16181C; /* Единый фон для всех строк */
   color: #D0D2D5;
+  transition: background-color 0.2s ease;
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
@@ -724,16 +727,18 @@ watch(
   padding: 10px 16px;
 }
 
+/* Hover Effect */
 :deep(.p-datatable .p-datatable-tbody > tr:hover) {
-  background: #1E2024;
+  background: #1E2024; /* Чуть светлее при наведении */
 }
 
+/* Fix for Striped Rows - делаем их одинаковыми с базовыми */
 :deep(.p-datatable .p-datatable-tbody > tr:nth-child(even)) {
-  background: #1A1C20;
+  background: #16181C !important;
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr:nth-child(even):hover) {
-  background: #1E2024;
+  background: #1E2024 !important;
 }
 
 :deep(.p-button.p-button-text.link-cell) {
