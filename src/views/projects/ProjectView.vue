@@ -60,22 +60,34 @@
           />
 
                     <!-- PROJECT EXPENSES -->
-          <TransactionsList
-            title="Проектные расходы"
-            subtitle="Расходы, привязанные к проекту"
-            add-button-label="Добавить расход"
-            :items="projectExpenses"
-            :columns="[
-              { header: 'Тип расхода', render: (data) => getOperationTypeName(data.finance_operation_type) },
-              { field: 'date', header: 'Дата', render: (data) => formatDate(data.date) },
-              { field: 'amount', header: 'Сумма', render: (data) => `<span class='text-negative'>${formatMoney(data.amount)}</span>` }
-            ]"
-            empty-icon="pi pi-credit-card"
-            empty-title="Нет расходов"
-            empty-description="Добавьте первый проектный расход"
-            @add="openExpenseModal"
-            @delete="deleteExpense"
-          />
+          <!-- PROJECT EXPENSES -->
+<TransactionsList
+  title="Проектные расходы"
+  subtitle="Расходы, привязанные к проекту"
+  add-button-label="Добавить расход"
+  :items="projectExpenses"
+  :columns="[
+    { 
+      header: 'Описание', 
+      render: (data) => data.name || getOperationTypeName(data.finance_operation_type) 
+    },
+    { 
+      field: 'date', 
+      header: 'Дата', 
+      render: (data) => formatDate(data.date) 
+    },
+    { 
+      field: 'amount', 
+      header: 'Сумма', 
+      render: (data) => `<span class='text-negative'>${formatMoney(data.amount)}</span>` 
+    }
+  ]"
+  empty-icon="pi pi-credit-card"
+  empty-title="Нет расходов"
+  empty-description="Добавьте первый проектный расход"
+  @add="openExpenseModal"
+  @delete="deleteExpense"
+/>
 
           <!-- CLIENT PAYMENTS -->
           <TransactionsList
@@ -145,9 +157,9 @@
     <!-- SIMPLE TRANSACTION MODALS (Expense, Client Payment, Factory Payment) -->
     <!-- Для простоты можно сделать один универсальный или отдельные, как ниже -->
     
-    <SimpleTransactionModal
+    <!-- НОВАЯ МОДАЛКА ДЛЯ РАСХОДОВ -->
+    <ProjectExpenseModal
       v-model:visible="showExpenseModal"
-      title="Новый проектный расход"
       @save="saveExpense"
     />
 
@@ -184,6 +196,7 @@ import FinancialSummary from './components/FinancialSummary.vue'
 import EditProjectModal from './components/modals/EditProjectModal.vue'
 import SimpleTransactionModal from './components/modals/SimpleTransactionModal.vue' // Создать ниже
 import FactoryPaymentModal from './components/modals/FactoryPaymentModal.vue' // Создать ниже
+import ProjectExpenseModal from './components/modals/ProjectExpenseModal.vue' 
 
 // Composable
 import { useProjectData } from './composables/useProjectData'
@@ -236,14 +249,14 @@ const showExpenseModal = ref(false)
 function openExpenseModal() {
   showExpenseModal.value = true
 }
-async function saveExpense(formData) {
-  try {
-    await createExpense(formData.amount, formData.date)
-    showExpenseModal.value = false
-  } catch (e) {
-    alert('Ошибка сохранения')
-  }
-}
+// async function saveExpense(formData) {
+//   try {
+//     await createExpense(formData.amount, formData.date)
+//     showExpenseModal.value = false
+//   } catch (e) {
+//     alert('Ошибка сохранения')
+//   }
+// }
 
 // Client Payment
 const showClientPaymentModal = ref(false)
@@ -275,6 +288,16 @@ async function saveFactoryPayment(formData) {
 
 function goBack() {
   router.push('/projects')
+}
+
+async function saveExpense(formData) {
+  try {
+    // formData содержит { name, date, amount }
+    await createExpense(formData.amount, formData.date, formData.operationTypeId)
+    showExpenseModal.value = false
+  } catch (e) {
+    alert(e.message || 'Ошибка сохранения')
+  }
 }
 </script>
 

@@ -52,7 +52,7 @@
         <div class="field-with-action">
           <Select 
             v-model="form.factory"
-            :options="factoriesForNomenclature"
+            :options="factoriesList"
             optionLabel="name"
             optionValue="id"
             placeholder="Не выбрано"
@@ -78,11 +78,11 @@
         />
       </div>
     </form>
-
+    
     <FactoryModal
       v-if="showFactoryModal"
       v-model:visible="showFactoryModal"
-      :factories-store="factoriesStore"
+      :factories-store="factoriesStoreInstance"
       @created="onFactoryCreated"
     />
   </Dialog>
@@ -96,6 +96,7 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import FactoryModal from './FactoryModal.vue'
+import { useFactoriesStore } from '@/stores/factories.store' // Импортируем стор напрямую для надежности
 
 const props = defineProps({
   visible: Boolean,
@@ -107,6 +108,9 @@ const emit = defineEmits(['update:visible', 'created'])
 const isVisible = ref(props.visible)
 const showFactoryModal = ref(false)
 
+// Инициализируем стор фабрик напрямую, чтобы избежать проблем с передачей через props
+const factoriesStoreInstance = useFactoriesStore()
+
 const form = reactive({
   name: '',
   technical_name: '',
@@ -116,18 +120,28 @@ const form = reactive({
   factory: null,
 })
 
-const factoriesStore = props.store.factoriesStore // Access via main store prop or inject
-
-const factoriesForNomenclature = computed(() => {
-  const items = factoriesStore.items
+// Используем данные из локального экземпляра стора
+const factoriesList = computed(() => {
+  const items = factoriesStoreInstance.items
   if (!Array.isArray(items)) return []
   return [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 })
 
 watch(() => props.visible, (val) => {
   isVisible.value = val
-  if(val) {
-     // Reset form if needed or keep state
+  if (val) {
+    // Сброс формы при открытии
+    form.name = ''
+    form.technical_name = ''
+    form.article = ''
+    form.current_cost_price = null
+    form.current_sale_price = null
+    form.factory = null
+    
+    // Убедимся, что фабрики загружены
+    if (factoriesStoreInstance.items.length === 0) {
+      factoriesStoreInstance.fetchFactories()
+    }
   }
 })
 
@@ -155,14 +169,14 @@ async function saveNewNomenclature() {
     
     const result = await props.store.createNomenclature(payload)
     
-    // Logic to extract ID (simplified from original)
+    // Логика получения ID (адаптирована под ваш оригинальный код)
     let newId = result?.id || result?.pk || result?.uuid
     
     if (!newId && result?.data) {
        newId = result.data.id || result.data.pk
     }
     
-    // Fallback reload if ID missing
+    // Фолбэк: если ID не пришел, пробуем найти в списке
     if (!newId) {
       await props.store.loadNomenclatures()
       const found = props.store.nomenclatures.find(n => n.name === form.name)

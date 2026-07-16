@@ -38,9 +38,10 @@ export async function createOperationType(payload) {
   return await httpPost('/api/finance/operation-types/', payload)
 }
 
+
 /**
  * =========================
- * TRANSACTIONS
+ * TRANSACTIONS (General)
  * =========================
  */
 
@@ -64,4 +65,64 @@ export async function updateTransaction(id, payload) {
 
 export async function deleteTransaction(id) {
   return await httpDelete(`/api/finance/transactions/${id}/`)
+}
+
+/**
+ * =========================
+ * PROJECT EXPENSES
+ * =========================
+ */
+
+export async function getProjectExpenses(projectId) {
+  const response = await httpGet(`/api/finance/projects/${projectId}/expenses/`)
+  return handleResponse(response)
+}
+
+export async function createProjectExpense(projectId, payload) {
+  // payload должен содержать: amount, date, finance_operation_type
+  return await httpPost(`/api/finance/projects/${projectId}/expenses/`, payload)
+}
+
+export async function deleteProjectExpense(projectId, expenseId) {
+  return await httpDelete(`/api/finance/projects/${projectId}/expenses/${expenseId}/`)
+}
+
+/**
+ * =========================
+ * CLIENT PAYMENTS
+ * =========================
+ */
+
+export async function getClientPayments(projectId) {
+  const response = await httpGet(`/api/finance/projects/${projectId}/client-payments/`)
+  return handleResponse(response)
+}
+
+export async function createClientPayment(projectId, payload) {
+  // payload должен содержать: amount, date
+  return await httpPost(`/api/finance/projects/${projectId}/client-payments/`, payload)
+}
+
+export async function deleteClientPayment(projectId, paymentId) {
+  return await httpDelete(`/api/finance/projects/${projectId}/client-payments/${paymentId}/`)
+}
+
+/**
+ * =========================
+ * FACTORY PAYMENTS
+ * =========================
+ */
+
+export async function getFactoryPayments(projectId) {
+  const response = await httpGet(`/api/finance/projects/${projectId}/factory-payments/`)
+  return handleResponse(response)
+}
+
+export async function createFactoryPayment(projectId, payload) {
+  // payload должен содержать: counterparty, amount, date
+  return await httpPost(`/api/finance/projects/${projectId}/factory-payments/`, payload)
+}
+
+export async function deleteFactoryPayment(projectId, paymentId) {
+  return await httpDelete(`/api/finance/projects/${projectId}/factory-payments/${paymentId}/`)
 }

@@ -2,24 +2,23 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useFactoriesStore } from '@/stores/factories.store'
+import { useFinanceStore } from '@/stores/finance.store' // Добавлен импорт
 import {
   getTransactions,
   createTransaction,
   deleteTransaction,
-  getOperationTypes,
-  createOperationType
 } from '@/services/finance.service'
 
 export function useProjectData() {
   const store = useProjectsStore()
   const factoriesStore = useFactoriesStore()
+  const financeStore = useFinanceStore() // Инициализация стора финансов
   const route = useRoute()
   
   const projectId = Number(route.params.id)
   const loading = ref(false)
   
-  // Data refs
-  const operationTypes = ref([])
+  // Данные транзакций храним локально, так как они часто меняются
   const transactions = ref([])
 
   // Computed data from store
@@ -41,42 +40,54 @@ export function useProjectData() {
   const fact = computed(() => finance.value?.fact || {})
   const cashflow = computed(() => finance.value?.cashflow || {})
 
-  // Helpers for types
-  function getTypeId(code) {
-    const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
-    return list.find(t => t.code === code)?.id
+  // === ЛОГИКА ТИПОВ ОПЕРАЦИЙ ===
+  // Берем типы напрямую из стора, чтобы они обновлялись реактивно при создании новых
+  const allOperationTypes = computed(() => financeStore.operationTypes || [])
+
+  // Получаем массив ID всех типов с указанным кодом
+  function getTypeIdsByCode(code) {
+    return allOperationTypes.value
+      .filter(t => t.code === code)
+      .map(t => t.id)
   }
 
   function getOperationTypeName(typeId) {
-    const list = Array.isArray(operationTypes.value) ? operationTypes.value : []
-    return list.find(t => t.id === typeId)?.name || '—'
+    const type = allOperationTypes.value.find(t => t.id === typeId)
+    return type ? type.name : '—'
   }
 
-  // Filtered Transactions
+  // === ФИЛЬТРАЦИЯ ТРАНЗАКЦИЙ ===
+  
   const projectExpenses = computed(() => {
-    const typeId = getTypeId('project_expense')
-    if (!typeId) return []
-    return transactions.value.filter(
-      t => t.project === projectId && t.finance_operation_type === typeId
+    const expenseTypeIds = getTypeIdsByCode('project_expense')
+    if (expenseTypeIds.length === 0) return []
+    
+    return transactions.value.filter(t => 
+      t.project === projectId && 
+      expenseTypeIds.includes(t.finance_operation_type)
     )
   })
 
-  const CLIENT_PAYMENT_TYPE_ID = 1
-  const FACTORY_PAYMENT_TYPE_ID = 2
-
-  const clientPayments = computed(() =>
-    transactions.value.filter(
-      t => t.project === projectId && t.finance_operation_type === CLIENT_PAYMENT_TYPE_ID
+  const clientPayments = computed(() => {
+    const typeIds = getTypeIdsByCode('client_payment')
+    if (typeIds.length === 0) return []
+    return transactions.value.filter(t => 
+      t.project === projectId && 
+      typeIds.includes(t.finance_operation_type)
     )
-  )
+  })
 
-  const factoryPayments = computed(() =>
-    transactions.value.filter(
-      t => t.project === projectId && t.finance_operation_type === FACTORY_PAYMENT_TYPE_ID
+  const factoryPayments = computed(() => {
+    const typeIds = getTypeIdsByCode('factory_payment')
+    if (typeIds.length === 0) return []
+    return transactions.value.filter(t => 
+      t.project === projectId && 
+      typeIds.includes(t.finance_operation_type)
     )
-  )
+  })
 
-  // Actions
+  // === ACTIONS ===
+
   async function refreshAllData() {
     try {
       await store.initProjectDetails(projectId)
@@ -84,13 +95,6 @@ export function useProjectData() {
     } catch (error) {
       console.error('❌ Error refreshing data:', error)
     }
-  }
-
-  async function loadOperationTypes() {
-    const res = await getOperationTypes()
-    operationTypes.value = Array.isArray(res)
-      ? res
-      : Array.isArray(res?.results) ? res.results : Array.isArray(res?.items) ? res.items : []
   }
 
   async function loadTransactions() {
@@ -104,7 +108,12 @@ export function useProjectData() {
     loading.value = true
     try {
       await store.initProjectDetails(projectId)
-      await loadOperationTypes()
+      
+      // Загружаем типы операций, если они еще не загружены в сторе
+      if (!financeStore.operationTypesLoaded) {
+        await financeStore.fetchOperationTypes()
+      }
+      
       await loadTransactions()
       await factoriesStore.fetchFactories()
     } catch (error) {
@@ -152,22 +161,45 @@ export function useProjectData() {
     return factory ? factory.name : 'Неизвестная фабрика'
   }
 
-  // Transaction CRUD helpers
-  async function createExpense(amount, date) {
-    let typeId = getTypeId('project_expense')
-    if (!typeId) {
-      const created = await createOperationType({ name: 'Project expense', code: 'project_expense' })
-      operationTypes.value = [...operationTypes.value, created]
-      typeId = created.id
+  // ========================
+  // TRANSACTION CRUD
+  // ========================
+
+  async function createExpense(amount, date, operationTypeId) {
+    let formattedDate = null;
+    if (date) {
+      if (date instanceof Date) {
+        formattedDate = date.toISOString().split('T')[0];
+      } else if (typeof date === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          formattedDate = date;
+        } else {
+          const d = new Date(date);
+          if (!isNaN(d.getTime())) {
+            formattedDate = d.toISOString().split('T')[0];
+          }
+        }
+      }
     }
-    const dateString = date ? new Date(date).toISOString().split('T')[0] : null
+
+    if (!formattedDate) {
+      throw new Error('Дата обязательна');
+    }
+    
+    if (!operationTypeId) {
+       throw new Error('Тип операции не определен');
+    }
+
+    const projectId = route.params.id
+    
     await createTransaction({
-      amount: Number(amount),
-      date: dateString,
       project: projectId,
-      counterparty: null,
-      finance_operation_type: typeId
+      amount: Math.abs(amount),
+      date: formattedDate,
+      finance_operation_type: operationTypeId,
+      counterparty: null
     })
+    
     await refreshAllData()
   }
 
@@ -178,11 +210,17 @@ export function useProjectData() {
 
   async function createClientPayment(amount, date) {
     const projectClientId = store.currentProject?.client || null
+    const typeIds = getTypeIdsByCode('client_payment')
+    const typeId = typeIds[0] // Берем первый попавшийся тип для клиентских оплат
+    
+    if (!typeId) throw new Error('Тип оплаты клиента не найден')
+
     const dateString = date ? new Date(date).toISOString().split('T')[0] : null
+    
     await createTransaction({
       project: projectId,
       counterparty: projectClientId,
-      finance_operation_type: CLIENT_PAYMENT_TYPE_ID,
+      finance_operation_type: typeId,
       date: dateString,
       amount: Number(amount)
     })
@@ -195,13 +233,19 @@ export function useProjectData() {
   }
 
   async function createFactoryPayment(counterpartyId, amount, date) {
+    const typeIds = getTypeIdsByCode('factory_payment')
+    const typeId = typeIds[0]
+    
+    if (!typeId) throw new Error('Тип оплаты фабрике не найден')
+
     const dateString = date ? new Date(date).toISOString().split('T')[0] : null
+    
     await createTransaction({
       project: projectId,
       counterparty: counterpartyId ? Number(counterpartyId) : null,
-      finance_operation_type: FACTORY_PAYMENT_TYPE_ID,
+      finance_operation_type: typeId,
       date: dateString,
-      amount: Number(amount)
+      amount: Math.abs(amount)
     })
     await refreshAllData()
   }

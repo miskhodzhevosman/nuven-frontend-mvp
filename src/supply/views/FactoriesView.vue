@@ -406,7 +406,9 @@ onMounted(() => {
   font-size: 14px;
 }
 
-/* PrimeVue overrides */
+/* --- PrimeVue Overrides for Dark Theme --- */
+
+/* Header */
 :deep(.p-datatable .p-datatable-thead > tr > th) {
   background: #0d1117;
   font-weight: 600;
@@ -415,21 +417,34 @@ onMounted(() => {
   border-color: #30363d;
 }
 
+/* Base Row Style */
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
   padding: 10px 16px;
   color: #e6edf3;
   border-color: #30363d;
+  background: #161b22; /* Единый фон для ячеек */
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr) {
-  background: #161b22;
+  background: #161b22; /* Единый фон для строки */
   transition: background-color 0.2s;
 }
 
-:deep(.p-datatable .p-datatable-tbody > tr:hover) {
-  background-color: #1c2333;
+/* Fix for Striped Rows (Even/Odd) */
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even)) {
+  background: #161b22 !important; /* Принудительно тот же цвет */
 }
 
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(odd)) {
+  background: #161b22 !important;
+}
+
+/* Hover Effect - чуть светлее фона */
+:deep(.p-datatable .p-datatable-tbody > tr:hover) {
+  background-color: #1c2333 !important;
+}
+
+/* Buttons */
 :deep(.p-button.p-button-text) {
   color: #8b949e;
 }
@@ -446,6 +461,7 @@ onMounted(() => {
   background: rgba(248, 81, 73, 0.15);
 }
 
+/* Dialogs */
 :deep(.p-dialog .p-dialog-header) {
   padding: 20px 24px;
   border-bottom: 1px solid #30363d;
