@@ -7,7 +7,7 @@ import { useProjectsStore } from '../store'
 const route = useRoute()
 const router = useRouter()
 const store = useProjectsStore()
-const { currentProject, projectItems, clientPayments, factoryPayments, projectExpenses, loading, error } = storeToRefs(store)
+const { currentProject, projectItems, clientPayments, factoryPayments, projectExpenses, loading, error, statuses, clients, managers, locations } = storeToRefs(store)
 
 const projectId = computed(() => Number(route.params.id))
 
@@ -21,6 +21,7 @@ const payingItem = ref(null)
 const showProjectExpenseForm = ref(false)
 const showClientPaymentForm = ref(false)
 const confirmDeleteItemId = ref(null)
+const showEditProjectForm = ref(false) // Modal for editing project
 
 // --- Forms ---
 const emptyItemForm = () => ({
@@ -62,15 +63,50 @@ const emptyExpenseForm = () => ({
   date: new Date().toISOString().slice(0, 10),
   comment: '',
   counterparty_id: '',
-  expense_type_name: '', // Добавляем поле для типа расхода
+  expense_type_name: '',
 })
 const expenseForm = reactive(emptyExpenseForm())
 const expenseFormRef = ref(null)
+
+// Edit project form
+const editProjectForm = reactive({
+  name: '',
+  client: '',
+  status: '',
+  tech_manager: '',
+  location: '',
+  full_location_name: '',
+})
+const editFormRef = ref(null)
+
+// Location autocomplete state for edit form
+const editLocationSearch = ref('')
+const editShowLocationSuggestions = ref(false)
+const editSelectedLocation = ref(null)
 
 // --- Combobox state for expense type ---
 const expenseTypeSearch = ref('')
 const showExpenseTypeSuggestions = ref(false)
 const selectedExpenseType = ref(null)
+
+// --- Computed for edit form ---
+const editFilteredClients = computed(() => {
+  if (!clients.value) return []
+  return clients.value.filter(c => c.type === 'CLIENT')
+})
+
+const editFilteredLocations = computed(() => {
+  if (!locations.value) return []
+  return locations.value.filter(l => l.type === 'CITY')
+})
+
+const editFilteredLocationSuggestions = computed(() => {
+  if (!editLocationSearch.value) return editFilteredLocations.value.slice(0, 10)
+  const search = editLocationSearch.value.toLowerCase().trim()
+  return editFilteredLocations.value
+    .filter(l => l.name.toLowerCase().includes(search))
+    .slice(0, 10)
+})
 
 // --- Helpers ---
 function formatAmount(v) {
@@ -148,6 +184,43 @@ const createNewExpenseType = () => {
     expenseForm.expense_type_name = name
     showExpenseTypeSuggestions.value = false
   }
+}
+
+// --- Edit location autocomplete methods ---
+const onEditLocationInput = () => {
+  if (editSelectedLocation.value && editLocationSearch.value !== editSelectedLocation.value.name) {
+    editSelectedLocation.value = null
+    editProjectForm.location = ''
+  }
+  editShowLocationSuggestions.value = true
+}
+
+const onEditLocationBlur = () => {
+  setTimeout(() => {
+    editShowLocationSuggestions.value = false
+    if (editLocationSearch.value && !editSelectedLocation.value) {
+      const found = editFilteredLocations.value.find(l => 
+        l.name.toLowerCase() === editLocationSearch.value.toLowerCase().trim()
+      )
+      if (found) {
+        editSelectLocation(found)
+      }
+    }
+  }, 200)
+}
+
+const toggleEditLocationSuggestions = () => {
+  editShowLocationSuggestions.value = !editShowLocationSuggestions.value
+  if (editShowLocationSuggestions.value && !editLocationSearch.value) {
+    editLocationSearch.value = ''
+  }
+}
+
+const editSelectLocation = (location) => {
+  editSelectedLocation.value = location
+  editLocationSearch.value = location.name
+  editProjectForm.location = location.id
+  editShowLocationSuggestions.value = false
 }
 
 // --- Project items ---
@@ -269,7 +342,6 @@ function openProjectExpense() {
   selectedExpenseType.value = null
   showExpenseTypeSuggestions.value = false
   showProjectExpenseForm.value = true
-  // Загружаем типы расходов при открытии
   store.fetchExpenseTypes()
 }
 function closeProjectExpenseForm() { 
@@ -321,6 +393,62 @@ async function submitClientPayment() {
   } catch {}
 }
 
+// --- Edit project ---
+function openEditProject() {
+  if (!currentProject.value) return
+  
+  // Заполняем форму данными текущего проекта
+  editProjectForm.name = currentProject.value.name || ''
+  editProjectForm.client = currentProject.value.client || ''
+  editProjectForm.status = currentProject.value.status || ''
+  editProjectForm.tech_manager = currentProject.value.tech_manager || ''
+  editProjectForm.location = currentProject.value.location || ''
+  editProjectForm.full_location_name = currentProject.value.full_location_name || ''
+  
+  // Устанавливаем локацию для autocomplete
+  if (currentProject.value.location) {
+    const loc = locations.value.find(l => l.id === currentProject.value.location)
+    if (loc) {
+      editSelectedLocation.value = loc
+      editLocationSearch.value = loc.name
+    }
+  } else {
+    editLocationSearch.value = ''
+    editSelectedLocation.value = null
+  }
+  
+  showEditProjectForm.value = true
+}
+
+function closeEditProjectForm() {
+  showEditProjectForm.value = false
+  editLocationSearch.value = ''
+  editSelectedLocation.value = null
+  editShowLocationSuggestions.value = false
+}
+
+async function submitEditProject() {
+  if (!editFormRef.value?.checkValidity()) return
+  
+  const payload = {
+    name: editProjectForm.name,
+    client: editProjectForm.client ? Number(editProjectForm.client) : null,
+    status: editProjectForm.status ? Number(editProjectForm.status) : null,
+    tech_manager: editProjectForm.tech_manager ? Number(editProjectForm.tech_manager) : null,
+    location: editProjectForm.location ? Number(editProjectForm.location) : null,
+    full_location_name: editProjectForm.full_location_name || '',
+  }
+  
+  try {
+    await store.updateProject(projectId.value, payload)
+    closeEditProjectForm()
+    // Перезагружаем проект
+    await store.fetchProject(projectId.value)
+  } catch (e) {
+    console.error('Failed to update project:', e)
+  }
+}
+
 // --- Init ---
 async function loadAll() {
   try {
@@ -331,7 +459,8 @@ async function loadAll() {
       store.fetchNomenclatures(),
       store.fetchFactories(),
       store.fetchManagers(),
-      store.fetchExpenseTypes(), // Загружаем типы расходов
+      store.fetchLocations(),
+      store.fetchExpenseTypes(),
     ])
     await Promise.all([
       store.fetchProjectItems(projectId.value),
@@ -350,6 +479,7 @@ watch(projectId, loadAll)
   <section class="page">
     <div class="topbar">
       <button class="btn btn-ghost" @click="router.push({ name: 'projects-list' })">← Назад к проектам</button>
+      <button class="btn btn-primary" @click="openEditProject">✎ Редактировать проект</button>
     </div>
 
     <div v-if="error" class="alert alert-error"><strong>Ошибка:</strong> <span>{{ error }}</span></div>
@@ -368,6 +498,7 @@ watch(projectId, loadAll)
           <div><span class="label">Локация</span><span>{{ currentProject.full_location_name || '—' }}</span></div>
           <div><span class="label">Тех. менеджер</span><span>{{ store.managerName(currentProject.tech_manager) }}</span></div>
           <div><span class="label">Создан</span><span>{{ formatDate(currentProject.created_at) }}</span></div>
+          <div><span class="label">Обновлен</span><span>{{ formatDate(currentProject.updated_at) }}</span></div>
         </div>
       </section>
 
@@ -633,7 +764,6 @@ watch(projectId, loadAll)
             <input v-model="expenseForm.date" type="date" required />
           </label>
           
-          <!-- Поле для выбора/создания типа расхода с автодополнением -->
           <label class="field">
             <span>Тип расхода *</span>
             <div class="combobox-wrapper">
@@ -726,11 +856,99 @@ watch(projectId, loadAll)
         </form>
       </div>
     </div>
+
+    <!-- Модалка: Редактирование проекта -->
+    <div v-if="showEditProjectForm" class="modal-backdrop" @click.self="closeEditProjectForm">
+      <div class="modal">
+        <h2>Редактировать проект</h2>
+        <form ref="editFormRef" @submit.prevent="submitEditProject">
+          <label class="field">
+            <span>Название проекта *</span>
+            <input v-model="editProjectForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
+          </label>
+          
+          <label class="field">
+            <span>Клиент</span>
+            <select v-model="editProjectForm.client">
+              <option value="">— не выбран —</option>
+              <option v-for="c in editFilteredClients" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <small class="hint">Показываются только контрагенты с типом "Client"</small>
+          </label>
+          
+          <label class="field">
+            <span>Статус</span>
+            <select v-model="editProjectForm.status">
+              <option value="">— не выбран —</option>
+              <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          
+          <label class="field">
+            <span>Технический менеджер</span>
+            <select v-model="editProjectForm.tech_manager">
+              <option value="">— не выбран —</option>
+              <option v-for="m in managers" :key="m.id" :value="m.id">{{ m.full_name || m.name }}</option>
+            </select>
+          </label>
+          
+          <label class="field">
+            <span>Локация</span>
+            <div class="combobox-wrapper">
+              <input
+                v-model="editLocationSearch"
+                type="text"
+                placeholder="Введите или выберите локацию"
+                @input="onEditLocationInput"
+                @focus="editShowLocationSuggestions = true"
+                @blur="onEditLocationBlur"
+                autocomplete="off"
+              />
+              <button 
+                type="button" 
+                class="combobox-toggle" 
+                @mousedown.prevent="toggleEditLocationSuggestions"
+              >
+                ▼
+              </button>
+              <ul v-if="editShowLocationSuggestions && editFilteredLocationSuggestions.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="location in editFilteredLocationSuggestions" 
+                  :key="location.id"
+                  @mousedown.prevent="editSelectLocation(location)"
+                >
+                  {{ location.name }}
+                </li>
+              </ul>
+            </div>
+            <small v-if="editSelectedLocation" class="hint success">
+              Выбрана локация: {{ editSelectedLocation.name }}
+            </small>
+            <small v-else-if="editLocationSearch && !editSelectedLocation" class="hint">
+              Начните вводить название для поиска
+            </small>
+            <small class="hint">Показываются только локации с типом "Город"</small>
+          </label>
+          
+          <label class="field">
+            <span>Полное название локации</span>
+            <input v-model="editProjectForm.full_location_name" type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
+          </label>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" @click="closeEditProjectForm">Отмена</button>
+            <button type="submit" class="btn btn-primary" :disabled="loading">Сохранить</button>
+          </div>
+          <div v-if="error" class="alert alert-error">{{ error }}</div>
+        </form>
+      </div>
+    </div>
   </section>
 </template>
+
 <style scoped>
 .page { max-width: 1100px; margin: 0 auto; padding: 24px; color: #1f2937; }
-.topbar { margin-bottom: 12px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
 h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
 .muted { color: #6b7280; font-size: 14px; }
 .alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
@@ -739,7 +957,7 @@ h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
 
 .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 .card h2 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .card-header h2 { margin: 0; }
 
 .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -767,6 +985,80 @@ h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
 
 .row { display: flex; gap: 8px; align-items: center; }
 .row > select { flex: 1; }
+
+/* Combobox styles */
+.combobox-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.combobox-wrapper input {
+  flex: 1;
+  padding-right: 30px;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 30px 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.combobox-wrapper input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.combobox-toggle {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.combobox-toggle:hover {
+  color: #374151;
+}
+
+.combobox-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin: 4px 0 0 0;
+  padding: 0;
+  list-style: none;
+  z-index: 1000;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.combobox-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 14px;
+}
+
+.combobox-suggestions li:hover {
+  background: #f3f4f6;
+}
+
+.combobox-suggestions li:not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.hint { display: block; margin-top: 4px; font-size: 12px; color: #6b7280; }
+.hint.success { color: #28a745; }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
 .modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0,0,0,.1); max-height: 90vh; overflow-y: auto; }
