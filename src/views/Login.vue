@@ -1,80 +1,108 @@
-<!-- src/views/Login.vue -->
 <template>
-  <div class="login-wrap">
-    <div class="panel login-card">
-      <h2>Вход</h2>
-      <p class="muted">Введите учетные данные</p>
-      
-      <form @submit.prevent="onSubmit" class="col">
-        <input 
-          v-model.trim="username" 
-          type="text" 
-          placeholder="Имя пользователя" 
-          autocomplete="username" 
-        />
-        <input 
-          v-model="password" 
-          type="password" 
-          placeholder="Пароль" 
-          autocomplete="current-password" 
-        />
-        <button class="primary" :disabled="loading">
+  <div class="login-container">
+    <div class="login-card">
+      <h2>Вход в систему</h2>
+      <form @submit.prevent="handleLogin">
+        <div class="form-group">
+          <label>Имя пользователя</label>
+          <!-- Заменили type="email" на type="text" и v-model -->
+          <input 
+            v-model="username" 
+            type="text" 
+            required 
+            placeholder="admin" 
+          />
+        </div>
+        <div class="form-group">
+          <label>Пароль</label>
+          <input 
+            v-model="password" 
+            type="password" 
+            required 
+            placeholder="******" 
+          />
+        </div>
+        
+        <button type="submit" :disabled="loading">
           {{ loading ? 'Вход...' : 'Войти' }}
         </button>
-        <p v-if="error" style="color: var(--danger); margin: 0;">
-          {{ error }}
-        </p>
+        
+        <p v-if="error" class="error">{{ error }}</p>
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useAuth } from '@/composables/useAuth';
+import { ref } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
-const router = useRouter();
-const route = useRoute();
-const { login } = useAuth();
+const { login } = useAuth()
+const username = ref('') // Было email
+const password = ref('')
+const loading = ref(false)
+const error = ref(null)
 
-const username = ref('');
-const password = ref('');
-const loading = ref(false);
-const error = ref('');
-
-async function onSubmit() {
-  error.value = '';
-  loading.value = true;
+async function handleLogin() {
+  loading.value = true
+  error.value = null
+  
   try {
-    await login(username.value, password.value);
-    const next = route.query.next || '/';
-    router.replace(next);
+    // Передаем username вместо email
+    await login(username.value, password.value)
   } catch (e) {
-    error.value = e.message || 'Ошибка входа';
+    error.value = 'Неверное имя пользователя или пароль'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 </script>
 
+<!-- Стили остаются теми же -->
 <style scoped>
-.login-wrap {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: 
-    radial-gradient(1000px 600px at 20% 10%, #151a24, transparent),
-    radial-gradient(1000px 600px at 80% 90%, #151a24, transparent),
-    var(--bg);
-}
+/* ... стили из предыдущего сообщения ... */
+</style>
 
+<style scoped>
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f2f5;
+}
 .login-card {
-  width: 100%;
-  max-width: 380px;
-  padding: 24px;
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 350px;
 }
-
-h2 { margin: 0 0 8px; }
-form { margin-top: 16px; }
+.form-group {
+  margin-bottom: 15px;
+}
+input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:disabled {
+  background-color: #95a5a6;
+}
+.error {
+  color: #e74c3c;
+  margin-top: 10px;
+  text-align: center;
+}
 </style>

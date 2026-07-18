@@ -1,117 +1,115 @@
-<!-- src/layouts/DashboardLayout.vue -->
 <template>
-  <div class="layout">
-    <aside class="sidebar panel">
-      <div class="brand">Мой Дашборд</div>
-      
-      <nav class="menu">
-        <RouterLink to="/" exact-active-class="active">
-          Дашборд
-        </RouterLink>
-        
-        <RouterLink to="factory" exact-active-class="active">
-          Фабрики
-        </RouterLink>
-        
-        <RouterLink to="/projects" exact-active-class="active" data-tour="projects">
-          Проекты
-        </RouterLink>
-        
+  <div class="dashboard-container">
+    <!-- Боковое меню -->
+    <aside class="sidebar">
+      <div class="logo">My ERP</div>
+      <nav>
+        <router-link to="/supply" class="nav-item">
+          📦 Поставки
+        </router-link>
+        <router-link to="/projects" class="nav-item">
+          🚀 Проекты
+        </router-link>
+        <router-link to="/finance" class="nav-item">
+          💰 Финансы
+        </router-link>
       </nav>
-      
-      <div class="spacer"></div>
-      
-      <div class="user panel">
-        <div class="row" style="align-items:center; justify-content: space-between;">
-          <div class="col">
-            <span class="muted" style="font-size:12px;">Аккаунт</span>
-            <strong>{{ user?.username }}</strong>
-          </div>
-          <button class="danger" @click="onLogout" style="padding:8px 10px;">
-            Выйти
-          </button>
-        </div>
-      </div>
     </aside>
-    
+
+    <!-- Основная область контента -->
     <main class="content">
+      <header class="top-bar">
+        <h2>{{ currentTitle }}</h2>
+        <button @click="logout" class="logout-btn">Выйти</button>
+      </header>
+      
+      <!-- Сюда Vue Router будет подставлять компоненты модулей -->
       <router-view />
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useAuth } from '@/composables/useAuth';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-const router = useRouter();
-const { state, logout } = useAuth();
-const user = computed(() => state.user);
+const route = useRoute()
+const router = useRouter()
 
-async function onLogout() {
-  await logout();
-  router.replace({ name: 'login' });
+// Динамический заголовок из meta-данных роута
+const currentTitle = computed(() => route.meta.title || 'Дашборд')
+
+function logout() {
+  // Пока просто очищаем токен и редиректим
+  localStorage.removeItem('access_token')
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-.layout {
-  display: grid;
-  grid-template-columns: 260px 1fr;
+.dashboard-container {
+  display: flex;
   height: 100vh;
-  gap: 14px;
-  padding: 14px;
 }
 
 .sidebar {
+  width: 250px;
+  background-color: #2c3e50;
+  color: white;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px;
 }
 
-.brand { 
-  font-weight: 700; 
-  letter-spacing: 0.4px; 
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  text-align: center;
 }
 
-.menu { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 8px; 
+.nav-item {
+  display: block;
+  padding: 12px;
+  color: #ecf0f1;
+  text-decoration: none;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  transition: background 0.3s;
 }
 
-.menu a {
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--text);
-  background: transparent;
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
+.nav-item:hover {
+  background-color: #34495e;
 }
 
-.menu a:hover { 
-  background: #141822; 
-  border-color: var(--border); 
+/* Активная ссылка */
+.router-link-active {
+  background-color: #1abc9c;
+  color: white;
 }
-
-.menu a.active { 
-  background: #1a1f2b; 
-  border-color: var(--border); 
-}
-
-.spacer { flex: 1; }
-.user { padding: 12px; }
 
 .content {
-  padding: 14px;
-  background: 
-    radial-gradient(800px 500px at 10% 15%, #121622, transparent),
-    radial-gradient(800px 500px at 90% 85%, #121622, transparent),
-    var(--bg);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  overflow: auto;
+  flex: 1;
+  background-color: #f5f6fa;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-bar {
+  background: white;
+  padding: 15px 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logout-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>

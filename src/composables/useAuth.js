@@ -1,108 +1,50 @@
-// src/composables/useAuth.js
-import { reactive, computed } from 'vue';
-import { 
-  httpGet, 
-  httpPost, 
-  setTokens, 
-  clearTokens, 
-  getAccessToken 
-} from '@/api/http';
+import { ref } from 'vue'
+import { authApi } from '@/api/auth'
+import { useRouter } from 'vue-router'
 
-const state = reactive({
-  user: null,
-  loading: false,
-  ready: false,
-});
-
-async function initAuth() {
-  state.loading = true;
-  try {
-    // Проверяем наличие токена
-    const token = getAccessToken();
-    if (!token) {
-      console.log('👤 No token found');
-      state.user = null;
-      state.ready = true;
-      return;
-    }
-
-    // Получаем данные пользователя
-    const response = await httpGet('/api/me', { throwOnError: false });
-    
-    if (response.ok) {
-      state.user = await response.json();
-      console.log('👤 User authenticated:', state.user?.username);
-    } else {
-      // Если 401 - токен невалидный
-      clearTokens();
-      state.user = null;
-      console.log('👤 Token invalid, cleared');
-    }
-  } catch (error) {
-    console.warn('⚠️ Auth initialization error:', error);
-    state.user = null;
-  } finally {
-    state.loading = false;
-    state.ready = true;
-  }
-}
-
-async function login(username, password) {
-  console.log('🔐 Attempting login for:', username);
-
-  try {
-    // 1. Отправляем запрос на получение токенов
-    const data = await httpPost('/api/token/', { 
-      username, 
-      password 
-    });
-    
-    console.log('✅ Login successful, tokens received');
-    
-    // 2. Сохраняем токены
-    setTokens(data.access, data.refresh);
-    
-    // 3. Получаем данные пользователя
-    const response = await httpGet('/api/me', { throwOnError: false });
-    if (response.ok) {
-      state.user = await response.json();
-      console.log('👤 User data loaded:', state.user?.username);
-    } else {
-      throw new Error('Failed to load user data');
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    clearTokens();
-    state.user = null;
-    throw error;
-  }
-}
-
-async function logout() {
-  try {
-    // Можно отправить запрос на logout если нужно
-    // await httpPost('/api/logout', {});
-    console.log('👋 User logged out');
-  } catch (error) {
-    console.warn('⚠️ Logout error:', error);
-  } finally {
-    clearTokens();
-    state.user = null;
-  }
-}
-
-const isAuthenticated = computed(() => {
-  return !!state.user && !!getAccessToken();
-});
+const user = ref(null)
+const isAuthenticated = ref(!!localStorage.getItem('access_token'))
 
 export function useAuth() {
+  const router = useRouter()
+
+  // Теперь принимаем username
+  async function login(username, password) {
+    try {
+      // Отправляем объект с полем username
+      const response = await authApi.login({ 
+        username: username, 
+        password: password 
+      })
+      
+      // Сохраняем токены
+      localStorage.setItem('access_token', response.data.access)
+      localStorage.setItem('refresh_token', response.data.refresh)
+      
+      isAuthenticated.value = true
+      user.value = response.data.user || { username }
+      
+      router.push('/supply')
+      
+      return true
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw error
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    isAuthenticated.value = false
+    user.value = null
+    router.push('/login')
+  }
+
   return {
-    state,
-    initAuth,
-    login,
-    logout,
+    user,
     isAuthenticated,
-  };
+    login,
+    logout
+  }
 }

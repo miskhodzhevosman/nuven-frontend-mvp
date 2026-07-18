@@ -1,122 +1,63 @@
-// src/router/index.js
-import { createRouter, createWebHistory } from 'vue-router';
-import { useAuth } from '@/composables/useAuth';
-import { getAccessToken } from '@/api/http';
+import { createRouter, createWebHistory } from 'vue-router'
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
 
-// Ленивая загрузка компонентов
-const Login = () => import('@/views/Login.vue');
-const DashboardLayout = () => import('@/layouts/DashboardLayout.vue');
-const HomeView = () => import('@/views/HomeView.vue');
-const FactoriesView = () => import('@/supply/views/FactoriesView.vue');
-const ProjectsView = () => import('@/views/ProjectsView.vue');
-const ProjectDetailsView = () => import('@/views/ProjectDetailsView.vue');
-const NewProjectDetailsView = () => import('@/views/projects/ProjectView.vue')
+// Важно: массив должен быть определен явно
+const routes = [
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/views/Login.vue'),
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/',
+    component: DashboardLayout,
+    redirect: '/supply',
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'supply',
+        name: 'supply',
+        component: () => import('@/modules/supply/views/SupplyView.vue'),
+        meta: { title: 'Поставки' }
+      },
+      {
+        path: 'projects',
+        name: 'projects',
+        component: () => import('@/modules/projects/views/ProjectsView.vue'),
+        meta: { title: 'Проекты' }
+      },
+      {
+      path: '/projects/:id',
+      name: 'project-detail',
+      component: () => import('@/modules/projects/views/DetailView.vue'),
+      props: true,
+    },
+      {
+        path: 'finance',
+        name: 'finance',
+        component: () => import('@/modules/finance/views/FinanceView.vue'),
+        meta: { title: 'Финансы' }
+      }
+    ]
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
-    { 
-      path: '/login', 
-      name: 'login', 
-      component: Login, 
-      meta: { public: true } // Доступ без авторизации
-    },
-    {
-      path: '/',
-      component: DashboardLayout,
-      meta: { requiresAuth: true }, // Все дочерние пути требуют авторизации
-      children: [
-        { 
-          path: '', 
-          name: 'home', 
-          component: HomeView 
-        },
-        {
-          path: 'factory',
-          name: 'factory',
-          component: FactoriesView
-        },
-        {
-          path: 'projects',
-          name: 'projects',
-          component: ProjectsView
-        },
-        {
-          path: 'projects/:id',
-          name: 'project-details',
-          component: NewProjectDetailsView
-        }
-        // 👇 Добавляй свои страницы сюда:
-        // { 
-        //   path: 'analytics', 
-        //   name: 'analytics', 
-        //   component: () => import('@/views/Analytics.vue') 
-        // },
-        // { 
-        //   path: 'settings', 
-        //   name: 'settings', 
-        //   component: () => import('@/views/Settings.vue') 
-        // },
-      ],
-    },
-    // 404 - перенаправление на главную
-    { path: '/:pathMatch(.*)*', redirect: '/' },
-  ],
-});
+  routes // <-- Убедись, что здесь именно этот массив
+})
 
-// ============================================
-// Глобальный guards (навигационные хуки)
-// ============================================
-
-router.beforeEach(async (to, from, next) => {
-  const { state, initAuth, isAuthenticated } = useAuth();
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('access_token')
   
-  // 1. Инициализация аутентификации, если еще не готова
-  if (!state.ready) {
-    await initAuth();
+  if (to.meta.requiresAuth && !token) {
+    next('/login')
+  } else if (to.meta.requiresGuest && token) {
+    next('/supply')
+  } else {
+    next()
   }
-  
-  // 2. Проверка на публичные страницы (login, register и т.д.)
-  const isPublic = to.meta.public === true;
-  
-  // 3. Проверка аутентификации
-  const token = getAccessToken();
-  const isAuth = isAuthenticated.value && !!token;
-  
-  // 4. Если страница требует авторизации, а пользователь не авторизован
-  if (!isPublic && !isAuth) {
-    // Сохраняем путь для редиректа после логина
-    return next({ 
-      name: 'login', 
-      query: { next: to.fullPath } 
-    });
-  }
-  
-  // 5. Если пользователь авторизован и пытается зайти на страницу логина
-  if (to.name === 'login' && isAuth) {
-    // Редиректим на главную или на сохраненный путь
-    const redirectPath = to.query.next || '/';
-    return next(redirectPath);
-  }
-  
-  // 6. Все остальные случаи - пропускаем
-  next();
-});
+})
 
-// ============================================
-// После каждого перехода (для аналитики и т.д.)
-// ============================================
-
-router.afterEach((to, from) => {
-  // Закрываем мобильное меню, скроллим наверх и т.д.
-  // console.log(`Navigated from ${from.path} to ${to.path}`);
-  
-  // Пример: отправка в Google Analytics
-  // if (window.gtag) {
-  //   window.gtag('config', 'GA_MEASUREMENT_ID', {
-  //     page_path: to.fullPath,
-  //   });
-  // }
-});
-
-export default router;
+export default router
