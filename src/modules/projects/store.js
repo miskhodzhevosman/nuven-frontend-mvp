@@ -16,7 +16,7 @@ export const useProjectsStore = defineStore('projects', {
     clientPayments: [],
     factoryPayments: [],
     projectExpenses: [],
-    expenseTypes: [], // Добавляем список типов расходов
+    expenseTypes: [],
 
     count: 0,
     next: null,
@@ -48,7 +48,6 @@ export const useProjectsStore = defineStore('projects', {
       const f = state.factories.find((x) => x.id === Number(id))
       return f ? f.name : `#${id}`
     },
-    // Геттер для получения списка имен типов расходов (для автодополнения)
     expenseTypeNames: (state) => {
       return state.expenseTypes.map(t => t.name)
     },
@@ -254,10 +253,33 @@ export const useProjectsStore = defineStore('projects', {
       }
     },
 
-    // ---- Fetch expense types (типы расходов) ----
+    // ---- CRUD для клиентов (Counterparty) ----
+    async createCounterparty(payload) {
+      try {
+        const created = await projectsApi.createCounterparty(payload)
+        this.clients.unshift(created)
+        return created
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    // ---- CRUD для менеджеров (TechnicalManager) ----
+    async createTechnicalManager(payload) {
+      try {
+        const created = await projectsApi.createTechnicalManager(payload)
+        this.managers.unshift(created)
+        return created
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    // ---- Fetch expense types ----
     async fetchExpenseTypes() {
       try {
-        // Получаем все типы операций с кодом PROJECT_EXPENSE
         const data = await projectsApi.getFinanceOperationTypes({ code: 'project_expense' })
         this.expenseTypes = data.results ?? data ?? []
       } catch (e) {

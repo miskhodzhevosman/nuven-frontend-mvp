@@ -82,7 +82,7 @@ export const projectsApi = {
     await api.delete(`${CRM}/technical-managers/${id}/`)
   },
 
-  // ---- Counterparties (клиенты для select в проекте) ----
+  // ---- Counterparties ----
   async getCounterparties(params = {}) {
     const res = await api.get(`${CRM}/counterparties/`, { params })
     return res.data
@@ -120,7 +120,7 @@ export const projectsApi = {
     await api.delete(`${SUPPLIES}/nomenclatures/${id}/`)
   },
 
-  // ---- Supplies: factories (контрагенты типа FACTORY) ----
+  // ---- Supplies: factories ----
   async getFactories(params = {}) {
     const res = await api.get(`${SUPPLIES}/factories/`, { params })
     return res.data
@@ -137,7 +137,7 @@ export const projectsApi = {
     await api.delete(`${SUPPLIES}/factories/${id}/`)
   },
 
-  // ---- Supplies: locations (для select локации проекта) ----
+  // ---- Supplies: locations ----
   async getLocations(params = {}) {
     const res = await api.get(`${SUPPLIES}/locations/`, { params })
     return res.data
@@ -147,13 +147,13 @@ export const projectsApi = {
     return unwrap(res)
   },
 
-  // ---- Finance: типы операций (исправленный URL) ----
+  // ---- Finance: типы операций ----
   async getFinanceOperationTypes(params = {}) {
     const res = await api.get(`/finance/operation-types/`, { params })
     return res.data
   },
 
-  // ---- Finance: платежи и расходы по проекту (делегируем в financeApi) ----
+  // ---- Finance: платежи и расходы по проекту ----
   getClientPayments: (params) => financeApi.getClientPayments(params),
   createClientPayment: (payload) => financeApi.createClientPayment(payload),
   getFactoryPayments: (params) => financeApi.getFactoryPayments(params),
