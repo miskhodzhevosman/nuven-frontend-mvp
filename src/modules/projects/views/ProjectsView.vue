@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '../store'
@@ -7,6 +7,44 @@ import { useProjectsStore } from '../store'
 const router = useRouter()
 const store = useProjectsStore()
 const { projects, loading, error, count, statuses, clients, managers, locations } = storeToRefs(store)
+
+// Фильтр по статусу
+const selectedStatusId = ref(null)
+
+// Computed - фильтруем проекты по статусу и сортируем
+const filteredProjects = computed(() => {
+  let result = [...projects.value]
+  
+  // Фильтр по статусу
+  if (selectedStatusId.value) {
+    result = result.filter(p => p.status === Number(selectedStatusId.value))
+  }
+  
+  // Сортировка: сначала новые (по created_at или updated_at)
+  result.sort((a, b) => {
+    const dateA = new Date(a.updated_at || a.created_at)
+    const dateB = new Date(b.updated_at || b.created_at)
+    return dateB - dateA // от новых к старым
+  })
+  
+  return result
+})
+
+// Computed - статусы с количеством проектов
+const statusesWithCount = computed(() => {
+  if (!statuses.value) return []
+  return statuses.value.map(status => ({
+    ...status,
+    count: projects.value.filter(p => p.status === status.id).length
+  }))
+})
+
+// Computed - количество активных фильтров
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (selectedStatusId.value) count++
+  return count
+})
 
 // Computed - фильтруем клиентов только с типом CLIENT
 const filteredClients = computed(() => {
@@ -45,7 +83,7 @@ const clientForm = reactive({
   address: '',
 })
 
-// Manager form - исправлено: contacts вместо email и phone
+// Manager form
 const managerForm = reactive({
   full_name: '',
   contacts: '',
@@ -126,6 +164,19 @@ const selectLocation = (location) => {
   showLocationSuggestions.value = false
 }
 
+// Filter methods
+function selectStatus(statusId) {
+  if (selectedStatusId.value === statusId) {
+    selectedStatusId.value = null // Снимаем фильтр при повторном клике
+  } else {
+    selectedStatusId.value = statusId
+  }
+}
+
+function clearFilters() {
+  selectedStatusId.value = null
+}
+
 // Open create project modal
 function openCreateProject() {
   resetForm()
@@ -198,7 +249,7 @@ async function submitCreateClient() {
   }
 }
 
-// Manager CRUD - исправлено: передаем только full_name и contacts
+// Manager CRUD
 function openCreateManager() {
   resetManagerForm()
   showCreateManagerForm.value = true
@@ -259,8 +310,40 @@ function open(id) {
       <strong>Ошибка:</strong> <span>{{ error }}</span>
     </div>
 
+    <!-- Фильтры по статусам в виде плиток -->
+    <div v-if="statusesWithCount.length" class="status-filters">
+      <div class="status-filters-header">
+        <span class="status-filters-title">Фильтр по статусу:</span>
+        <button v-if="activeFilterCount > 0" class="btn btn-ghost btn-sm" @click="clearFilters">
+          ✕ Сбросить фильтр
+        </button>
+      </div>
+      <div class="status-tiles">
+        <div 
+          v-for="status in statusesWithCount" 
+          :key="status.id"
+          class="status-tile"
+          :class="{ active: selectedStatusId === status.id, disabled: status.count === 0 }"
+          @click="status.count > 0 && selectStatus(status.id)"
+        >
+          <span class="status-name">{{ status.name }}</span>
+          <span class="status-count">{{ status.count }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Информация о фильтре -->
+    <div v-if="selectedStatusId" class="filter-info">
+      <span>Показаны проекты со статусом: 
+        <strong>{{ statuses.find(s => s.id === selectedStatusId)?.name }}</strong>
+      </span>
+      <span class="filter-info-count">({{ filteredProjects.length }} проектов)</span>
+    </div>
+
     <div v-if="loading && !projects.length" class="state">Загрузка…</div>
-    <div v-else-if="!projects.length && !error" class="state muted">Нет проектов.</div>
+    <div v-else-if="!filteredProjects.length && !error" class="state muted">
+      {{ selectedStatusId ? 'Нет проектов с выбранным статусом.' : 'Нет проектов.' }}
+    </div>
 
     <div v-else class="table-wrap">
       <table class="table">
@@ -276,11 +359,15 @@ function open(id) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in projects" :key="p.id" @click="open(p.id)" class="clickable">
+          <tr v-for="p in filteredProjects" :key="p.id" @click="open(p.id)" class="clickable">
             <td>{{ p.id }}</td>
             <td>{{ p.name }}</td>
             <td>{{ store.clientName(p.client) }}</td>
-            <td>{{ store.statusName(p.status) }}</td>
+            <td>
+              <span class="status-badge" :style="{ backgroundColor: p.status_color || '#e5e7eb' }">
+                {{ store.statusName(p.status) }}
+              </span>
+            </td>
             <td>{{ p.full_location_name || '—' }}</td>
             <td>{{ p.created_at?.slice(0, 10) }}</td>
             <td class="actions"><button class="btn btn-ghost" @click.stop="open(p.id)">Открыть →</button></td>
@@ -409,7 +496,7 @@ function open(id) {
       </div>
     </div>
 
-    <!-- Модалка: Создание менеджера - исправлено -->
+    <!-- Модалка: Создание менеджера -->
     <div v-if="showCreateManagerForm" class="modal-backdrop" @click.self="closeCreateManagerForm">
       <div class="modal modal-sm">
         <h2>Новый технический менеджер</h2>
@@ -438,11 +525,114 @@ function open(id) {
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
 .page-header h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; }
 .muted { color: #6b7280; font-size: 14px; }
-.hint { display: block; margin-top: 4px; font-size: 12px; color: #6b7280; }
-.hint.success { color: #28a745; }
 .alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
 .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .state { padding: 32px; text-align: center; }
+
+/* Status filters */
+.status-filters {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.status-filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.status-filters-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.status-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  user-select: none;
+}
+
+.status-tile:hover:not(.disabled) {
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.status-tile.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-tile.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-tile .status-name {
+  font-weight: 500;
+}
+
+.status-tile .status-count {
+  background: #f1f5f9;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.status-tile.active .status-count {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Filter info */
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #eff6ff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.filter-info-count {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* Status badge in table */
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
 .table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
@@ -452,7 +642,7 @@ function open(id) {
 .actions { white-space: nowrap; }
 
 .btn { border: 1px solid transparent; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
-.btn-sm { padding: 4px 10px; font-size: 16px; line-height: 1; min-width: 32px; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .btn-primary { background: #2563eb; color: #fff; }
 .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
@@ -461,6 +651,9 @@ function open(id) {
 
 .row { display: flex; gap: 8px; align-items: center; }
 .row > select { flex: 1; }
+
+.hint { display: block; margin-top: 4px; font-size: 12px; color: #6b7280; }
+.hint.success { color: #28a745; }
 
 /* Combobox styles */
 .combobox-wrapper {
