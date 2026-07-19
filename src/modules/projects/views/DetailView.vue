@@ -200,6 +200,14 @@ const editProjectForm = reactive({
 })
 const editFormRef = ref(null)
 
+function getProfitClass(value) {
+  if (value === null || value === undefined) return ''
+  const num = Number(value)
+  if (num > 0) return 'positive'
+  if (num < 0) return 'negative'
+  return ''
+}
+
 // Location autocomplete state for edit form
 const editLocationSearch = ref('')
 const editShowLocationSuggestions = ref(false)
@@ -666,7 +674,7 @@ watch(projectId, loadAll)
 <template>
   <section class="page">
     <div class="topbar">
-      <button class="btn btn-ghost" @click="router.push({ name: 'projects-list' })">← Назад к проектам</button>
+      <button class="btn btn-ghost" @click="router.push({ name: 'projects' })">← Назад к проектам</button>
       <button class="btn btn-primary" @click="openEditProject">✎ Редактировать проект</button>
     </div>
 
@@ -690,119 +698,181 @@ watch(projectId, loadAll)
         </div>
       </section>
 
-      <!-- Позиции проекта -->
-      <section class="card">
-        <div class="card-header">
-          <h2>Позиции проекта</h2>
-          <button class="btn btn-primary" @click="openCreateItem">+ Добавить позицию</button>
-        </div>
+      <!-- Финансовый отчет - Правая колонка -->
+<div class="main-layout">
+  <!-- Левая колонка -->
+  <div class="left-column">
+    <!-- Позиции проекта -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Позиции проекта</h2>
+        <button class="btn btn-primary" @click="openCreateItem">+ Добавить позицию</button>
+      </div>
 
-        <div v-if="!projectItems.length" class="state muted">Нет позиций.</div>
-        <div v-else class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Товар</th>
-                <th class="num">Кол-во</th>
-                <th class="num">Себест.</th>
-                <th class="num">Продажа</th>
-                <th>Фабрика</th>
-                <th class="actions">Операции</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in projectItems" :key="item.id">
-                <td>{{ store.nomenclatureName(item.nomenclature) }}</td>
-                <td class="num">{{ item.quantity }}</td>
-                <td class="num">{{ formatAmount(item.fixed_cost_price) }}</td>
-                <td class="num">{{ formatAmount(item.fixed_sale_price) }}</td>
-                <td>{{ store.factoryName(nomenclatureFactoryId(item)) }}</td>
-                <td class="actions">
-                  <button class="btn btn-ghost" @click="openEditItem(item)">Редактировать</button>
-                  <button class="btn btn-danger" @click="confirmDeleteItemId = item.id">Удалить</button>
-                  <button class="btn btn-pay" @click="openPayFactory(item)">Оплатить</button>
-                  <span v-if="confirmDeleteItemId === item.id" class="confirm">
-                    Точно?
-                    <button class="btn btn-danger" @click="deleteItem(item.id)">Да</button>
-                    <button class="btn btn-ghost" @click="confirmDeleteItemId = null">Нет</button>
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div v-if="!projectItems.length" class="state muted">Нет позиций.</div>
+      <div v-else class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Товар</th>
+              <th class="num">Кол-во</th>
+              <th class="num">Себест.</th>
+              <th class="num">Продажа</th>
+              <th>Фабрика</th>
+              <th class="actions">Операции</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in projectItems" :key="item.id">
+              <td>{{ store.nomenclatureName(item.nomenclature) }}</td>
+              <td class="num">{{ item.quantity }}</td>
+              <td class="num">{{ formatAmount(item.fixed_cost_price) }}</td>
+              <td class="num">{{ formatAmount(item.fixed_sale_price) }}</td>
+              <td>{{ store.factoryName(nomenclatureFactoryId(item)) }}</td>
+              <td class="actions">
+                <button class="btn btn-ghost" @click="openEditItem(item)">Редактировать</button>
+                <button class="btn btn-danger" @click="confirmDeleteItemId = item.id">Удалить</button>
+                <button class="btn btn-pay" @click="openPayFactory(item)">Оплатить</button>
+                <span v-if="confirmDeleteItemId === item.id" class="confirm">
+                  Точно?
+                  <button class="btn btn-danger" @click="deleteItem(item.id)">Да</button>
+                  <button class="btn btn-ghost" @click="confirmDeleteItemId = null">Нет</button>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-      <!-- Проектные расходы -->
-      <section class="card">
-        <div class="card-header">
-          <h2>Проектные расходы</h2>
-          <button class="btn btn-primary" @click="openProjectExpense">+ Добавить расход</button>
-        </div>
-        <div v-if="!projectExpenses.length" class="state muted">Нет расходов.</div>
-        <div v-else class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr><th>Дата</th><th class="num">Сумма</th><th>Тип расхода</th><th>Комментарий</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="e in projectExpenses" :key="e.id">
-                <td>{{ formatDate(e.date) }}</td>
-                <td class="num">{{ formatAmount(e.amount) }}</td>
-                <td>{{ e.operation_type_name || e.finance_operation_type || '—' }}</td>
-                <td>{{ e.comment || '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+    <!-- Проектные расходы -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Проектные расходы</h2>
+        <button class="btn btn-primary" @click="openProjectExpense">+ Добавить расход</button>
+      </div>
+      <div v-if="!projectExpenses.length" class="state muted">Нет расходов.</div>
+      <div v-else class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Дата</th><th class="num">Сумма</th><th>Тип расхода</th><th>Комментарий</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="e in projectExpenses" :key="e.id">
+              <td>{{ formatDate(e.date) }}</td>
+              <td class="num">{{ formatAmount(e.amount) }}</td>
+              <td>{{ e.operation_type_name || e.finance_operation_type || '—' }}</td>
+              <td>{{ e.comment || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-      <!-- Оплаты клиентов -->
-      <section class="card">
-        <div class="card-header">
-          <h2>Оплаты клиентов</h2>
-          <button class="btn btn-primary" @click="openClientPayment">+ Добавить оплату</button>
-        </div>
-        <div v-if="!clientPayments.length" class="state muted">Нет оплат.</div>
-        <div v-else class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in clientPayments" :key="p.id">
-                <td>{{ formatDate(p.date) }}</td>
-                <td class="num">{{ formatAmount(p.amount) }}</td>
-                <td>{{ p.counterparty ?? '—' }}</td>
-                <td>{{ p.comment || '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+    <!-- Оплаты клиентов -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Оплаты клиентов</h2>
+        <button class="btn btn-primary" @click="openClientPayment">+ Добавить оплату</button>
+      </div>
+      <div v-if="!clientPayments.length" class="state muted">Нет оплат.</div>
+      <div v-else class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in clientPayments" :key="p.id">
+              <td>{{ formatDate(p.date) }}</td>
+              <td class="num">{{ formatAmount(p.amount) }}</td>
+              <td>{{ p.counterparty ?? '—' }}</td>
+              <td>{{ p.comment || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-      <!-- Оплаты фабрикам -->
-      <section class="card">
-        <div class="card-header">
-          <h2>Оплаты фабрикам</h2>
+    <!-- Оплаты фабрикам -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Оплаты фабрикам</h2>
+      </div>
+      <div v-if="!factoryPayments.length" class="state muted">Нет оплат.</div>
+      <div v-else class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in factoryPayments" :key="p.id">
+              <td>{{ formatDate(p.date) }}</td>
+              <td class="num">{{ formatAmount(p.amount) }}</td>
+              <td>{{ p.counterparty ?? '—' }}</td>
+              <td>{{ p.comment || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Правая колонка - Финансовый отчет -->
+  <div class="right-column">
+    <section class="report-card">
+      <h2>📊 Финансовый отчет</h2>
+      <div v-if="financeStore.loading" class="state muted">Загрузка…</div>
+      <div v-else-if="projectReport" class="report-grid">
+        <div class="report-item">
+          <span class="report-label">Себестоимость</span>
+          <span class="report-value">{{ formatCurrency(projectReport.cogs) }}</span>
         </div>
-        <div v-if="!factoryPayments.length" class="state muted">Нет оплат.</div>
-        <div v-else class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in factoryPayments" :key="p.id">
-                <td>{{ formatDate(p.date) }}</td>
-                <td class="num">{{ formatAmount(p.amount) }}</td>
-                <td>{{ p.counterparty ?? '—' }}</td>
-                <td>{{ p.comment || '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="report-item">
+          <span class="report-label">Валовая прибыль</span>
+          <span class="report-value" :class="getProfitClass(projectReport.grossProfit)">
+            {{ formatCurrency(projectReport.grossProfit) }}
+          </span>
         </div>
-      </section>
+        <div class="report-item">
+          <span class="report-label">Маржа</span>
+          <span class="report-value gold">{{ formatPercent(projectReport.margin) }}</span>
+        </div>
+        <hr class="report-divider" />
+        <div class="report-item">
+          <span class="report-label">Получено от клиента</span>
+          <span class="report-value positive">{{ formatCurrency(projectReport.clientReceived) }}</span>
+        </div>
+        <div class="report-item">
+          <span class="report-label">Дебиторская задолженность</span>
+          <span class="report-value">{{ formatCurrency(projectReport.accountsReceivable) }}</span>
+        </div>
+        <hr class="report-divider" />
+        <div class="report-item">
+          <span class="report-label">Оплачено фабрикам</span>
+          <span class="report-value negative">{{ formatCurrency(projectReport.factoryPaid) }}</span>
+        </div>
+        <div class="report-item">
+          <span class="report-label">Кредиторская задолженность</span>
+          <span class="report-value">{{ formatCurrency(projectReport.accountsPayable) }}</span>
+        </div>
+        <hr class="report-divider" />
+        <div class="report-item">
+          <span class="report-label">Расходы</span>
+          <span class="report-value negative">{{ formatCurrency(projectReport.projectExpenses) }}</span>
+        </div>
+        <div class="report-item total">
+          <span class="report-label">Чистая прибыль</span>
+          <span class="report-value" :class="getProfitClass(projectReport.netProfit)">
+            {{ formatCurrency(projectReport.netProfit) }}
+          </span>
+        </div>
+      </div>
+      <div v-else class="state muted">Нет данных</div>
+    </section>
+  </div>
+</div>
+
+
     </template>
 
     <!-- Модалка: позиция проекта -->
