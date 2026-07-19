@@ -40,6 +40,21 @@ export const useFinanceStore = defineStore('finance', {
       }
     },
 
+    // Добавьте этот метод в actions
+    async fetchProjectReport(projectId) {
+      this.loading = true
+      this.error = null
+      try {
+        this.report = await financeApi.getProjectReport(projectId)
+        return this.report
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
     async fetchTransactions(params = {}) {
       this.loading = true
       this.error = null

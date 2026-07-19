@@ -3,13 +3,74 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '../store'
+import { useFinanceStore } from '@/modules/finance/store'
 
 const route = useRoute()
 const router = useRouter()
 const store = useProjectsStore()
-const { currentProject, projectItems, clientPayments, factoryPayments, projectExpenses, loading, error, statuses, clients, managers, locations } = storeToRefs(store)
+const financeStore = useFinanceStore()
+
+const { currentProject, projectItems, clientPayments, factoryPayments, projectExpenses, loading, error } = storeToRefs(store)
+const { report: financeReport } = storeToRefs(financeStore)
 
 const projectId = computed(() => Number(route.params.id))
+
+// --- Computed for finance report ---
+const projectReport = computed(() => {
+  if (!financeReport.value) return null
+  
+  const report = financeReport.value
+  
+  // Плановые показатели
+  const plannedRevenue = report.planned?.revenue || 0
+  const plannedCogs = report.planned?.cogs || 0
+  const plannedGrossProfit = report.planned?.gross_profit || 0
+  const plannedMargin = report.planned?.margin || 0
+  
+  // Фактические показатели
+  const factClientReceived = report.fact?.client_received || 0
+  const factFactoryPaid = report.fact?.factory_paid || 0
+  const factProjectExpenses = report.fact?.project_expenses || 0
+  
+  // Cashflow
+  const accountsReceivable = report.cashflow?.accounts_receivable || 0
+  const accountsPayable = report.cashflow?.accounts_payable || 0
+  
+  // Чистая прибыль
+  const netProfit = report.net_profit || 0
+  
+  return {
+    // Себестоимость (COGS)
+    cogs: plannedCogs,
+    
+    // Валовая прибыль
+    grossProfit: plannedGrossProfit,
+    
+    // Маржа
+    margin: plannedMargin,
+    
+    // Получено от клиента
+    clientReceived: factClientReceived,
+    
+    // Дебиторская задолженность
+    accountsReceivable: accountsReceivable,
+    
+    // Оплачено фабрикам
+    factoryPaid: factFactoryPaid,
+    
+    // Кредиторская задолженность
+    accountsPayable: accountsPayable,
+    
+    // Расходы проекта
+    projectExpenses: factProjectExpenses,
+    
+    // Чистая прибыль
+    netProfit: netProfit,
+    
+    // Выручка (для расчета)
+    revenue: plannedRevenue,
+  }
+})
 
 // --- Modals ---
 const showItemForm = ref(false)
@@ -21,7 +82,7 @@ const payingItem = ref(null)
 const showProjectExpenseForm = ref(false)
 const showClientPaymentForm = ref(false)
 const confirmDeleteItemId = ref(null)
-const showEditProjectForm = ref(false) // Modal for editing project
+const showEditProjectForm = ref(false)
 
 // --- Forms ---
 const emptyItemForm = () => ({
@@ -91,13 +152,13 @@ const selectedExpenseType = ref(null)
 
 // --- Computed for edit form ---
 const editFilteredClients = computed(() => {
-  if (!clients.value) return []
-  return clients.value.filter(c => c.type === 'CLIENT')
+  if (!store.clients) return []
+  return store.clients.filter(c => c.type === 'CLIENT')
 })
 
 const editFilteredLocations = computed(() => {
-  if (!locations.value) return []
-  return locations.value.filter(l => l.type === 'CITY')
+  if (!store.locations) return []
+  return store.locations.filter(l => l.type === 'CITY')
 })
 
 const editFilteredLocationSuggestions = computed(() => {
@@ -114,6 +175,19 @@ function formatAmount(v) {
   const n = Number(v)
   return Number.isFinite(n) ? n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v)
 }
+
+function formatCurrency(v) {
+  if (v === null || v === undefined || v === '') return '—'
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v)
+}
+
+function formatPercent(v) {
+  if (v === null || v === undefined || v === '') return '—'
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toFixed(2) + '%' : String(v)
+}
+
 function formatDate(d) { return d ? d.slice(0, 10) : '—' }
 function nomenclatureFactoryId(item) {
   const n = store.nomenclatureById(item.nomenclature)
@@ -397,7 +471,6 @@ async function submitClientPayment() {
 function openEditProject() {
   if (!currentProject.value) return
   
-  // Заполняем форму данными текущего проекта
   editProjectForm.name = currentProject.value.name || ''
   editProjectForm.client = currentProject.value.client || ''
   editProjectForm.status = currentProject.value.status || ''
@@ -405,9 +478,8 @@ function openEditProject() {
   editProjectForm.location = currentProject.value.location || ''
   editProjectForm.full_location_name = currentProject.value.full_location_name || ''
   
-  // Устанавливаем локацию для autocomplete
   if (currentProject.value.location) {
-    const loc = locations.value.find(l => l.id === currentProject.value.location)
+    const loc = store.locations.find(l => l.id === currentProject.value.location)
     if (loc) {
       editSelectedLocation.value = loc
       editLocationSearch.value = loc.name
@@ -442,7 +514,6 @@ async function submitEditProject() {
   try {
     await store.updateProject(projectId.value, payload)
     closeEditProjectForm()
-    // Перезагружаем проект
     await store.fetchProject(projectId.value)
   } catch (e) {
     console.error('Failed to update project:', e)
@@ -468,6 +539,8 @@ async function loadAll() {
       store.fetchFactoryPayments(projectId.value),
       store.fetchProjectExpenses(projectId.value),
     ])
+    // Загружаем финансовый отчет
+    await financeStore.fetchProjectReport(projectId.value)
   } catch {}
 }
 
@@ -500,6 +573,53 @@ watch(projectId, loadAll)
           <div><span class="label">Создан</span><span>{{ formatDate(currentProject.created_at) }}</span></div>
           <div><span class="label">Обновлен</span><span>{{ formatDate(currentProject.updated_at) }}</span></div>
         </div>
+      </section>
+
+      <!-- Финансовый отчет -->
+      <section class="card">
+        <h2>Финансовый отчет</h2>
+        <div v-if="financeStore.loading" class="state muted">Загрузка отчета…</div>
+        <div v-else-if="projectReport" class="report-grid">
+          <div class="report-item">
+            <span class="report-label">Себестоимость</span>
+            <span class="report-value">{{ formatCurrency(projectReport.cogs) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Валовая прибыль</span>
+            <span class="report-value">{{ formatCurrency(projectReport.grossProfit) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Маржа</span>
+            <span class="report-value">{{ formatPercent(projectReport.margin) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Получено от клиента</span>
+            <span class="report-value positive">{{ formatCurrency(projectReport.clientReceived) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Дебиторская задолженность</span>
+            <span class="report-value">{{ formatCurrency(projectReport.accountsReceivable) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Оплачено фабрикам</span>
+            <span class="report-value negative">{{ formatCurrency(projectReport.factoryPaid) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Кредиторская задолженность</span>
+            <span class="report-value">{{ formatCurrency(projectReport.accountsPayable) }}</span>
+          </div>
+          <div class="report-item">
+            <span class="report-label">Расходы</span>
+            <span class="report-value negative">{{ formatCurrency(projectReport.projectExpenses) }}</span>
+          </div>
+          <div class="report-item total">
+            <span class="report-label">Чистая прибыль</span>
+            <span class="report-value" :class="{ positive: projectReport.netProfit > 0, negative: projectReport.netProfit < 0 }">
+              {{ formatCurrency(projectReport.netProfit) }}
+            </span>
+          </div>
+        </div>
+        <div v-else class="state muted">Нет данных для отчета</div>
       </section>
 
       <!-- Позиции проекта -->
@@ -617,6 +737,7 @@ watch(projectId, loadAll)
       </section>
     </template>
 
+    <!-- Модалки (остаются без изменений) -->
     <!-- Модалка: позиция проекта -->
     <div v-if="showItemForm" class="modal-backdrop" @click.self="closeItemForm">
       <div class="modal">
@@ -880,7 +1001,7 @@ watch(projectId, loadAll)
             <span>Статус</span>
             <select v-model="editProjectForm.status">
               <option value="">— не выбран —</option>
-              <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
+              <option v-for="s in store.statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
           
@@ -888,7 +1009,7 @@ watch(projectId, loadAll)
             <span>Технический менеджер</span>
             <select v-model="editProjectForm.tech_manager">
               <option value="">— не выбран —</option>
-              <option v-for="m in managers" :key="m.id" :value="m.id">{{ m.full_name || m.name }}</option>
+              <option v-for="m in store.managers" :key="m.id" :value="m.id">{{ m.full_name || m.name }}</option>
             </select>
           </label>
           
@@ -947,46 +1068,373 @@ watch(projectId, loadAll)
 </template>
 
 <style scoped>
-.page { max-width: 1100px; margin: 0 auto; padding: 24px; color: #1f2937; }
-.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
-h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
-.muted { color: #6b7280; font-size: 14px; }
-.alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
-.alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-.state { padding: 24px; text-align: center; }
+/*
+ * ============================================
+ * Стили для страницы деталей проекта (project-detail.vue)
+ * Цветовая схема: #16181C (фон), #C9A86A (золото), #D0D2D5 (текст)
+ * ============================================
+ */
 
-.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-.card h2 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-.card-header h2 { margin: 0; }
+/* ============================================
+   ОСНОВНЫЕ СТИЛИ
+   ============================================ */
+* {
+  box-sizing: border-box;
+}
 
-.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.info-grid > div { display: flex; flex-direction: column; gap: 2px; }
-.label { font-size: 12px; color: #6b7280; font-weight: 500; }
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #16181C;
+  color: #D0D2D5;
+  min-height: 100vh;
+}
 
-.table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
-.table th { background: #f8fafc; font-weight: 600; color: #475569; }
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-.actions { white-space: nowrap; }
+/* ============================================
+   ТОПБАР
+   ============================================ */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(201, 168, 106, 0.2);
+}
 
-.btn { border: 1px solid transparent; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
-.btn:disabled { opacity: .6; cursor: not-allowed; }
-.btn-primary { background: #2563eb; color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.btn-ghost { background: transparent; color: #334155; border-color: #cbd5e1; }
-.btn-ghost:hover { background: #f1f5f9; }
-.btn-danger { background: #ef4444; color: #fff; }
-.btn-danger:hover { background: #dc2626; }
-.btn-pay { background: #059669; color: #fff; }
-.btn-pay:hover { background: #047857; }
-.confirm { margin-left: 8px; display: inline-flex; gap: 4px; align-items: center; }
+/* ============================================
+   ЗАГОЛОВКИ
+   ============================================ */
+h1 {
+  margin: 0 0 20px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #C9A86A;
+}
 
-.row { display: flex; gap: 8px; align-items: center; }
-.row > select { flex: 1; }
+h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #C9A86A;
+}
 
-/* Combobox styles */
+/* ============================================
+   ТЕКСТОВЫЕ УТИЛИТЫ
+   ============================================ */
+.muted {
+  color: rgba(208, 210, 213, 0.6);
+  font-size: 14px;
+}
+
+/* ============================================
+   АЛЕРТЫ / ОШИБКИ
+   ============================================ */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.alert-error {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.alert-error strong {
+  color: #ef4444;
+}
+
+.state {
+  padding: 24px;
+  text-align: center;
+  color: rgba(208, 210, 213, 0.5);
+}
+
+/* ============================================
+   ОСНОВНОЙ МАКЕТ - ДВЕ КОЛОНКИ
+   ============================================ */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 24px;
+}
+
+/* ============================================
+   КАРТОЧКИ (ОБЩИЙ СТИЛЬ)
+   ============================================ */
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(208, 210, 213, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-header h2 {
+  margin: 0;
+}
+
+/* ============================================
+   ИНФОРМАЦИЯ О ПРОЕКТЕ (СЕТКА)
+   ============================================ */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.info-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label {
+  font-size: 12px;
+  color: rgba(208, 210, 213, 0.5);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-grid > div span:last-child {
+  color: #D0D2D5;
+  font-weight: 500;
+}
+
+/* ============================================
+   ФИНАНСОВЫЙ ОТЧЕТ (ПРАВАЯ КОЛОНКА)
+   ============================================ */
+.report-card {
+  background: rgba(201, 168, 106, 0.06);
+  border: 1px solid rgba(201, 168, 106, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.report-card h2 {
+  color: #C9A86A;
+  margin-bottom: 16px;
+}
+
+.report-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(208, 210, 213, 0.06);
+  transition: background 0.2s;
+}
+
+.report-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.report-item.total {
+  background: rgba(201, 168, 106, 0.1);
+  border-color: rgba(201, 168, 106, 0.3);
+  margin-top: 4px;
+}
+
+.report-label {
+  font-size: 13px;
+  color: rgba(208, 210, 213, 0.7);
+  font-weight: 400;
+}
+
+.report-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #D0D2D5;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-value.positive {
+  color: #4ade80;
+}
+
+.report-value.negative {
+  color: #f87171;
+}
+
+.report-value.gold {
+  color: #C9A86A;
+}
+
+.report-divider {
+  border: none;
+  border-top: 1px solid rgba(201, 168, 106, 0.15);
+  margin: 8px 0;
+}
+
+/* ============================================
+   ТАБЛИЦЫ
+   ============================================ */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(208, 210, 213, 0.08);
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #D0D2D5;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.06);
+  white-space: nowrap;
+}
+
+.table th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  color: rgba(208, 210, 213, 0.7);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+/* ============================================
+   КНОПКИ
+   ============================================ */
+.btn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #C9A86A;
+  color: #16181C;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #d4b87a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #D0D2D5;
+  border-color: rgba(208, 210, 213, 0.2);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(208, 210, 213, 0.3);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.btn-pay {
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.15);
+}
+
+.btn-pay:hover {
+  background: rgba(74, 222, 128, 0.2);
+}
+
+.confirm {
+  margin-left: 8px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: #D0D2D5;
+}
+
+/* ============================================
+   ROW (для полей с кнопкой "+")
+   ============================================ */
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row > select {
+  flex: 1;
+}
+
+/* ============================================
+   AUTOCOMPLETE / COMBOBOX
+   ============================================ */
 .combobox-wrapper {
   position: relative;
   display: flex;
@@ -997,17 +1445,24 @@ h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
   flex: 1;
   padding-right: 30px;
   width: 100%;
-  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(208, 210, 213, 0.15);
   border-radius: 8px;
   padding: 8px 30px 8px 10px;
   font-size: 14px;
   font-family: inherit;
+  color: #D0D2D5;
+  transition: border-color 0.2s;
+}
+
+.combobox-wrapper input::placeholder {
+  color: rgba(208, 210, 213, 0.3);
 }
 
 .combobox-wrapper input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.15);
 }
 
 .combobox-toggle {
@@ -1018,11 +1473,12 @@ h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
   cursor: pointer;
   padding: 4px 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(208, 210, 213, 0.5);
+  transition: color 0.2s;
 }
 
 .combobox-toggle:hover {
-  color: #374151;
+  color: #C9A86A;
 }
 
 .combobox-suggestions {
@@ -1032,14 +1488,14 @@ h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
   right: 0;
   max-height: 200px;
   overflow-y: auto;
-  background: white;
-  border: 1px solid #cbd5e1;
+  background: #1e2126;
+  border: 1px solid rgba(208, 210, 213, 0.1);
   border-radius: 8px;
   margin: 4px 0 0 0;
-  padding: 0;
+  padding: 4px 0;
   list-style: none;
   z-index: 1000;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .combobox-suggestions li {
@@ -1047,27 +1503,587 @@ h1 { margin: 0 0 20px; font-size: 24px; font-weight: 600; }
   cursor: pointer;
   transition: background 0.15s;
   font-size: 14px;
+  color: #D0D2D5;
 }
 
 .combobox-suggestions li:hover {
-  background: #f3f4f6;
+  background: rgba(201, 168, 106, 0.1);
 }
 
 .combobox-suggestions li:not(:last-child) {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.05);
 }
 
-.hint { display: block; margin-top: 4px; font-size: 12px; color: #6b7280; }
-.hint.success { color: #28a745; }
+.combobox-suggestions .combobox-create-new {
+  color: #C9A86A;
+  font-weight: 500;
+  border-top: 1px solid rgba(201, 168, 106, 0.15);
+}
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-.modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0,0,0,.1); max-height: 90vh; overflow-y: auto; }
-.modal h2 { margin: 0 0 16px; font-size: 18px; font-weight: 600; }
-.field { display: block; margin-bottom: 14px; }
-.field span { display: block; margin-bottom: 4px; font-size: 13px; color: #374151; font-weight: 500; }
-.field input, .field select, .field textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
-.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
-.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.combobox-suggestions .combobox-create-new:hover {
+  background: rgba(201, 168, 106, 0.1);
+}
 
-@media (max-width: 640px) { .page { padding: 16px; } }
+/* ============================================
+   ПОДСКАЗКИ (HINT)
+   ============================================ */
+.hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(208, 210, 213, 0.4);
+}
+
+.hint.success {
+  color: #4ade80;
+}
+
+/* ============================================
+   МОДАЛЬНЫЕ ОКНА
+   ============================================ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 24, 28, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+.modal {
+  background: #1e2126;
+  border: 1px solid rgba(201, 168, 106, 0.15);
+  border-radius: 12px;
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #C9A86A;
+}
+
+/* ============================================
+   ПОЛЯ ФОРМ
+   ============================================ */
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: rgba(208, 210, 213, 0.6);
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(208, 210, 213, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #D0D2D5;
+  transition: border-color 0.2s;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(208, 210, 213, 0.3);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.15);
+}
+
+.field select option {
+  background: #1e2126;
+  color: #D0D2D5;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* ============================================
+   ДЕЙСТВИЯ В МОДАЛКЕ
+   ============================================ */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
+@media (max-width: 1024px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .right-column {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .topbar .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .report-grid {
+    gap: 6px;
+  }
+
+  .report-item {
+    padding: 8px 12px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .modal {
+    padding: 20px;
+    max-width: 100%;
+    margin: 8px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
+
+/* ============================================
+   СКРОЛЛБАР (для темной темы)
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 106, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 106, 0.5);
+}
+
+/* ============================================
+   ОСНОВНЫЕ СТИЛИ - РАСШИРЕННАЯ ВЕРСИЯ
+   ============================================ */
+.page {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 20px 24px;
+  background: #16181C;
+  color: #D0D2D5;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* ============================================
+   ОСНОВНОЙ МАКЕТ - ДВЕ КОЛОНКИ С ГИБКОЙ ШИРИНОЙ
+   ============================================ */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  width: 100%;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 24px;
+  min-width: 320px;
+  max-width: 360px;
+}
+
+/* ============================================
+   ТАБЛИЦЫ - С ПРОКРУТКОЙ
+   ============================================ */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(208, 210, 213, 0.08);
+  border-radius: 8px;
+  width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #D0D2D5;
+  min-width: 600px; /* Минимальная ширина для читаемости */
+}
+
+.table th,
+.table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.06);
+  white-space: nowrap;
+}
+
+/* ============================================
+   ИНФОРМАЦИЯ О ПРОЕКТЕ - РАСШИРЕННАЯ СЕТКА
+   ============================================ */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px 20px;
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ ДЛЯ РАЗНЫХ ЭКРАНОВ
+   ============================================ */
+
+/* Для экранов 1400px и шире - максимальная ширина */
+@media (min-width: 1400px) {
+  .page {
+    padding: 24px 40px;
+  }
+  
+  .main-layout {
+    grid-template-columns: 1fr 380px;
+    gap: 32px;
+  }
+  
+  .right-column {
+    min-width: 340px;
+    max-width: 380px;
+  }
+}
+
+/* Для экранов 1200-1400px */
+@media (max-width: 1400px) and (min-width: 1200px) {
+  .page {
+    padding: 20px 32px;
+  }
+  
+  .main-layout {
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+  }
+  
+  .right-column {
+    min-width: 300px;
+    max-width: 340px;
+  }
+}
+
+/* Для экранов 1024-1200px - чуть уже */
+@media (max-width: 1200px) {
+  .page {
+    padding: 16px 24px;
+  }
+  
+  .main-layout {
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+  }
+  
+  .right-column {
+    min-width: 280px;
+    max-width: 320px;
+  }
+  
+  .info-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+/* Для экранов 1024px и меньше - одна колонка */
+@media (max-width: 1024px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .right-column {
+    position: static;
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+  }
+
+  .report-card {
+    margin-top: 0;
+  }
+  
+  .page {
+    padding: 16px;
+  }
+}
+
+/* Для экранов 768px и меньше */
+@media (max-width: 768px) {
+  .page {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 14px;
+  }
+
+  h2 {
+    font-size: 16px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+  }
+
+  .topbar .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .card {
+    padding: 14px;
+    border-radius: 8px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .info-grid > div {
+    padding: 4px 0;
+  }
+
+  .label {
+    font-size: 10px;
+  }
+
+  .info-grid > div span:last-child {
+    font-size: 13px;
+  }
+
+  /* Таблицы */
+  .table-wrap {
+    border-radius: 6px;
+    margin: 0 -4px;
+  }
+
+  .table {
+    font-size: 12px;
+    min-width: 500px;
+  }
+
+  .table th,
+  .table td {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .table th {
+    font-size: 10px;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .actions .btn {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .confirm {
+    font-size: 12px;
+  }
+
+  /* Отчет */
+  .report-card {
+    padding: 14px;
+  }
+
+  .report-item {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .report-label {
+    font-size: 12px;
+  }
+
+  .report-value {
+    font-size: 13px;
+  }
+
+  /* Модалки */
+  .modal {
+    padding: 16px;
+    max-width: 95%;
+    margin: 8px;
+  }
+}
+
+/* Для очень маленьких экранов (480px и меньше) */
+@media (max-width: 480px) {
+  .page {
+    padding: 8px;
+  }
+
+  h1 {
+    font-size: 18px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .info-grid > div {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(208, 210, 213, 0.05);
+  }
+
+  .info-grid > div:last-child {
+    border-bottom: none;
+  }
+
+  .table {
+    font-size: 11px;
+    min-width: 400px;
+  }
+
+  .table th,
+  .table td {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .report-item {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .report-label {
+    font-size: 11px;
+  }
+
+  .report-value {
+    font-size: 12px;
+  }
+
+  .modal {
+    padding: 12px;
+  }
+
+  .field {
+    margin-bottom: 12px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ============================================
+   ДОПОЛНИТЕЛЬНО: СКРЫВАЕМ ЛИШНИЕ ЭЛЕМЕНТЫ НА МАЛЕНЬКИХ ЭКРАНАХ
+   ============================================ */
+@media (max-width: 480px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  .table .hide-on-mobile {
+    display: none !important;
+  }
+}
 </style>

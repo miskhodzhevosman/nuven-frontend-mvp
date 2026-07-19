@@ -203,6 +203,7 @@ async function submitCreateProject() {
     tech_manager: createForm.tech_manager ? Number(createForm.tech_manager) : null,
     location: createForm.location ? Number(createForm.location) : null,
     full_location_name: createForm.full_location_name || '',
+    created_at: createForm.created_at || null, 
   }
   
   try {
@@ -364,7 +365,7 @@ function open(id) {
             <td>{{ p.name }}</td>
             <td>{{ store.clientName(p.client) }}</td>
             <td>
-              <span class="status-badge" :style="{ backgroundColor: p.status_color || '#e5e7eb' }">
+              <span class="status-badge" :style="{ backgroundColor: p.status_color || '#16181C' }">
                 {{ store.statusName(p.status) }}
               </span>
             </td>
@@ -385,6 +386,11 @@ function open(id) {
             <span>Название проекта *</span>
             <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
           </label>
+          <label class="field">
+  <span>Дата создания</span>
+  <input v-model="createForm.created_at" type="datetime-local" />
+  <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
+</label>
           
           <label class="field">
             <span>Клиент</span>
@@ -521,18 +527,46 @@ function open(id) {
 </template>
 
 <style scoped>
-.page { max-width: 1100px; margin: 0 auto; padding: 24px; color: #1f2937; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-.page-header h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; }
-.muted { color: #6b7280; font-size: 14px; }
-.alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
-.alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-.state { padding: 32px; text-align: center; }
 
-/* Status filters */
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #16181C;
+  color: #D0D2D5;
+  min-height: 100vh;
+}
+
+/* ============================================
+   ЗАГОЛОВОК СТРАНИЦЫ
+   ============================================ */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(201, 168, 106, 0.15);
+}
+
+.page-header h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #C9A86A;
+}
+
+.page-header .muted {
+  color: rgba(208, 210, 213, 0.5);
+  font-size: 14px;
+}
+
+/* ============================================
+   ФИЛЬТРЫ ПО СТАТУСАМ (ПЛИТКИ)
+   ============================================ */
 .status-filters {
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: rgba(59, 59, 59, 0.03);
+  border: 1px solid rgba(208, 210, 213, 0.08);
   border-radius: 12px;
   padding: 16px 20px;
   margin-bottom: 20px;
@@ -546,9 +580,11 @@ function open(id) {
 }
 
 .status-filters-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #475569;
+  color: rgba(208, 210, 213, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .status-tiles {
@@ -561,30 +597,33 @@ function open(id) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 6px 16px;
   border-radius: 20px;
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px solid rgba(208, 210, 213, 0.1);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   font-size: 14px;
   user-select: none;
+  color: #D0D2D5;
 }
 
 .status-tile:hover:not(.disabled) {
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-color: rgba(201, 168, 106, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .status-tile.active {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: #C9A86A;
+  background: rgba(201, 168, 106, 0.12);
+  color: #C9A86A;
+  box-shadow: 0 0 20px rgba(201, 168, 106, 0.05);
 }
 
 .status-tile.disabled {
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -593,69 +632,312 @@ function open(id) {
 }
 
 .status-tile .status-count {
-  background: #f1f5f9;
-  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 10px;
   border-radius: 12px;
   font-size: 12px;
-  color: #64748b;
+  color: rgba(208, 210, 213, 0.5);
+  font-weight: 500;
 }
 
 .status-tile.active .status-count {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: rgba(201, 168, 106, 0.15);
+  color: #C9A86A;
 }
 
-/* Filter info */
+/* ============================================
+   ИНФОРМАЦИЯ О ФИЛЬТРЕ
+   ============================================ */
 .filter-info {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #eff6ff;
+  background: rgba(201, 168, 106, 0.06);
+  border: 1px solid rgba(201, 168, 106, 0.15);
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #1e293b;
+  color: #D0D2D5;
+}
+
+.filter-info strong {
+  color: #C9A86A;
 }
 
 .filter-info-count {
-  color: #64748b;
+  color: rgba(208, 210, 213, 0.5);
   font-size: 13px;
 }
 
-/* Status badge in table */
+/* ============================================
+   АЛЕРТЫ / ОШИБКИ
+   ============================================ */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.alert-error {
+  background: rgba(220, 38, 38, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.alert-error strong {
+  color: #f87171;
+}
+
+.state {
+  padding: 40px;
+  text-align: center;
+  color: rgba(208, 210, 213, 0.4);
+  font-size: 16px;
+}
+
+/* ============================================
+   ТАБЛИЦА ПРОЕКТОВ
+   ============================================ */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(208, 210, 213, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #D0D2D5;
+}
+
+.table th,
+.table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.05);
+  white-space: nowrap;
+}
+
+.table th {
+  background: rgba(255, 255, 255, 0.03);
+  font-weight: 600;
+  color: rgba(208, 210, 213, 0.5);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.table tr {
+  transition: background 0.15s;
+}
+
+.table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.table .clickable {
+  cursor: pointer;
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+/* ============================================
+   СТАТУС-БЕЙДЖ В ТАБЛИЦЕ
+   ============================================ */
 .status-badge {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 3px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #1e293b;
+  color: #D0D2D5;
+  background: #16181C;
+  border: 1px solid rgba(208, 210, 213, 0.08);
 }
 
-.table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
-.table th { background: #f8fafc; font-weight: 600; color: #475569; }
-.clickable { cursor: pointer; }
-.clickable:hover { background: #f9fafb; }
-.actions { white-space: nowrap; }
+/* ============================================
+   КНОПКИ
+   ============================================ */
+.btn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 
-.btn { border: 1px solid transparent; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
-.btn-sm { padding: 4px 10px; font-size: 12px; }
-.btn:disabled { opacity: .6; cursor: not-allowed; }
-.btn-primary { background: #2563eb; color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.btn-ghost { background: transparent; color: #334155; border-color: #cbd5e1; }
-.btn-ghost:hover { background: #f1f5f9; }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-.row { display: flex; gap: 8px; align-items: center; }
-.row > select { flex: 1; }
+.btn-primary {
+  background: #C9A86A;
+  color: #16181C;
+}
 
-.hint { display: block; margin-top: 4px; font-size: 12px; color: #6b7280; }
-.hint.success { color: #28a745; }
+.btn-primary:hover:not(:disabled) {
+  background: #d4b87a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(201, 168, 106, 0.3);
+}
 
-/* Combobox styles */
+.btn-ghost {
+  background: transparent;
+  color: #D0D2D5;
+  border-color: rgba(208, 210, 213, 0.15);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(208, 210, 213, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.btn-pay {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.12);
+}
+
+.btn-pay:hover {
+  background: rgba(74, 222, 128, 0.18);
+}
+
+/* ============================================
+   МОДАЛЬНЫЕ ОКНА
+   ============================================ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 24, 28, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: #1e2126;
+  border: 1px solid rgba(201, 168, 106, 0.12);
+  border-radius: 12px;
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #C9A86A;
+}
+
+.modal-sm {
+  max-width: 400px;
+}
+
+/* ============================================
+   ПОЛЯ ФОРМ
+   ============================================ */
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: rgba(208, 210, 213, 0.5);
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(208, 210, 213, 0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #D0D2D5;
+  transition: all 0.2s ease;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(208, 210, 213, 0.25);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.1);
+}
+
+.field select option {
+  background: #1e2126;
+  color: #D0D2D5;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* ============================================
+   ROW (для полей с кнопкой "+")
+   ============================================ */
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row > select {
+  flex: 1;
+}
+
+/* ============================================
+   AUTOCOMPLETE / COMBOBOX
+   ============================================ */
 .combobox-wrapper {
   position: relative;
   display: flex;
@@ -666,17 +948,24 @@ function open(id) {
   flex: 1;
   padding-right: 30px;
   width: 100%;
-  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(208, 210, 213, 0.12);
   border-radius: 8px;
-  padding: 8px 30px 8px 10px;
+  padding: 8px 30px 8px 12px;
   font-size: 14px;
   font-family: inherit;
+  color: #D0D2D5;
+  transition: all 0.2s ease;
+}
+
+.combobox-wrapper input::placeholder {
+  color: rgba(208, 210, 213, 0.25);
 }
 
 .combobox-wrapper input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: #C9A86A;
+  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.1);
 }
 
 .combobox-toggle {
@@ -687,11 +976,12 @@ function open(id) {
   cursor: pointer;
   padding: 4px 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(208, 210, 213, 0.3);
+  transition: color 0.2s;
 }
 
 .combobox-toggle:hover {
-  color: #374151;
+  color: #C9A86A;
 }
 
 .combobox-suggestions {
@@ -701,38 +991,154 @@ function open(id) {
   right: 0;
   max-height: 200px;
   overflow-y: auto;
-  background: white;
-  border: 1px solid #cbd5e1;
+  background: #1e2126;
+  border: 1px solid rgba(208, 210, 213, 0.08);
   border-radius: 8px;
-  margin: 4px 0 0 0;
-  padding: 0;
+  margin: 4px 0 0;
+  padding: 4px 0;
   list-style: none;
-  z-index: 1000;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 101;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .combobox-suggestions li {
-  padding: 8px 12px;
+  padding: 8px 14px;
   cursor: pointer;
   transition: background 0.15s;
   font-size: 14px;
+  color: #D0D2D5;
 }
 
 .combobox-suggestions li:hover {
-  background: #f3f4f6;
+  background: rgba(201, 168, 106, 0.08);
 }
 
 .combobox-suggestions li:not(:last-child) {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.04);
 }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-.modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0,0,0,.1); max-height: 90vh; overflow-y: auto; }
-.modal-sm { max-width: 400px; }
-.modal h2 { margin: 0 0 16px; font-size: 18px; font-weight: 600; }
-.field { display: block; margin-bottom: 14px; }
-.field span { display: block; margin-bottom: 4px; font-size: 13px; color: #374151; font-weight: 500; }
-.field input, .field select { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
-.field input:focus, .field select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
-.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-</style>
+.combobox-suggestions .combobox-create-new {
+  color: #C9A86A;
+  font-weight: 500;
+  border-top: 1px solid rgba(201, 168, 106, 0.1);
+}
+
+.combobox-suggestions .combobox-create-new:hover {
+  background: rgba(201, 168, 106, 0.08);
+}
+
+/* ============================================
+   ПОДСКАЗКИ (HINT)
+   ============================================ */
+.hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(208, 210, 213, 0.35);
+}
+
+.hint.success {
+  color: #4ade80;
+}
+
+/* ============================================
+   ДЕЙСТВИЯ В МОДАЛКЕ
+   ============================================ */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(208, 210, 213, 0.05);
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .page-header .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .status-tiles {
+    gap: 6px;
+  }
+
+  .status-tile {
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .modal {
+    padding: 20px;
+    max-width: 100%;
+    margin: 8px;
+  }
+
+  .filter-info {
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-tiles {
+    gap: 4px;
+  }
+
+  .status-tile {
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
+  .status-tile .status-count {
+    padding: 0 6px;
+    font-size: 10px;
+  }
+
+  .table th,
+  .table td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+/* ============================================
+   СКРОЛЛБАР
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 106, 0.25);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 106, 0.4);
+}</style>
