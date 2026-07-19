@@ -4,6 +4,9 @@
     <aside class="sidebar">
       <div class="logo">My ERP</div>
       <nav>
+        <router-link to="/main" class="nav-item">
+          📊 Дашборд
+        </router-link>
         <router-link to="/supply" class="nav-item">
           📦 Поставки
         </router-link>

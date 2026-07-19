@@ -16,6 +16,12 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: 'main',
+        name: 'dashboard',
+        component: () => import('@/Dashboard.vue'),
+        meta: { title: 'Поставки' }
+      },
+      {
         path: 'supply',
         name: 'supply',
         component: () => import('@/modules/supply/views/SupplyView.vue'),
