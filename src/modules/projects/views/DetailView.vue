@@ -876,77 +876,83 @@ watch(projectId, loadAll)
     </template>
 
     <!-- Модалка: позиция проекта -->
-    <div v-if="showItemForm" class="modal-backdrop" @click.self="closeItemForm">
-      <div class="modal">
-        <h2>{{ editingItemId ? 'Редактировать позицию' : 'Новая позиция' }}</h2>
-        <form ref="itemFormRef" @submit.prevent="submitItem">
-          <label class="field">
-            <span>Товар *</span>
-            <div class="combobox-wrapper">
-              <input
-                v-model="nomenclatureSearch"
-                type="text"
-                placeholder="Введите или выберите товар"
-                @input="onNomenclatureInput"
-                @focus="showNomenclatureSuggestions = true"
-                @blur="onNomenclatureBlur"
-                required
-                autocomplete="off"
-              />
-              <button 
-                type="button" 
-                class="combobox-toggle" 
-                @mousedown.prevent="toggleNomenclatureSuggestions"
-              >
-                ▼
-              </button>
-              <ul v-if="showNomenclatureSuggestions && filteredNomenclatures.length > 0" class="combobox-suggestions">
-                <li 
-                  v-for="n in filteredNomenclatures" 
-                  :key="n.id"
-                  @mousedown.prevent="selectNomenclature(n)"
-                >
-                  <span class="suggestion-name">{{ n.name }}</span>
-                  <span v-if="n.article" class="suggestion-article">{{ n.article }}</span>
-                  <span class="suggestion-prices">
-                    {{ n.current_cost_price ? formatAmount(n.current_cost_price) : '—' }} / 
-                    {{ n.current_sale_price ? formatAmount(n.current_sale_price) : '—' }}
-                  </span>
-                </li>
-                <li 
-                  @mousedown.prevent="openCreateNomenclature"
-                  class="combobox-create-new"
-                >
-                  ✚ Создать новый товар
-                </li>
-              </ul>
-            </div>
-            <small v-if="selectedNomenclature" class="hint success">
-              Выбран: {{ selectedNomenclature.name }}
-              <span v-if="selectedNomenclature.article">({{ selectedNomenclature.article }})</span>
-            </small>
-          </label>
-          <label class="field"><span>Количество *</span>
-            <input v-model="itemForm.quantity" type="number" step="0.01" min="0" required />
-          </label>
-          <label class="field">
-            <span>Фикс. себестоимость</span>
-            <input v-model="itemForm.fixed_cost_price" type="number" step="0.01" />
-            <small class="hint">Можно редактировать</small>
-          </label>
-          <label class="field">
-            <span>Фикс. цена продажи</span>
-            <input v-model="itemForm.fixed_sale_price" type="number" step="0.01" />
-            <small class="hint">Можно редактировать</small>
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-ghost" @click="closeItemForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Сохранить</button>
-          </div>
-          <div v-if="error" class="alert alert-error">{{ error }}</div>
-        </form>
+<!-- Модалка: позиция проекта -->
+<div v-if="showItemForm" class="modal-backdrop" @click.self="closeItemForm">
+  <div class="modal">
+    <h2>{{ editingItemId ? 'Редактировать позицию' : 'Новая позиция' }}</h2>
+    <form ref="itemFormRef" @submit.prevent="submitItem">
+      <label class="field">
+        <span>Товар *</span>
+        <div class="combobox-wrapper">
+          <input
+            v-model="nomenclatureSearch"
+            type="text"
+            placeholder="Введите или выберите товар"
+            @input="onNomenclatureInput"
+            @focus="showNomenclatureSuggestions = true"
+            @blur="onNomenclatureBlur"
+            required
+            autocomplete="off"
+          />
+          <button 
+            type="button" 
+            class="combobox-toggle" 
+            @mousedown.prevent="toggleNomenclatureSuggestions"
+          >
+            ▼
+          </button>
+          <ul v-if="showNomenclatureSuggestions" class="combobox-suggestions">
+            <!-- Существующие товары -->
+            <li 
+              v-for="n in filteredNomenclatures" 
+              :key="n.id"
+              @mousedown.prevent="selectNomenclature(n)"
+            >
+              <span class="suggestion-name">{{ n.name }}</span>
+              <span v-if="n.article" class="suggestion-article">{{ n.article }}</span>
+              <span class="suggestion-prices">
+                {{ n.current_cost_price ? formatAmount(n.current_cost_price) : '—' }} / 
+                {{ n.current_sale_price ? formatAmount(n.current_sale_price) : '—' }}
+              </span>
+            </li>
+            <!-- Кнопка создания нового товара (всегда показывается) -->
+            <li 
+              @mousedown.prevent="openCreateNomenclature"
+              class="combobox-create-new"
+            >
+              ✚ Создать новый товар
+            </li>
+          </ul>
+        </div>
+        <small v-if="selectedNomenclature" class="hint success">
+          Выбран: {{ selectedNomenclature.name }}
+          <span v-if="selectedNomenclature.article">({{ selectedNomenclature.article }})</span>
+        </small>
+        <small v-else class="hint">
+          Начните вводить название или выберите из списка
+        </small>
+      </label>
+      <label class="field"><span>Количество *</span>
+        <input v-model="itemForm.quantity" type="number" step="0.01" min="0" required />
+      </label>
+      <label class="field">
+        <span>Фикс. себестоимость</span>
+        <input v-model="itemForm.fixed_cost_price" type="number" step="0.01" />
+        <small class="hint">Можно редактировать</small>
+      </label>
+      <label class="field">
+        <span>Фикс. цена продажи</span>
+        <input v-model="itemForm.fixed_sale_price" type="number" step="0.01" />
+        <small class="hint">Можно редактировать</small>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" @click="closeItemForm">Отмена</button>
+        <button type="submit" class="btn btn-primary" :disabled="loading">Сохранить</button>
       </div>
-    </div>
+      <div v-if="error" class="alert alert-error">{{ error }}</div>
+    </form>
+  </div>
+</div>
 
     <!-- Модалка: новый товар -->
     <div v-if="showNomenclatureForm" class="modal-backdrop" @click.self="closeNomenclatureForm">

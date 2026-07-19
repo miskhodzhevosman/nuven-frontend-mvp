@@ -30,6 +30,18 @@ export const projectsApi = {
     await api.delete(`${CRM}/projects/${id}/`)
   },
 
+  // ---- История изменений проектов ----
+async getProjectHistory(projectId, params = {}) {
+  const res = await api.get(`${CRM}/projects/${projectId}/history/`, { params })
+  return res.data
+},
+
+// ---- История изменений статусов ----
+async getStatusHistory(statusId, params = {}) {
+  const res = await api.get(`${CRM}/project-statuses/${statusId}/history/`, { params })
+  return res.data
+},
+
   // ---- Project items ----
   async getProjectItems(projectId, params = {}) {
     const res = await api.get(`${CRM}/projects/${projectId}/items/`, { params })

@@ -11,6 +11,12 @@ const { projects, loading, error, count, statuses, clients, managers, locations 
 // Фильтр по статусу
 const selectedStatusId = ref(null)
 
+// История изменений
+const showHistoryModal = ref(false)
+const historyProject = ref(null)
+const historyData = ref([])
+const historyLoading = ref(false)
+
 // Computed - фильтруем проекты по статусу и сортируем
 const filteredProjects = computed(() => {
   let result = [...projects.value]
@@ -74,6 +80,7 @@ const createForm = reactive({
   tech_manager: '',
   location: '',
   full_location_name: '',
+  created_at: '',
 })
 
 // Client form
@@ -102,6 +109,7 @@ function resetForm() {
   createForm.tech_manager = ''
   createForm.location = ''
   createForm.full_location_name = ''
+  createForm.created_at = ''
   locationSearch.value = ''
   selectedLocation.value = null
   showLocationSuggestions.value = false
@@ -167,7 +175,7 @@ const selectLocation = (location) => {
 // Filter methods
 function selectStatus(statusId) {
   if (selectedStatusId.value === statusId) {
-    selectedStatusId.value = null // Снимаем фильтр при повторном клике
+    selectedStatusId.value = null
   } else {
     selectedStatusId.value = statusId
   }
@@ -283,6 +291,125 @@ async function submitCreateManager() {
   }
 }
 
+// --- История изменений ---
+async function openHistory(project) {
+  historyProject.value = project
+  historyLoading.value = true
+  historyData.value = []
+  showHistoryModal.value = true
+  
+  try {
+    const data = await store.fetchProjectHistory(project.id)
+    historyData.value = data || []
+    console.log('History data loaded:', data)
+  } catch (e) {
+    console.error('Failed to fetch history:', e)
+    error.value = 'Ошибка загрузки истории'
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+function closeHistory() {
+  showHistoryModal.value = false
+  historyProject.value = null
+  historyData.value = []
+}
+
+// Получение человекочитаемого значения поля
+function getFieldDisplayValue(field, value) {
+  if (value === null || value === undefined || value === '') return '—'
+  
+  // Для ID полей - получаем название из справочников
+  if (field === 'client_id') {
+    const client = clients.value.find(c => c.id === Number(value))
+    return client ? client.name : `Клиент #${value}`
+  }
+  
+  if (field === 'status_id') {
+    const status = statuses.value.find(s => s.id === Number(value))
+    return status ? status.name : `Статус #${value}`
+  }
+  
+  if (field === 'tech_manager_id') {
+    const manager = managers.value.find(m => m.id === Number(value))
+    return manager ? (manager.full_name || manager.name) : `Менеджер #${value}`
+  }
+  
+  if (field === 'location_id') {
+    const location = locations.value.find(l => l.id === Number(value))
+    return location ? location.name : `Локация #${value}`
+  }
+  
+  // Для дат
+  if (field === 'created_at' && value) {
+    return new Date(value).toLocaleDateString('ru-RU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+  
+  return value
+}
+
+// Получение названия поля для отображения
+function getFieldLabel(field) {
+  const labels = {
+    'name': 'Название',
+    'client_id': 'Клиент',
+    'tech_manager_id': 'Тех. менеджер',
+    'location_id': 'Локация',
+    'created_at': 'Дата создания',
+    'status_id': 'Статус'
+  }
+  return labels[field] || field
+}
+
+// Сравнение двух записей и получение изменений
+function getChanges(current, previous) {
+  if (!previous) return null
+  
+  const changes = []
+  const fields = ['name', 'client_id', 'tech_manager_id', 'location_id', 'created_at', 'status_id']
+  
+  for (const field of fields) {
+    const oldValue = previous[field]
+    const newValue = current[field]
+    
+    // Проверяем, изменилось ли значение
+    if (oldValue !== newValue) {
+      changes.push({
+        field: field,
+        label: getFieldLabel(field),
+        oldValue: getFieldDisplayValue(field, oldValue),
+        newValue: getFieldDisplayValue(field, newValue)
+      })
+    }
+  }
+  
+  return changes
+}
+
+// Получение типа изменения
+function getHistoryTypeLabel(type) {
+  const labels = {
+    '+': 'Создание',
+    '~': 'Изменение',
+    '-': 'Удаление'
+  }
+  return labels[type] || type
+}
+
+function getHistoryTypeClass(type) {
+  const classes = {
+    '+': 'history-created',
+    '~': 'history-changed',
+    '-': 'history-deleted'
+  }
+  return classes[type] || ''
+}
+
 // Init
 onMounted(() => {
   store.fetchProjects().catch(() => {})
@@ -371,7 +498,12 @@ function open(id) {
             </td>
             <td>{{ p.full_location_name || '—' }}</td>
             <td>{{ p.created_at?.slice(0, 10) }}</td>
-            <td class="actions"><button class="btn btn-ghost" @click.stop="open(p.id)">Открыть →</button></td>
+            <td class="actions">
+              <button class="btn btn-ghost btn-sm" @click.stop="open(p.id)">Открыть</button>
+              <button class="btn btn-ghost btn-sm" @click.stop="openHistory(p)" title="История изменений">
+                📜
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -387,10 +519,10 @@ function open(id) {
             <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
           </label>
           <label class="field">
-  <span>Дата создания</span>
-  <input v-model="createForm.created_at" type="datetime-local" />
-  <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
-</label>
+            <span>Дата создания</span>
+            <input v-model="createForm.created_at" type="datetime-local" />
+            <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
+          </label>
           
           <label class="field">
             <span>Клиент</span>
@@ -523,10 +655,275 @@ function open(id) {
         </form>
       </div>
     </div>
+
+    <!-- Модалка: История изменений -->
+    <div v-if="showHistoryModal" class="modal-backdrop" @click.self="closeHistory">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h2>История изменений</h2>
+          <button class="btn btn-ghost btn-sm" @click="closeHistory">✕</button>
+        </div>
+        
+        <div v-if="historyProject" class="history-project-info">
+          <strong>{{ historyProject.name }}</strong>
+          <span class="muted">ID: {{ historyProject.id }}</span>
+        </div>
+        
+        <div v-if="historyLoading" class="state">Загрузка истории...</div>
+        
+        <div v-else-if="historyData.length === 0" class="state muted">
+          История изменений отсутствует
+        </div>
+        
+        <div v-else class="history-timeline">
+          <div 
+            v-for="(record, index) in historyData" 
+            :key="record.history_id"
+            class="history-item"
+            :class="getHistoryTypeClass(record.history_type)"
+          >
+            <div class="history-header">
+              <span class="history-type" :class="getHistoryTypeClass(record.history_type)">
+                {{ getHistoryTypeLabel(record.history_type) }}
+              </span>
+              <span class="history-date">{{ new Date(record.history_date).toLocaleString('ru-RU') }}</span>
+              <span class="history-user" v-if="record.history_user">
+                {{ record.history_user }}
+              </span>
+            </div>
+            
+            <div class="history-changes">
+              <!-- Создание -->
+              <div v-if="record.history_type === '+'" class="history-change">
+                <div class="history-change-title">Создан проект</div>
+                <div class="history-change-values">
+                  <div class="history-value">
+                    <span class="history-label">Название:</span>
+                    <span>{{ record.name }}</span>
+                  </div>
+                  <div class="history-value">
+                    <span class="history-label">Клиент:</span>
+                    <span>{{ getFieldDisplayValue('client_id', record.client_id) }}</span>
+                  </div>
+                  <div class="history-value">
+                    <span class="history-label">Статус:</span>
+                    <span>{{ getFieldDisplayValue('status_id', record.status_id) }}</span>
+                  </div>
+                  <div class="history-value" v-if="record.tech_manager_id">
+                    <span class="history-label">Менеджер:</span>
+                    <span>{{ getFieldDisplayValue('tech_manager_id', record.tech_manager_id) }}</span>
+                  </div>
+                  <div class="history-value" v-if="record.location_id">
+                    <span class="history-label">Локация:</span>
+                    <span>{{ getFieldDisplayValue('location_id', record.location_id) }}</span>
+                  </div>
+                  <div class="history-value" v-if="record.created_at">
+                    <span class="history-label">Дата создания:</span>
+                    <span>{{ getFieldDisplayValue('created_at', record.created_at) }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Изменение -->
+              <div v-else-if="record.history_type === '~'" class="history-change">
+                <div class="history-change-title">Изменены поля</div>
+                <div class="history-change-values">
+                  <!-- Сравниваем с предыдущей записью -->
+                  <template v-if="index < historyData.length - 1">
+                    <div 
+                      v-for="change in getChanges(record, historyData[index + 1])" 
+                      :key="change.field"
+                      class="history-change-item"
+                    >
+                      <div class="history-change-field">{{ change.label }}</div>
+                      <div class="history-change-diff">
+                        <span class="history-old-value">{{ change.oldValue }}</span>
+                        <span class="history-arrow">→</span>
+                        <span class="history-new-value">{{ change.newValue }}</span>
+                      </div>
+                    </div>
+                  </template>
+                  <!-- Если нет предыдущей записи для сравнения -->
+                  <template v-else>
+                    <div class="history-value">
+                      <span class="history-label">Название:</span>
+                      <span>{{ record.name }}</span>
+                    </div>
+                    <div class="history-value">
+                      <span class="history-label">Клиент:</span>
+                      <span>{{ getFieldDisplayValue('client_id', record.client_id) }}</span>
+                    </div>
+                    <div class="history-value">
+                      <span class="history-label">Статус:</span>
+                      <span>{{ getFieldDisplayValue('status_id', record.status_id) }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              
+              <!-- Удаление -->
+              <div v-else-if="record.history_type === '-'" class="history-change">
+                <div class="history-change-title">Проект удален</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="closeHistory">Закрыть</button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
+/* Стили для истории */
+.history-timeline {
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.history-item {
+  border-left: 3px solid #e0e0e0;
+  padding: 12px 20px;
+  margin-bottom: 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  position: relative;
+}
+
+.history-item.history-created {
+  border-left-color: #28a745;
+  background: #f0f9f0;
+}
+
+.history-item.history-changed {
+  border-left-color: #ffc107;
+  background: #fff9e6;
+}
+
+.history-item.history-deleted {
+  border-left-color: #dc3545;
+  background: #fdf0f0;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.history-type {
+  font-weight: bold;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  background: #e0e0e0;
+  color: #333;
+}
+
+.history-type.history-created {
+  background: #28a745;
+  color: white;
+}
+
+.history-type.history-changed {
+  background: #ffc107;
+  color: #333;
+}
+
+.history-type.history-deleted {
+  background: #dc3545;
+  color: white;
+}
+
+.history-date {
+  color: #666;
+  font-size: 13px;
+}
+
+.history-user {
+  color: #666;
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.history-changes {
+  padding-left: 4px;
+}
+
+.history-change-field {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.history-change-values {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-value {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+.history-label {
+  color: #666;
+  min-width: 140px;
+  font-weight: 500;
+}
+
+.history-project-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 16px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-lg {
+  max-width: 800px;
+  width: 90%;
+}
+
+/* Адаптив для мобильных */
+@media (max-width: 768px) {
+  .history-value {
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .history-label {
+    min-width: auto;
+  }
+  
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .history-user {
+    margin-left: 0;
+  }
+}
+
 
 .page {
   max-width: 1400px;

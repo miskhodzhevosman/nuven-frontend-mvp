@@ -367,5 +367,29 @@ export const useProjectsStore = defineStore('projects', {
         throw e
       }
     },
+
+    // Добавьте этот метод в store.js в раздел actions
+
+    // ---- История изменений ----
+    async fetchProjectHistory(projectId) {
+      try {
+        const response = await projectsApi.getProjectHistory(projectId)
+        return response || []
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    // Также добавьте метод для статусов истории (опционально)
+    async fetchStatusHistory(statusId) {
+      try {
+        const response = await projectsApi.getStatusHistory(statusId)
+        return response.results || []
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
   },
 })
