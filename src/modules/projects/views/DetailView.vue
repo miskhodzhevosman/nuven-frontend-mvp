@@ -10,7 +10,7 @@ const router = useRouter()
 const store = useProjectsStore()
 const financeStore = useFinanceStore()
 
-const { currentProject, projectItems, clientPayments, factoryPayments, projectExpenses, loading, error } = storeToRefs(store)
+const { currentProject, projectItems, clientPayments, factoryPayments, projectExpenses, loading, error, nomenclatures } = storeToRefs(store)
 const { report: financeReport } = storeToRefs(financeStore)
 
 const projectId = computed(() => Number(route.params.id))
@@ -21,53 +21,30 @@ const projectReport = computed(() => {
   
   const report = financeReport.value
   
-  // Плановые показатели
   const plannedRevenue = report.planned?.revenue || 0
   const plannedCogs = report.planned?.cogs || 0
   const plannedGrossProfit = report.planned?.gross_profit || 0
   const plannedMargin = report.planned?.margin || 0
   
-  // Фактические показатели
   const factClientReceived = report.fact?.client_received || 0
   const factFactoryPaid = report.fact?.factory_paid || 0
   const factProjectExpenses = report.fact?.project_expenses || 0
   
-  // Cashflow
   const accountsReceivable = report.cashflow?.accounts_receivable || 0
   const accountsPayable = report.cashflow?.accounts_payable || 0
   
-  // Чистая прибыль
   const netProfit = report.net_profit || 0
   
   return {
-    // Себестоимость (COGS)
     cogs: plannedCogs,
-    
-    // Валовая прибыль
     grossProfit: plannedGrossProfit,
-    
-    // Маржа
     margin: plannedMargin,
-    
-    // Получено от клиента
     clientReceived: factClientReceived,
-    
-    // Дебиторская задолженность
     accountsReceivable: accountsReceivable,
-    
-    // Оплачено фабрикам
     factoryPaid: factFactoryPaid,
-    
-    // Кредиторская задолженность
     accountsPayable: accountsPayable,
-    
-    // Расходы проекта
     projectExpenses: factProjectExpenses,
-    
-    // Чистая прибыль
     netProfit: netProfit,
-    
-    // Выручка (для расчета)
     revenue: plannedRevenue,
   }
 })
@@ -93,6 +70,88 @@ const emptyItemForm = () => ({
 })
 const itemForm = reactive(emptyItemForm())
 const itemFormRef = ref(null)
+
+// --- Autocomplete state for nomenclature ---
+const nomenclatureSearch = ref('')
+const showNomenclatureSuggestions = ref(false)
+const selectedNomenclature = ref(null)
+
+// --- Computed for nomenclature autocomplete ---
+const filteredNomenclatures = computed(() => {
+  if (!nomenclatures.value) return []
+  if (!nomenclatureSearch.value) return nomenclatures.value.slice(0, 10)
+  const search = nomenclatureSearch.value.toLowerCase().trim()
+  return nomenclatures.value
+    .filter(n => 
+      n.name.toLowerCase().includes(search) || 
+      (n.article && n.article.toLowerCase().includes(search))
+    )
+    .slice(0, 10)
+})
+
+// --- Nomenclature autocomplete methods ---
+const onNomenclatureInput = () => {
+  if (selectedNomenclature.value && nomenclatureSearch.value !== selectedNomenclature.value.name) {
+    selectedNomenclature.value = null
+    itemForm.nomenclature = ''
+    // Очищаем цены при смене выбора
+    if (!editingItemId.value) {
+      itemForm.fixed_cost_price = ''
+      itemForm.fixed_sale_price = ''
+    }
+  }
+  showNomenclatureSuggestions.value = true
+}
+
+const onNomenclatureBlur = () => {
+  setTimeout(() => {
+    showNomenclatureSuggestions.value = false
+    if (nomenclatureSearch.value && !selectedNomenclature.value) {
+      const found = nomenclatures.value.find(n => 
+        n.name.toLowerCase() === nomenclatureSearch.value.toLowerCase().trim()
+      )
+      if (found) {
+        selectNomenclature(found)
+      }
+    }
+  }, 200)
+}
+
+const toggleNomenclatureSuggestions = () => {
+  showNomenclatureSuggestions.value = !showNomenclatureSuggestions.value
+  if (showNomenclatureSuggestions.value && !nomenclatureSearch.value) {
+    nomenclatureSearch.value = ''
+  }
+}
+
+const selectNomenclature = (nomenclature) => {
+  selectedNomenclature.value = nomenclature
+  nomenclatureSearch.value = nomenclature.name
+  itemForm.nomenclature = nomenclature.id
+  
+  // Подтягиваем цены из номенклатуры
+  if (!editingItemId.value) {
+    itemForm.fixed_cost_price = nomenclature.current_cost_price || ''
+    itemForm.fixed_sale_price = nomenclature.current_sale_price || ''
+  }
+  
+  showNomenclatureSuggestions.value = false
+}
+
+// --- Watch for nomenclature change to auto-fill prices ---
+watch(() => itemForm.nomenclature, (newValue) => {
+  if (newValue && !editingItemId.value && !selectedNomenclature.value) {
+    const nomenclature = nomenclatures.value.find(n => n.id === Number(newValue))
+    if (nomenclature) {
+      if (!itemForm.fixed_cost_price) {
+        itemForm.fixed_cost_price = nomenclature.current_cost_price || ''
+      }
+      if (!itemForm.fixed_sale_price) {
+        itemForm.fixed_sale_price = nomenclature.current_sale_price || ''
+      }
+    }
+  }
+}, { immediate: true })
 
 const emptyNomenclatureForm = () => ({
   name: '',
@@ -137,6 +196,7 @@ const editProjectForm = reactive({
   tech_manager: '',
   location: '',
   full_location_name: '',
+  created_at: '',
 })
 const editFormRef = ref(null)
 
@@ -297,21 +357,53 @@ const editSelectLocation = (location) => {
   editShowLocationSuggestions.value = false
 }
 
+// --- Refresh all data ---
+async function refreshAllData() {
+  try {
+    await Promise.all([
+      store.fetchProjectItems(projectId.value),
+      store.fetchClientPayments(projectId.value),
+      store.fetchFactoryPayments(projectId.value),
+      store.fetchProjectExpenses(projectId.value),
+    ])
+    await financeStore.fetchProjectReport(projectId.value)
+  } catch (e) {
+    console.error('Failed to refresh data:', e)
+  }
+}
+
 // --- Project items ---
 function openCreateItem() {
   editingItemId.value = null
   Object.assign(itemForm, emptyItemForm())
+  nomenclatureSearch.value = ''
+  selectedNomenclature.value = null
+  showNomenclatureSuggestions.value = false
   showItemForm.value = true
 }
+
 function openEditItem(item) {
   editingItemId.value = item.id
+  const nomenclature = nomenclatures.value.find(n => n.id === item.nomenclature)
+  if (nomenclature) {
+    nomenclatureSearch.value = nomenclature.name
+    selectedNomenclature.value = nomenclature
+  }
   itemForm.nomenclature = item.nomenclature ?? ''
   itemForm.quantity = item.quantity ?? '1'
   itemForm.fixed_cost_price = item.fixed_cost_price ?? ''
   itemForm.fixed_sale_price = item.fixed_sale_price ?? ''
   showItemForm.value = true
 }
-function closeItemForm() { showItemForm.value = false; editingItemId.value = null }
+
+function closeItemForm() { 
+  showItemForm.value = false
+  editingItemId.value = null
+  Object.assign(itemForm, emptyItemForm())
+  nomenclatureSearch.value = ''
+  selectedNomenclature.value = null
+  showNomenclatureSuggestions.value = false
+}
 
 async function submitItem() {
   if (!itemFormRef.value?.checkValidity()) return
@@ -329,11 +421,19 @@ async function submitItem() {
       await store.createProjectItem(payload)
     }
     closeItemForm()
-  } catch {}
+    await refreshAllData()
+  } catch (e) {
+    console.error('Failed to save item:', e)
+  }
 }
 
 async function deleteItem(id) {
-  try { await store.deleteProjectItem(id) } finally { confirmDeleteItemId.value = null }
+  try { 
+    await store.deleteProjectItem(id)
+    await refreshAllData()
+  } finally { 
+    confirmDeleteItemId.value = null 
+  }
 }
 
 // --- Nomenclature (inside item form) ---
@@ -356,9 +456,14 @@ async function submitNomenclature() {
   }
   try {
     const created = await store.createNomenclature(payload)
-    itemForm.nomenclature = created.id
+    // Обновляем список номенклатур
+    await store.fetchNomenclatures()
+    // Выбираем созданную номенклатуру
+    selectNomenclature(created)
     closeNomenclatureForm()
-  } catch {}
+  } catch (e) {
+    console.error('Failed to create nomenclature:', e)
+  }
 }
 
 // --- Factory (inside nomenclature form) ---
@@ -376,9 +481,12 @@ async function submitFactory() {
       address: factoryForm.address || '',
       contacts: factoryForm.contacts || '',
     })
+    await store.fetchFactories()
     nomenclatureForm.factory = created.id
     closeFactoryForm()
-  } catch {}
+  } catch (e) {
+    console.error('Failed to create factory:', e)
+  }
 }
 
 // --- Pay factory (from item) ---
@@ -406,7 +514,10 @@ async function submitPayFactory() {
   try {
     await store.createFactoryPayment(payload)
     closePayFactory()
-  } catch {}
+    await refreshAllData()
+  } catch (e) {
+    console.error('Failed to create factory payment:', e)
+  }
 }
 
 // --- Project expenses ---
@@ -442,7 +553,10 @@ async function submitProjectExpense() {
   try {
     await store.createProjectExpense(payload)
     closeProjectExpenseForm()
-  } catch {}
+    await refreshAllData()
+  } catch (e) {
+    console.error('Failed to create project expense:', e)
+  }
 }
 
 // --- Client payments ---
@@ -464,7 +578,10 @@ async function submitClientPayment() {
   try {
     await store.createClientPayment(payload)
     closeClientPaymentForm()
-  } catch {}
+    await refreshAllData()
+  } catch (e) {
+    console.error('Failed to create client payment:', e)
+  }
 }
 
 // --- Edit project ---
@@ -477,6 +594,7 @@ function openEditProject() {
   editProjectForm.tech_manager = currentProject.value.tech_manager || ''
   editProjectForm.location = currentProject.value.location || ''
   editProjectForm.full_location_name = currentProject.value.full_location_name || ''
+  editProjectForm.created_at = currentProject.value.created_at ? currentProject.value.created_at.slice(0, 16) : ''
   
   if (currentProject.value.location) {
     const loc = store.locations.find(l => l.id === currentProject.value.location)
@@ -509,12 +627,14 @@ async function submitEditProject() {
     tech_manager: editProjectForm.tech_manager ? Number(editProjectForm.tech_manager) : null,
     location: editProjectForm.location ? Number(editProjectForm.location) : null,
     full_location_name: editProjectForm.full_location_name || '',
+    created_at: editProjectForm.created_at || null,
   }
   
   try {
     await store.updateProject(projectId.value, payload)
     closeEditProjectForm()
     await store.fetchProject(projectId.value)
+    await refreshAllData()
   } catch (e) {
     console.error('Failed to update project:', e)
   }
@@ -533,15 +653,10 @@ async function loadAll() {
       store.fetchLocations(),
       store.fetchExpenseTypes(),
     ])
-    await Promise.all([
-      store.fetchProjectItems(projectId.value),
-      store.fetchClientPayments(projectId.value),
-      store.fetchFactoryPayments(projectId.value),
-      store.fetchProjectExpenses(projectId.value),
-    ])
-    // Загружаем финансовый отчет
-    await financeStore.fetchProjectReport(projectId.value)
-  } catch {}
+    await refreshAllData()
+  } catch (e) {
+    console.error('Failed to load data:', e)
+  }
 }
 
 onMounted(loadAll)
@@ -573,53 +688,6 @@ watch(projectId, loadAll)
           <div><span class="label">Создан</span><span>{{ formatDate(currentProject.created_at) }}</span></div>
           <div><span class="label">Обновлен</span><span>{{ formatDate(currentProject.updated_at) }}</span></div>
         </div>
-      </section>
-
-      <!-- Финансовый отчет -->
-      <section class="card">
-        <h2>Финансовый отчет</h2>
-        <div v-if="financeStore.loading" class="state muted">Загрузка отчета…</div>
-        <div v-else-if="projectReport" class="report-grid">
-          <div class="report-item">
-            <span class="report-label">Себестоимость</span>
-            <span class="report-value">{{ formatCurrency(projectReport.cogs) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Валовая прибыль</span>
-            <span class="report-value">{{ formatCurrency(projectReport.grossProfit) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Маржа</span>
-            <span class="report-value">{{ formatPercent(projectReport.margin) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Получено от клиента</span>
-            <span class="report-value positive">{{ formatCurrency(projectReport.clientReceived) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Дебиторская задолженность</span>
-            <span class="report-value">{{ formatCurrency(projectReport.accountsReceivable) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Оплачено фабрикам</span>
-            <span class="report-value negative">{{ formatCurrency(projectReport.factoryPaid) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Кредиторская задолженность</span>
-            <span class="report-value">{{ formatCurrency(projectReport.accountsPayable) }}</span>
-          </div>
-          <div class="report-item">
-            <span class="report-label">Расходы</span>
-            <span class="report-value negative">{{ formatCurrency(projectReport.projectExpenses) }}</span>
-          </div>
-          <div class="report-item total">
-            <span class="report-label">Чистая прибыль</span>
-            <span class="report-value" :class="{ positive: projectReport.netProfit > 0, negative: projectReport.netProfit < 0 }">
-              {{ formatCurrency(projectReport.netProfit) }}
-            </span>
-          </div>
-        </div>
-        <div v-else class="state muted">Нет данных для отчета</div>
       </section>
 
       <!-- Позиции проекта -->
@@ -737,7 +805,6 @@ watch(projectId, loadAll)
       </section>
     </template>
 
-    <!-- Модалки (остаются без изменений) -->
     <!-- Модалка: позиция проекта -->
     <div v-if="showItemForm" class="modal-backdrop" @click.self="closeItemForm">
       <div class="modal">
@@ -745,24 +812,62 @@ watch(projectId, loadAll)
         <form ref="itemFormRef" @submit.prevent="submitItem">
           <label class="field">
             <span>Товар *</span>
-            <div class="row">
-              <select v-model="itemForm.nomenclature" required>
-                <option value="" disabled>— выберите —</option>
-                <option v-for="n in store.nomenclatures" :key="n.id" :value="n.id">
-                  {{ n.name }}{{ n.article ? ` (${n.article})` : '' }}
-                </option>
-              </select>
-              <button type="button" class="btn btn-ghost" @click="openCreateNomenclature">+ Новый товар</button>
+            <div class="combobox-wrapper">
+              <input
+                v-model="nomenclatureSearch"
+                type="text"
+                placeholder="Введите или выберите товар"
+                @input="onNomenclatureInput"
+                @focus="showNomenclatureSuggestions = true"
+                @blur="onNomenclatureBlur"
+                required
+                autocomplete="off"
+              />
+              <button 
+                type="button" 
+                class="combobox-toggle" 
+                @mousedown.prevent="toggleNomenclatureSuggestions"
+              >
+                ▼
+              </button>
+              <ul v-if="showNomenclatureSuggestions && filteredNomenclatures.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="n in filteredNomenclatures" 
+                  :key="n.id"
+                  @mousedown.prevent="selectNomenclature(n)"
+                >
+                  <span class="suggestion-name">{{ n.name }}</span>
+                  <span v-if="n.article" class="suggestion-article">{{ n.article }}</span>
+                  <span class="suggestion-prices">
+                    {{ n.current_cost_price ? formatAmount(n.current_cost_price) : '—' }} / 
+                    {{ n.current_sale_price ? formatAmount(n.current_sale_price) : '—' }}
+                  </span>
+                </li>
+                <li 
+                  @mousedown.prevent="openCreateNomenclature"
+                  class="combobox-create-new"
+                >
+                  ✚ Создать новый товар
+                </li>
+              </ul>
             </div>
+            <small v-if="selectedNomenclature" class="hint success">
+              Выбран: {{ selectedNomenclature.name }}
+              <span v-if="selectedNomenclature.article">({{ selectedNomenclature.article }})</span>
+            </small>
           </label>
           <label class="field"><span>Количество *</span>
             <input v-model="itemForm.quantity" type="number" step="0.01" min="0" required />
           </label>
-          <label class="field"><span>Фикс. себестоимость</span>
+          <label class="field">
+            <span>Фикс. себестоимость</span>
             <input v-model="itemForm.fixed_cost_price" type="number" step="0.01" />
+            <small class="hint">Можно редактировать</small>
           </label>
-          <label class="field"><span>Фикс. цена продажи</span>
+          <label class="field">
+            <span>Фикс. цена продажи</span>
             <input v-model="itemForm.fixed_sale_price" type="number" step="0.01" />
+            <small class="hint">Можно редактировать</small>
           </label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeItemForm">Отмена</button>
@@ -1055,6 +1160,12 @@ watch(projectId, loadAll)
             <span>Полное название локации</span>
             <input v-model="editProjectForm.full_location_name" type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
           </label>
+
+          <label class="field">
+            <span>Дата создания</span>
+            <input v-model="editProjectForm.created_at" type="datetime-local" />
+            <small class="hint">Укажите дату для старых проектов</small>
+          </label>
           
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeEditProjectForm">Отмена</button>
@@ -1066,6 +1177,7 @@ watch(projectId, loadAll)
     </div>
   </section>
 </template>
+
 
 <style scoped>
 /*
@@ -1080,6 +1192,22 @@ watch(projectId, loadAll)
    ============================================ */
 * {
   box-sizing: border-box;
+}
+
+.suggestion-name {
+  font-weight: 500;
+}
+
+.suggestion-article {
+  color: rgba(208, 210, 213, 0.4);
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.suggestion-prices {
+  margin-left: auto;
+  font-size: 12px;
+  color: rgba(208, 210, 213, 0.4);
 }
 
 .page {
