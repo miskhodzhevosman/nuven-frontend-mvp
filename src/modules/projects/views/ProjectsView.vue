@@ -66,12 +66,6 @@ const filteredClients = computed(() => {
   return clients.value.filter(c => c.type === 'CLIENT')
 })
 
-// Computed - фильтруем локации только с типом CITY
-const filteredLocations = computed(() => {
-  if (!locations.value) return []
-  return locations.value.filter(l => l.type === 'CITY')
-})
-
 // Modal state
 const showCreateProjectForm = ref(false)
 const createFormRef = ref(null)
@@ -108,6 +102,8 @@ const managerForm = reactive({
 const locationSearch = ref('')
 const showLocationSuggestions = ref(false)
 const selectedLocation = ref(null)
+const locationSuggestions = ref([])
+const isLocationLoading = ref(false)
 
 // Client autocomplete state
 const clientSearch = ref('')
@@ -137,6 +133,8 @@ function resetForm() {
   locationSearch.value = ''
   selectedLocation.value = null
   showLocationSuggestions.value = false
+  locationSuggestions.value = []
+  isLocationLoading.value = false
   
   // Сброс клиента
   clientSearch.value = ''
@@ -164,29 +162,35 @@ function resetManagerForm() {
   managerForm.contacts = ''
 }
 
-// Location autocomplete computed
-const filteredLocationSuggestions = computed(() => {
-  if (!locationSearch.value) return filteredLocations.value.slice(0, 10)
-  const search = locationSearch.value.toLowerCase().trim()
-  return filteredLocations.value
-    .filter(l => l.name.toLowerCase().includes(search))
-    .slice(0, 10)
-})
-
 // Location autocomplete methods
-const onLocationInput = () => {
-  if (selectedLocation.value && locationSearch.value !== selectedLocation.value.name) {
-    selectedLocation.value = null
-    createForm.location = ''
+const onLocationInput = async () => {
+  selectedLocation.value = null
+  createForm.location = ''
+  
+  if (locationSearch.value.length < 2) {
+    locationSuggestions.value = []
+    showLocationSuggestions.value = false
+    return
   }
-  showLocationSuggestions.value = true
+  
+  try {
+    isLocationLoading.value = true
+    const results = await store.autocompleteLocations(locationSearch.value)
+    locationSuggestions.value = results || []
+    showLocationSuggestions.value = results.length > 0
+  } catch (e) {
+    console.error('Failed to autocomplete locations:', e)
+    locationSuggestions.value = []
+  } finally {
+    isLocationLoading.value = false
+  }
 }
 
 const onLocationBlur = () => {
   setTimeout(() => {
     showLocationSuggestions.value = false
     if (locationSearch.value && !selectedLocation.value) {
-      const found = filteredLocations.value.find(l => 
+      const found = locationSuggestions.value.find(l => 
         l.name.toLowerCase() === locationSearch.value.toLowerCase().trim()
       )
       if (found) {
@@ -194,13 +198,6 @@ const onLocationBlur = () => {
       }
     }
   }, 200)
-}
-
-const toggleLocationSuggestions = () => {
-  showLocationSuggestions.value = !showLocationSuggestions.value
-  if (showLocationSuggestions.value && !locationSearch.value) {
-    locationSearch.value = ''
-  }
 }
 
 const selectLocation = (location) => {
@@ -381,7 +378,6 @@ async function submitCreateClient() {
     const created = await store.createCounterparty(payload)
     await store.fetchClients()
     
-    // Обновляем форму и поля автокомплита
     createForm.client = created.id
     clientSearch.value = created.name
     selectedClient.value = created
@@ -421,7 +417,6 @@ async function submitCreateManager() {
     const created = await store.createTechnicalManager(payload)
     await store.fetchManagers()
     
-    // Обновляем форму и поля автокомплита
     createForm.tech_manager = created.id
     managerSearch.value = created.full_name || created.name
     selectedManager.value = created
@@ -560,6 +555,7 @@ function open(id) {
   router.push({ name: 'project-detail', params: { id } })
 }
 </script>
+
 <template>
   <section class="page">
     <header class="page-header">
@@ -733,29 +729,23 @@ function open(id) {
             </button>
           </label>
           
-          <!-- Поле локации с autocomplete -->
+          <!-- Поле локации с автокомплитом -->
           <label class="field" id="project-location-field">
             <span>Локация</span>
             <div class="combobox-wrapper">
               <input
                 v-model="locationSearch"
                 type="text"
-                placeholder="Введите или выберите локацию"
+                placeholder="Введите название локации"
                 @input="onLocationInput"
-                @focus="showLocationSuggestions = true"
+                @focus="locationSearch.length >= 2 && onLocationInput()"
                 @blur="onLocationBlur"
                 autocomplete="off"
               />
-              <button 
-                type="button" 
-                class="combobox-toggle" 
-                @mousedown.prevent="toggleLocationSuggestions"
-              >
-                ▼
-              </button>
-              <ul v-if="showLocationSuggestions && filteredLocationSuggestions.length > 0" class="combobox-suggestions">
+              <div v-if="isLocationLoading" class="combobox-loading">⏳</div>
+              <ul v-if="showLocationSuggestions && locationSuggestions.length > 0" class="combobox-suggestions">
                 <li 
-                  v-for="location in filteredLocationSuggestions" 
+                  v-for="location in locationSuggestions" 
                   :key="location.id"
                   @mousedown.prevent="selectLocation(location)"
                 >
@@ -769,7 +759,6 @@ function open(id) {
             <small v-else-if="locationSearch && !selectedLocation" class="hint">
               Начните вводить название для поиска
             </small>
-            <small class="hint">Показываются только локации с типом "Город"</small>
           </label>
           
           <label class="field">

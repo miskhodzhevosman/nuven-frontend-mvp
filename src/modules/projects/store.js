@@ -297,7 +297,17 @@ export const useProjectsStore = defineStore('projects', {
         throw e
       }
     },
-
+// ПОТОМ ПЕРЕЕХАТЬ В SYPPLY
+// ---- Автокомплит локаций ----
+async autocompleteLocations(query = '') {
+  try {
+    const data = await projectsApi.autocompleteLocations(query)
+    return data || []
+  } catch (e) {
+    this.setError(e)
+    throw e
+  }
+},
     // ---- Fetch expense types ----
     async fetchExpenseTypes() {
       try {
