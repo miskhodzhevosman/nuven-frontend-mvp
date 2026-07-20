@@ -164,6 +164,27 @@ async getStatusHistory(statusId, params = {}) {
     const res = await api.get(`/finance/operation-types/`, { params })
     return res.data
   },
+  // ---- Автокомплит для клиентов ----
+  async autocompleteClients(query = '') {
+    const res = await api.get(`${CRM}/counterparties/autocomplete-clients/`, { 
+      params: { q: query } 
+    })
+    return res.data
+  },
+
+  // ---- Автокомплит для менеджеров (если есть отдельный эндпоинт) ----
+  // Если отдельного эндпоинта нет, можно использовать фильтрацию существующих
+  async autocompleteManagers(query = '') {
+    // Если есть отдельный эндпоинт, используйте его
+    const res = await api.get(`${CRM}/technical-managers/autocomplete/`, { params: { q: query } })
+    return res.data
+    
+    // // Или используйте существующий эндпоинт с фильтрацией
+    // const res = await api.get(`${CRM}/technical-managers/`, { 
+    //   params: { search: query } 
+    // })
+    // return res.data.results || []
+  },
 
   // ---- Finance: платежи и расходы по проекту ----
   getClientPayments: (params) => financeApi.getClientPayments(params),

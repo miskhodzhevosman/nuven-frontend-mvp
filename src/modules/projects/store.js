@@ -277,6 +277,27 @@ export const useProjectsStore = defineStore('projects', {
       }
     },
 
+    // ---- Автокомплит ----
+    async autocompleteClients(query = '') {
+      try {
+        const data = await projectsApi.autocompleteClients(query)
+        return data || []
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    async autocompleteManagers(query = '') {
+      try {
+        const data = await projectsApi.autocompleteManagers(query)
+        return data || []
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
     // ---- Fetch expense types ----
     async fetchExpenseTypes() {
       try {

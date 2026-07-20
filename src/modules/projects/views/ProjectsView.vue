@@ -8,6 +8,16 @@ const router = useRouter()
 const store = useProjectsStore()
 const { projects, loading, error, count, statuses, clients, managers, locations } = storeToRefs(store)
 
+import { onboarding } from '@/onboardings/ProjectsOnboarding'
+import { nextOnboardingStep } from '@/onboardings/ProjectsOnboarding'
+import { goToOnboardingStep } from '@/onboardings/ProjectsOnboarding'
+
+import { nextTick } from 'vue'
+
+function startTour() {
+    onboarding.drive();
+}
+
 // Фильтр по статусу
 const selectedStatusId = ref(null)
 
@@ -21,16 +31,14 @@ const historyLoading = ref(false)
 const filteredProjects = computed(() => {
   let result = [...projects.value]
   
-  // Фильтр по статусу
   if (selectedStatusId.value) {
     result = result.filter(p => p.status === Number(selectedStatusId.value))
   }
   
-  // Сортировка: сначала новые (по created_at или updated_at)
   result.sort((a, b) => {
     const dateA = new Date(a.updated_at || a.created_at)
     const dateB = new Date(b.updated_at || b.created_at)
-    return dateB - dateA // от новых к старым
+    return dateB - dateA
   })
   
   return result
@@ -101,6 +109,20 @@ const locationSearch = ref('')
 const showLocationSuggestions = ref(false)
 const selectedLocation = ref(null)
 
+// Client autocomplete state
+const clientSearch = ref('')
+const showClientSuggestions = ref(false)
+const selectedClient = ref(null)
+const clientSuggestions = ref([])
+const isClientLoading = ref(false)
+
+// Manager autocomplete state
+const managerSearch = ref('')
+const showManagerSuggestions = ref(false)
+const selectedManager = ref(null)
+const managerSuggestions = ref([])
+const isManagerLoading = ref(false)
+
 // Reset forms
 function resetForm() {
   createForm.name = ''
@@ -110,9 +132,25 @@ function resetForm() {
   createForm.location = ''
   createForm.full_location_name = ''
   createForm.created_at = ''
+  
+  // Сброс локации
   locationSearch.value = ''
   selectedLocation.value = null
   showLocationSuggestions.value = false
+  
+  // Сброс клиента
+  clientSearch.value = ''
+  selectedClient.value = null
+  clientSuggestions.value = []
+  showClientSuggestions.value = false
+  isClientLoading.value = false
+  
+  // Сброс менеджера
+  managerSearch.value = ''
+  selectedManager.value = null
+  managerSuggestions.value = []
+  showManagerSuggestions.value = false
+  isManagerLoading.value = false
 }
 
 function resetClientForm() {
@@ -172,6 +210,96 @@ const selectLocation = (location) => {
   showLocationSuggestions.value = false
 }
 
+// Client autocomplete methods
+const onClientInput = async () => {
+  selectedClient.value = null
+  createForm.client = ''
+  
+  if (clientSearch.value.length < 2) {
+    clientSuggestions.value = []
+    showClientSuggestions.value = false
+    return
+  }
+  
+  try {
+    isClientLoading.value = true
+    const results = await store.autocompleteClients(clientSearch.value)
+    clientSuggestions.value = results || []
+    showClientSuggestions.value = results.length > 0
+  } catch (e) {
+    console.error('Failed to autocomplete clients:', e)
+    clientSuggestions.value = []
+  } finally {
+    isClientLoading.value = false
+  }
+}
+
+const onClientBlur = () => {
+  setTimeout(() => {
+    showClientSuggestions.value = false
+    if (clientSearch.value && !selectedClient.value) {
+      const found = clientSuggestions.value.find(c => 
+        c.name.toLowerCase() === clientSearch.value.toLowerCase().trim()
+      )
+      if (found) {
+        selectClient(found)
+      }
+    }
+  }, 200)
+}
+
+const selectClient = (client) => {
+  selectedClient.value = client
+  clientSearch.value = client.name
+  createForm.client = client.id
+  showClientSuggestions.value = false
+}
+
+// Manager autocomplete methods
+const onManagerInput = async () => {
+  selectedManager.value = null
+  createForm.tech_manager = ''
+  
+  if (managerSearch.value.length < 2) {
+    managerSuggestions.value = []
+    showManagerSuggestions.value = false
+    return
+  }
+  
+  try {
+    isManagerLoading.value = true
+    const results = await store.autocompleteManagers(managerSearch.value)
+    managerSuggestions.value = results || []
+    showManagerSuggestions.value = results.length > 0
+  } catch (e) {
+    console.error('Failed to autocomplete managers:', e)
+    managerSuggestions.value = []
+  } finally {
+    isManagerLoading.value = false
+  }
+}
+
+const onManagerBlur = () => {
+  setTimeout(() => {
+    showManagerSuggestions.value = false
+    if (managerSearch.value && !selectedManager.value) {
+      const found = managerSuggestions.value.find(m => 
+        (m.full_name || m.name || '').toLowerCase() === managerSearch.value.toLowerCase().trim()
+      )
+      if (found) {
+        selectManager(found)
+      }
+    }
+  }, 200)
+}
+
+const selectManager = (manager) => {
+  selectedManager.value = manager
+  managerSearch.value = manager.full_name || manager.name
+  createForm.tech_manager = manager.id
+  showManagerSuggestions.value = false
+}
+
 // Filter methods
 function selectStatus(statusId) {
   if (selectedStatusId.value === statusId) {
@@ -186,12 +314,14 @@ function clearFilters() {
 }
 
 // Open create project modal
-function openCreateProject() {
+async function openCreateProject() {
   resetForm()
   if (statuses.value && statuses.value.length > 0) {
     createForm.status = statuses.value[0].id
   }
   showCreateProjectForm.value = true
+  await nextTick()
+  nextOnboardingStep()
 }
 
 // Close create project modal
@@ -250,7 +380,14 @@ async function submitCreateClient() {
   try {
     const created = await store.createCounterparty(payload)
     await store.fetchClients()
+    
+    // Обновляем форму и поля автокомплита
     createForm.client = created.id
+    clientSearch.value = created.name
+    selectedClient.value = created
+    clientSuggestions.value = []
+    showClientSuggestions.value = false
+    
     closeCreateClientForm()
   } catch (e) {
     console.error('Failed to create client:', e)
@@ -283,7 +420,14 @@ async function submitCreateManager() {
   try {
     const created = await store.createTechnicalManager(payload)
     await store.fetchManagers()
+    
+    // Обновляем форму и поля автокомплита
     createForm.tech_manager = created.id
+    managerSearch.value = created.full_name || created.name
+    selectedManager.value = created
+    managerSuggestions.value = []
+    showManagerSuggestions.value = false
+    
     closeCreateManagerForm()
   } catch (e) {
     console.error('Failed to create manager:', e)
@@ -316,11 +460,9 @@ function closeHistory() {
   historyData.value = []
 }
 
-// Получение человекочитаемого значения поля
 function getFieldDisplayValue(field, value) {
   if (value === null || value === undefined || value === '') return '—'
   
-  // Для ID полей - получаем название из справочников
   if (field === 'client_id') {
     const client = clients.value.find(c => c.id === Number(value))
     return client ? client.name : `Клиент #${value}`
@@ -341,7 +483,6 @@ function getFieldDisplayValue(field, value) {
     return location ? location.name : `Локация #${value}`
   }
   
-  // Для дат
   if (field === 'created_at' && value) {
     return new Date(value).toLocaleDateString('ru-RU', {
       year: 'numeric',
@@ -353,7 +494,6 @@ function getFieldDisplayValue(field, value) {
   return value
 }
 
-// Получение названия поля для отображения
 function getFieldLabel(field) {
   const labels = {
     'name': 'Название',
@@ -366,7 +506,6 @@ function getFieldLabel(field) {
   return labels[field] || field
 }
 
-// Сравнение двух записей и получение изменений
 function getChanges(current, previous) {
   if (!previous) return null
   
@@ -377,7 +516,6 @@ function getChanges(current, previous) {
     const oldValue = previous[field]
     const newValue = current[field]
     
-    // Проверяем, изменилось ли значение
     if (oldValue !== newValue) {
       changes.push({
         field: field,
@@ -391,7 +529,6 @@ function getChanges(current, previous) {
   return changes
 }
 
-// Получение типа изменения
 function getHistoryTypeLabel(type) {
   const labels = {
     '+': 'Создание',
@@ -423,15 +560,15 @@ function open(id) {
   router.push({ name: 'project-detail', params: { id } })
 }
 </script>
-
 <template>
   <section class="page">
     <header class="page-header">
       <div>
+        <button @click="startTour">Начать обучение</button>
         <h1>Проекты</h1>
         <p class="muted">Всего: {{ count }}</p>
       </div>
-      <button class="btn btn-primary" @click="openCreateProject">+ Создать проект</button>
+      <button class="btn btn-primary" id="add-project-btn" @click="openCreateProject">+ Создать проект</button>
     </header>
 
     <div v-if="error" class="alert alert-error">
@@ -514,49 +651,90 @@ function open(id) {
       <div class="modal">
         <h2>Создать проект</h2>
         <form ref="createFormRef" @submit.prevent="submitCreateProject">
-          <label class="field">
+          <label class="field" id="project-name-field">
             <span>Название проекта *</span>
             <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
           </label>
-          <label class="field">
+          <label class="field" id="project-date-field">
             <span>Дата создания</span>
             <input v-model="createForm.created_at" type="datetime-local" />
             <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
           </label>
           
-          <label class="field">
+          <!-- Поле клиента с автокомплитом -->
+          <label class="field" id="project-client-field">
             <span>Клиент</span>
-            <div class="row">
-              <select v-model="createForm.client">
-                <option value="">— не выбран —</option>
-                <option v-for="c in filteredClients" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-              <button type="button" class="btn btn-ghost btn-sm" @click="openCreateClient">+</button>
+            <div class="combobox-wrapper">
+              <input
+                v-model="clientSearch"
+                type="text"
+                placeholder="Введите название клиента"
+                @input="onClientInput"
+                @focus="clientSearch.length >= 2 && onClientInput()"
+                @blur="onClientBlur"
+                autocomplete="off"
+              />
+              <div v-if="isClientLoading" class="combobox-loading">⏳</div>
+              <ul v-if="showClientSuggestions && clientSuggestions.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="client in clientSuggestions" 
+                  :key="client.id"
+                  @mousedown.prevent="selectClient(client)"
+                >
+                  {{ client.name }}
+                </li>
+              </ul>
             </div>
-            <small class="hint">Показываются только контрагенты с типом "Client"</small>
+            <small v-if="selectedClient" class="hint success">
+              Выбран клиент: {{ selectedClient.name }}
+            </small>
+            <button type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
+              + Создать нового клиента
+            </button>
           </label>
           
-          <label class="field">
+          <label class="field" id="project-status-field">
             <span>Статус</span>
             <select v-model="createForm.status">
-              <option value="">— не выбран —</option>
+              <option value="" id="status-list">— не выбран —</option>
               <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
           
-          <label class="field">
+          <!-- Поле тех. менеджера с автокомплитом -->
+          <label class="field" id="tech-manager-field">
             <span>Технический менеджер</span>
-            <div class="row">
-              <select v-model="createForm.tech_manager">
-                <option value="">— не выбран —</option>
-                <option v-for="m in managers" :key="m.id" :value="m.id">{{ m.full_name || m.name }}</option>
-              </select>
-              <button type="button" class="btn btn-ghost btn-sm" @click="openCreateManager">+</button>
+            <div class="combobox-wrapper">
+              <input
+                v-model="managerSearch"
+                type="text"
+                placeholder="Введите ФИО менеджера"
+                @input="onManagerInput"
+                @focus="managerSearch.length >= 2 && onManagerInput()"
+                @blur="onManagerBlur"
+                autocomplete="off"
+              />
+              <div v-if="isManagerLoading" class="combobox-loading">⏳</div>
+              <ul v-if="showManagerSuggestions && managerSuggestions.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="manager in managerSuggestions" 
+                  :key="manager.id"
+                  @mousedown.prevent="selectManager(manager)"
+                >
+                  {{ manager.full_name || manager.name }}
+                </li>
+              </ul>
             </div>
+            <small v-if="selectedManager" class="hint success">
+              Выбран менеджер: {{ selectedManager.full_name || selectedManager.name }}
+            </small>
+            <button type="button" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
+              + Создать нового менеджера
+            </button>
           </label>
           
           <!-- Поле локации с autocomplete -->
-          <label class="field">
+          <label class="field" id="project-location-field">
             <span>Локация</span>
             <div class="combobox-wrapper">
               <input
@@ -728,7 +906,6 @@ function open(id) {
               <div v-else-if="record.history_type === '~'" class="history-change">
                 <div class="history-change-title">Изменены поля</div>
                 <div class="history-change-values">
-                  <!-- Сравниваем с предыдущей записью -->
                   <template v-if="index < historyData.length - 1">
                     <div 
                       v-for="change in getChanges(record, historyData[index + 1])" 
@@ -743,7 +920,6 @@ function open(id) {
                       </div>
                     </div>
                   </template>
-                  <!-- Если нет предыдущей записи для сравнения -->
                   <template v-else>
                     <div class="history-value">
                       <span class="history-label">Название:</span>

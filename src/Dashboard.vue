@@ -1,5 +1,6 @@
 <template>
   <div class="page">
+    <button @click="startTour">Начать обучение</button>
     <header class="page-header">
       <div>
         <h1>📊 Дашборд</h1>
@@ -24,22 +25,22 @@
 
     <template v-if="report">
       <!-- Карточки с ключевыми показателями -->
-      <section class="kpi-grid">
-        <div class="kpi-card">
+      <section class="kpi-grid" id="kpi-cards">
+        <div class="kpi-card" id="revenue-card">
           <span class="kpi-label">Выручка</span>
           <span class="kpi-value gold">{{ formatCurrency(report.revenue) }}</span>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" id="cost-price-card">
           <span class="kpi-label">Себестоимость</span>
           <span class="kpi-value">{{ formatCurrency(report.cogs) }}</span>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" id="gross-profit-card">
           <span class="kpi-label">Валовая прибыль</span>
           <span class="kpi-value" :class="getProfitClass(report.gross_profit)">
             {{ formatCurrency(report.gross_profit) }}
           </span>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" id="net-profit-card">
           <span class="kpi-label">Чистая прибыль</span>
           <span class="kpi-value" :class="getProfitClass(report.net_profit)">
             {{ formatCurrency(report.net_profit) }}
@@ -153,6 +154,12 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useFinanceStore } from '@/modules/finance/store'
+
+import { onboarding } from '@/onboardings/DashboardOnboarding'
+
+function startTour() {
+    onboarding.drive();
+}
 
 const financeStore = useFinanceStore()
 
