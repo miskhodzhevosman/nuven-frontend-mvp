@@ -1,0 +1,15 @@
+export { onboarding as projectsOnboarding } from '@/onboardings/ProjectsCreateOnboarding'
+export { onboarding as projectItemOnboarding } from '@/onboardings/ProjectItemCreateOnboarding'
+export { onboarding as nomenclatureOnboarding } from '@/onboardings/NomenclatureCreateOnboarding'
+export { onboarding as factoryOnboarding } from '@/onboardings/FactoryCreateOnboarding'
+export { onboarding as factoryPaymentOnboarding } from '@/onboardings/FactoryPaymentOnboarding'
+export { onboarding as projectExpenseOnboarding } from '@/onboardings/ProjectExpenseOnboarding'
+export { onboarding as clientPaymentOnboarding } from '@/onboardings/ClientPaymentOnboarding'
+
+
+export { nextOnboardingStep as projectItemOnboardingNextStep } from '@/onboardings/ProjectItemCreateOnboarding'
+export { nextOnboardingStep as nomenclatureOnboardingNextStep } from '@/onboardings/NomenclatureCreateOnboarding'
+export { nextOnboardingStep as factoryOnboardingNextStep } from '@/onboardings/FactoryCreateOnboarding'
+export { nextOnboardingStep as factoryPaymentOnboardingNextStep } from '@/onboardings/FactoryPaymentOnboarding'
+export { nextOnboardingStep as projectExpenseOnboardingNextStep } from '@/onboardings/ProjectExpenseOnboarding'
+export { nextOnboardingStep as clientPaymentOnboardingNextStep } from '@/onboardings/ClientPaymentOnboarding'

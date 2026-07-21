@@ -5,6 +5,46 @@ import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '../store'
 import { useFinanceStore } from '@/modules/finance/store'
 
+import OnboardingMenu from '@/components/OnboardingMenu.vue'
+
+import { 
+  projectItemOnboarding,
+  nomenclatureOnboarding,
+  factoryOnboarding,
+  factoryPaymentOnboarding,
+  projectExpenseOnboarding,
+  clientPaymentOnboarding,
+
+  projectItemOnboardingNextStep,
+  nomenclatureOnboardingNextStep,
+  factoryOnboardingNextStep,
+  factoryPaymentOnboardingNextStep,
+  projectExpenseOnboardingNextStep,
+  clientPaymentOnboardingNextStep,
+} from '@/onboardings'
+
+
+function startTour(type) {
+  const tours = {
+    'project-item': projectItemOnboarding,
+    nomenclature: nomenclatureOnboarding,
+    factory: factoryOnboarding,
+    'factory-payment': factoryPaymentOnboarding,
+    'project-expense': projectExpenseOnboarding,
+    'client-payment': clientPaymentOnboarding
+  }
+  
+  const tour = tours[type]
+  if (tour) {
+    if (tour.isActive()) {
+      tour.destroy()
+    }
+    setTimeout(() => {
+      tour.drive()
+    }, 300)
+  }
+}
+
 const route = useRoute()
 const router = useRouter()
 const store = useProjectsStore()
@@ -380,14 +420,23 @@ async function refreshAllData() {
   }
 }
 
+import { nextTick } from 'vue'
+
 // --- Project items ---
-function openCreateItem() {
+async function openCreateItem() {
   editingItemId.value = null
   Object.assign(itemForm, emptyItemForm())
   nomenclatureSearch.value = ''
   selectedNomenclature.value = null
   showNomenclatureSuggestions.value = false
   showItemForm.value = true
+  
+  await nextTick()
+  projectItemOnboardingNextStep()
+  nomenclatureOnboardingNextStep()
+  factoryOnboardingNextStep()
+
+  console.log('hello')
 }
 
 function openEditItem(item) {
@@ -445,9 +494,12 @@ async function deleteItem(id) {
 }
 
 // --- Nomenclature (inside item form) ---
-function openCreateNomenclature() {
+async function openCreateNomenclature() {
   Object.assign(nomenclatureForm, emptyNomenclatureForm())
   showNomenclatureForm.value = true
+  await nextTick()
+  nomenclatureOnboardingNextStep()
+  factoryOnboardingNextStep()
 }
 function closeNomenclatureForm() { showNomenclatureForm.value = false }
 
@@ -475,9 +527,12 @@ async function submitNomenclature() {
 }
 
 // --- Factory (inside nomenclature form) ---
-function openCreateFactory() {
+async function openCreateFactory() {
   Object.assign(factoryForm, emptyFactoryForm())
   showFactoryForm.value = true
+  
+  await nextTick()
+  factoryOnboardingNextStep()
 }
 function closeFactoryForm() { showFactoryForm.value = false }
 
@@ -498,7 +553,7 @@ async function submitFactory() {
 }
 
 // --- Pay factory (from item) ---
-function openPayFactory(item) {
+async function openPayFactory(item) {
   payingItem.value = item
   const factoryId = nomenclatureFactoryId(item)
   Object.assign(paymentForm, emptyPaymentForm())
@@ -507,6 +562,9 @@ function openPayFactory(item) {
   const qty = Number(item.quantity ?? 0)
   if (cost && qty) paymentForm.amount = String((cost * qty).toFixed(2))
   showPayFactory.value = true
+
+  await nextTick()
+  factoryPaymentOnboardingNextStep()
 }
 function closePayFactory() { showPayFactory.value = false; payingItem.value = null }
 
@@ -529,13 +587,16 @@ async function submitPayFactory() {
 }
 
 // --- Project expenses ---
-function openProjectExpense() {
+async function openProjectExpense() {
   Object.assign(expenseForm, emptyExpenseForm())
   expenseTypeSearch.value = ''
   selectedExpenseType.value = null
   showExpenseTypeSuggestions.value = false
   showProjectExpenseForm.value = true
   store.fetchExpenseTypes()
+
+  await nextTick()
+  projectExpenseOnboardingNextStep()
 }
 function closeProjectExpenseForm() { 
   showProjectExpenseForm.value = false
@@ -568,9 +629,12 @@ async function submitProjectExpense() {
 }
 
 // --- Client payments ---
-function openClientPayment() {
+async function openClientPayment() {
   Object.assign(paymentForm, emptyPaymentForm())
   showClientPaymentForm.value = true
+
+  await nextTick()
+  clientPaymentOnboardingNextStep()
 }
 function closeClientPaymentForm() { showClientPaymentForm.value = false }
 
@@ -675,7 +739,11 @@ watch(projectId, loadAll)
   <section class="page">
     <div class="topbar">
       <button class="btn btn-ghost" @click="router.push({ name: 'projects' })">← Назад к проектам</button>
-      <button class="btn btn-primary" @click="openEditProject">✎ Редактировать проект</button>
+      <button 
+        id="edit-project-btn"
+        class="btn btn-primary" 
+        @click="openEditProject"
+      >✎ Редактировать проект</button>
     </div>
 
     <div v-if="error" class="alert alert-error"><strong>Ошибка:</strong> <span>{{ error }}</span></div>
@@ -699,299 +767,393 @@ watch(projectId, loadAll)
       </section>
 
       <!-- Финансовый отчет - Правая колонка -->
-<div class="main-layout">
-  <!-- Левая колонка -->
-  <div class="left-column">
-    <!-- Позиции проекта -->
-    <section class="card">
-      <div class="card-header">
-        <h2>Позиции проекта</h2>
-        <button class="btn btn-primary" @click="openCreateItem">+ Добавить позицию</button>
-      </div>
+      <div class="main-layout">
+        <!-- Левая колонка -->
+        <div class="left-column">
+          <!-- Позиции проекта -->
+          <section class="card">
+            <div class="card-header">
+              <h2>Позиции проекта</h2>
+              <button 
+                id="add-item-btn"
+                class="btn btn-primary" 
+                @click="openCreateItem"
+              >+ Добавить позицию</button>
+            </div>
 
-      <div v-if="!projectItems.length" class="state muted">Нет позиций.</div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Товар</th>
-              <th class="num">Кол-во</th>
-              <th class="num">Себест.</th>
-              <th class="num">Продажа</th>
-              <th>Фабрика</th>
-              <th class="actions">Операции</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in projectItems" :key="item.id">
-              <td>{{ store.nomenclatureName(item.nomenclature) }}</td>
-              <td class="num">{{ item.quantity }}</td>
-              <td class="num">{{ formatAmount(item.fixed_cost_price) }}</td>
-              <td class="num">{{ formatAmount(item.fixed_sale_price) }}</td>
-              <td>{{ store.factoryName(nomenclatureFactoryId(item)) }}</td>
-              <td class="actions">
-                <button class="btn btn-ghost" @click="openEditItem(item)">Редактировать</button>
-                <button class="btn btn-danger" @click="confirmDeleteItemId = item.id">Удалить</button>
-                <button class="btn btn-pay" @click="openPayFactory(item)">Оплатить</button>
-                <span v-if="confirmDeleteItemId === item.id" class="confirm">
-                  Точно?
-                  <button class="btn btn-danger" @click="deleteItem(item.id)">Да</button>
-                  <button class="btn btn-ghost" @click="confirmDeleteItemId = null">Нет</button>
+            <div v-if="!projectItems.length" class="state muted">Нет позиций.</div>
+            <div v-else class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Товар</th>
+                    <th class="num">Кол-во</th>
+                    <th class="num">Себест.</th>
+                    <th class="num">Продажа</th>
+                    <th>Фабрика</th>
+                    <th class="actions">Операции</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in projectItems" :key="item.id">
+                    <td>{{ store.nomenclatureName(item.nomenclature) }}</td>
+                    <td class="num">{{ item.quantity }}</td>
+                    <td class="num">{{ formatAmount(item.fixed_cost_price) }}</td>
+                    <td class="num">{{ formatAmount(item.fixed_sale_price) }}</td>
+                    <td>{{ store.factoryName(nomenclatureFactoryId(item)) }}</td>
+                    <td class="actions">
+                      <button class="btn btn-ghost" @click="openEditItem(item)">Редактировать</button>
+                      <button class="btn btn-danger" @click="confirmDeleteItemId = item.id">Удалить</button>
+                      <button 
+                        id="pay-factory-btn"
+                        class="btn btn-pay" 
+                        @click="openPayFactory(item)"
+                      >Оплатить</button>
+                      <span v-if="confirmDeleteItemId === item.id" class="confirm">
+                        Точно?
+                        <button class="btn btn-danger" @click="deleteItem(item.id)">Да</button>
+                        <button class="btn btn-ghost" @click="confirmDeleteItemId = null">Нет</button>
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Проектные расходы -->
+          <section class="card">
+            <div class="card-header">
+              <h2>Проектные расходы</h2>
+              <button 
+                id="add-expense-btn"
+                class="btn btn-primary" 
+                @click="openProjectExpense"
+              >+ Добавить расход</button>
+            </div>
+            <div v-if="!projectExpenses.length" class="state muted">Нет расходов.</div>
+            <div v-else class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Дата</th><th class="num">Сумма</th><th>Тип расхода</th><th>Комментарий</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="e in projectExpenses" :key="e.id">
+                    <td>{{ formatDate(e.date) }}</td>
+                    <td class="num">{{ formatAmount(e.amount) }}</td>
+                    <td>{{ e.operation_type_name || e.finance_operation_type || '—' }}</td>
+                    <td>{{ e.comment || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Оплаты клиентов -->
+          <section class="card">
+            <div class="card-header">
+              <h2>Оплаты клиентов</h2>
+              <button 
+                id="add-client-payment-btn"
+                class="btn btn-primary" 
+                @click="openClientPayment"
+              >+ Добавить оплату</button>
+            </div>
+            <div v-if="!clientPayments.length" class="state muted">Нет оплат.</div>
+            <div v-else class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in clientPayments" :key="p.id">
+                    <td>{{ formatDate(p.date) }}</td>
+                    <td class="num">{{ formatAmount(p.amount) }}</td>
+                    <td>{{ p.counterparty ?? '—' }}</td>
+                    <td>{{ p.comment || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Оплаты фабрикам -->
+          <section class="card">
+            <div class="card-header">
+              <h2>Оплаты фабрикам</h2>
+            </div>
+            <div v-if="!factoryPayments.length" class="state muted">Нет оплат.</div>
+            <div v-else class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in factoryPayments" :key="p.id">
+                    <td>{{ formatDate(p.date) }}</td>
+                    <td class="num">{{ formatAmount(p.amount) }}</td>
+                    <td>{{ p.counterparty ?? '—' }}</td>
+                    <td>{{ p.comment || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Правая колонка - Финансовый отчет -->
+        <div class="right-column">
+          <section class="report-card">
+            <h2>📊 Финансовый отчет</h2>
+            <div v-if="financeStore.loading" class="state muted">Загрузка…</div>
+            <div v-else-if="projectReport" class="report-grid">
+              <div class="report-item">
+                <span class="report-label">Себестоимость</span>
+                <span class="report-value">{{ formatCurrency(projectReport.cogs) }}</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Валовая прибыль</span>
+                <span class="report-value" :class="getProfitClass(projectReport.grossProfit)">
+                  {{ formatCurrency(projectReport.grossProfit) }}
                 </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Проектные расходы -->
-    <section class="card">
-      <div class="card-header">
-        <h2>Проектные расходы</h2>
-        <button class="btn btn-primary" @click="openProjectExpense">+ Добавить расход</button>
-      </div>
-      <div v-if="!projectExpenses.length" class="state muted">Нет расходов.</div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr><th>Дата</th><th class="num">Сумма</th><th>Тип расхода</th><th>Комментарий</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="e in projectExpenses" :key="e.id">
-              <td>{{ formatDate(e.date) }}</td>
-              <td class="num">{{ formatAmount(e.amount) }}</td>
-              <td>{{ e.operation_type_name || e.finance_operation_type || '—' }}</td>
-              <td>{{ e.comment || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Оплаты клиентов -->
-    <section class="card">
-      <div class="card-header">
-        <h2>Оплаты клиентов</h2>
-        <button class="btn btn-primary" @click="openClientPayment">+ Добавить оплату</button>
-      </div>
-      <div v-if="!clientPayments.length" class="state muted">Нет оплат.</div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in clientPayments" :key="p.id">
-              <td>{{ formatDate(p.date) }}</td>
-              <td class="num">{{ formatAmount(p.amount) }}</td>
-              <td>{{ p.counterparty ?? '—' }}</td>
-              <td>{{ p.comment || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Оплаты фабрикам -->
-    <section class="card">
-      <div class="card-header">
-        <h2>Оплаты фабрикам</h2>
-      </div>
-      <div v-if="!factoryPayments.length" class="state muted">Нет оплат.</div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr><th>Дата</th><th class="num">Сумма</th><th>Контрагент</th><th>Комментарий</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in factoryPayments" :key="p.id">
-              <td>{{ formatDate(p.date) }}</td>
-              <td class="num">{{ formatAmount(p.amount) }}</td>
-              <td>{{ p.counterparty ?? '—' }}</td>
-              <td>{{ p.comment || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-
-  <!-- Правая колонка - Финансовый отчет -->
-  <div class="right-column">
-    <section class="report-card">
-      <h2>📊 Финансовый отчет</h2>
-      <div v-if="financeStore.loading" class="state muted">Загрузка…</div>
-      <div v-else-if="projectReport" class="report-grid">
-        <div class="report-item">
-          <span class="report-label">Себестоимость</span>
-          <span class="report-value">{{ formatCurrency(projectReport.cogs) }}</span>
-        </div>
-        <div class="report-item">
-          <span class="report-label">Валовая прибыль</span>
-          <span class="report-value" :class="getProfitClass(projectReport.grossProfit)">
-            {{ formatCurrency(projectReport.grossProfit) }}
-          </span>
-        </div>
-        <div class="report-item">
-          <span class="report-label">Маржа</span>
-          <span class="report-value gold">{{ formatPercent(projectReport.margin) }}</span>
-        </div>
-        <hr class="report-divider" />
-        <div class="report-item">
-          <span class="report-label">Получено от клиента</span>
-          <span class="report-value positive">{{ formatCurrency(projectReport.clientReceived) }}</span>
-        </div>
-        <div class="report-item">
-          <span class="report-label">Дебиторская задолженность</span>
-          <span class="report-value">{{ formatCurrency(projectReport.accountsReceivable) }}</span>
-        </div>
-        <hr class="report-divider" />
-        <div class="report-item">
-          <span class="report-label">Оплачено фабрикам</span>
-          <span class="report-value negative">{{ formatCurrency(projectReport.factoryPaid) }}</span>
-        </div>
-        <div class="report-item">
-          <span class="report-label">Кредиторская задолженность</span>
-          <span class="report-value">{{ formatCurrency(projectReport.accountsPayable) }}</span>
-        </div>
-        <hr class="report-divider" />
-        <div class="report-item">
-          <span class="report-label">Расходы</span>
-          <span class="report-value negative">{{ formatCurrency(projectReport.projectExpenses) }}</span>
-        </div>
-        <div class="report-item total">
-          <span class="report-label">Чистая прибыль</span>
-          <span class="report-value" :class="getProfitClass(projectReport.netProfit)">
-            {{ formatCurrency(projectReport.netProfit) }}
-          </span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Маржа</span>
+                <span class="report-value gold">{{ formatPercent(projectReport.margin) }}</span>
+              </div>
+              <hr class="report-divider" />
+              <div class="report-item">
+                <span class="report-label">Получено от клиента</span>
+                <span class="report-value positive">{{ formatCurrency(projectReport.clientReceived) }}</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Дебиторская задолженность</span>
+                <span class="report-value">{{ formatCurrency(projectReport.accountsReceivable) }}</span>
+              </div>
+              <hr class="report-divider" />
+              <div class="report-item">
+                <span class="report-label">Оплачено фабрикам</span>
+                <span class="report-value negative">{{ formatCurrency(projectReport.factoryPaid) }}</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Кредиторская задолженность</span>
+                <span class="report-value">{{ formatCurrency(projectReport.accountsPayable) }}</span>
+              </div>
+              <hr class="report-divider" />
+              <div class="report-item">
+                <span class="report-label">Расходы</span>
+                <span class="report-value negative">{{ formatCurrency(projectReport.projectExpenses) }}</span>
+              </div>
+              <div class="report-item total">
+                <span class="report-label">Чистая прибыль</span>
+                <span class="report-value" :class="getProfitClass(projectReport.netProfit)">
+                  {{ formatCurrency(projectReport.netProfit) }}
+                </span>
+              </div>
+            </div>
+            <div v-else class="state muted">Нет данных</div>
+          </section>
         </div>
       </div>
-      <div v-else class="state muted">Нет данных</div>
-    </section>
-  </div>
-</div>
-
-
     </template>
 
     <!-- Модалка: позиция проекта -->
-<!-- Модалка: позиция проекта -->
-<div v-if="showItemForm" class="modal-backdrop" @click.self="closeItemForm">
-  <div class="modal">
-    <h2>{{ editingItemId ? 'Редактировать позицию' : 'Новая позиция' }}</h2>
-    <form ref="itemFormRef" @submit.prevent="submitItem">
-      <label class="field">
-        <span>Товар *</span>
-        <div class="combobox-wrapper">
-          <input
-            v-model="nomenclatureSearch"
-            type="text"
-            placeholder="Введите или выберите товар"
-            @input="onNomenclatureInput"
-            @focus="showNomenclatureSuggestions = true"
-            @blur="onNomenclatureBlur"
-            required
-            autocomplete="off"
-          />
-          <button 
-            type="button" 
-            class="combobox-toggle" 
-            @mousedown.prevent="toggleNomenclatureSuggestions"
-          >
-            ▼
-          </button>
-          <ul v-if="showNomenclatureSuggestions" class="combobox-suggestions">
-            <!-- Существующие товары -->
-            <li 
-              v-for="n in filteredNomenclatures" 
-              :key="n.id"
-              @mousedown.prevent="selectNomenclature(n)"
-            >
-              <span class="suggestion-name">{{ n.name }}</span>
-              <span v-if="n.article" class="suggestion-article">{{ n.article }}</span>
-              <span class="suggestion-prices">
-                {{ n.current_cost_price ? formatAmount(n.current_cost_price) : '—' }} / 
-                {{ n.current_sale_price ? formatAmount(n.current_sale_price) : '—' }}
-              </span>
-            </li>
-            <!-- Кнопка создания нового товара (всегда показывается) -->
-            <li 
-              @mousedown.prevent="openCreateNomenclature"
-              class="combobox-create-new"
+    <div v-if="showItemForm" class="modal-backdrop" @click.self="closeItemForm">
+      <div class="modal">
+        <h2>{{ editingItemId ? 'Редактировать позицию' : 'Новая позиция' }}</h2>
+        <form ref="itemFormRef" @submit.prevent="submitItem">
+          <label class="field">
+            <span>Товар *</span>
+            <div class="combobox-wrapper">
+              <input
+                id="item-nomenclature-field"
+                v-model="nomenclatureSearch"
+                type="text"
+                placeholder="Введите или выберите товар"
+                @input="onNomenclatureInput"
+                @focus="showNomenclatureSuggestions = true"
+                @blur="onNomenclatureBlur"
+                required
+                autocomplete="off"
+              />
+              <button 
+                type="button" 
+                class="combobox-toggle" 
+                @mousedown.prevent="toggleNomenclatureSuggestions"
+              >
+                ▼
+              </button>
+              <ul 
+                id="item-nomenclature-list"
+                v-if="showNomenclatureSuggestions" 
+                class="combobox-suggestions"
+              >
+                <li 
+                  v-for="n in filteredNomenclatures" 
+                  :key="n.id"
+                  @mousedown.prevent="selectNomenclature(n)"
+                >
+                  <span class="suggestion-name">{{ n.name }}</span>
+                  <span v-if="n.article" class="suggestion-article">{{ n.article }}</span>
+                  <span class="suggestion-prices">
+                    {{ n.current_cost_price ? formatAmount(n.current_cost_price) : '—' }} / 
+                    {{ n.current_sale_price ? formatAmount(n.current_sale_price) : '—' }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Кнопка создания нового товара под input-ом -->
+            <button
+              id="item-create-nomenclature-btn"
+              type="button"
+              class="btn-create-nomenclature"
+              @click="openCreateNomenclature"
             >
               ✚ Создать новый товар
-            </li>
-          </ul>
-        </div>
-        <small v-if="selectedNomenclature" class="hint success">
-          Выбран: {{ selectedNomenclature.name }}
-          <span v-if="selectedNomenclature.article">({{ selectedNomenclature.article }})</span>
-        </small>
-        <small v-else class="hint">
-          Начните вводить название или выберите из списка
-        </small>
-      </label>
-      <label class="field"><span>Количество *</span>
-        <input v-model="itemForm.quantity" type="number" step="0.01" min="0" required />
-      </label>
-      <label class="field">
-        <span>Фикс. себестоимость</span>
-        <input v-model="itemForm.fixed_cost_price" type="number" step="0.01" />
-        <small class="hint">Можно редактировать</small>
-      </label>
-      <label class="field">
-        <span>Фикс. цена продажи</span>
-        <input v-model="itemForm.fixed_sale_price" type="number" step="0.01" />
-        <small class="hint">Можно редактировать</small>
-      </label>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" @click="closeItemForm">Отмена</button>
-        <button type="submit" class="btn btn-primary" :disabled="loading">Сохранить</button>
+            </button>
+            
+            <small v-if="selectedNomenclature" class="hint success">
+              Выбран: {{ selectedNomenclature.name }}
+              <span v-if="selectedNomenclature.article">({{ selectedNomenclature.article }})</span>
+            </small>
+            <small v-else class="hint">
+              Начните вводить название или выберите из списка
+            </small>
+          </label>
+          
+          <label class="field">
+            <span>Количество *</span>
+            <input 
+              id="item-quantity-field"
+              v-model="itemForm.quantity" 
+              type="number" 
+              step="0.01" 
+              min="0" 
+              required 
+            />
+          </label>
+          
+          <label class="field">
+            <span>Фикс. себестоимость</span>
+            <input 
+              id="item-cost-price-field"
+              v-model="itemForm.fixed_cost_price" 
+              type="number" 
+              step="0.01" 
+            />
+            <small class="hint">Можно редактировать</small>
+          </label>
+          
+          <label class="field">
+            <span>Фикс. цена продажи</span>
+            <input 
+              id="item-sale-price-field"
+              v-model="itemForm.fixed_sale_price" 
+              type="number" 
+              step="0.01" 
+            />
+            <small class="hint">Можно редактировать</small>
+          </label>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" @click="closeItemForm">Отмена</button>
+            <button 
+              id="item-save-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading"
+            >Сохранить</button>
+          </div>
+          <div v-if="error" class="alert alert-error">{{ error }}</div>
+        </form>
       </div>
-      <div v-if="error" class="alert alert-error">{{ error }}</div>
-    </form>
-  </div>
-</div>
+    </div>
 
     <!-- Модалка: новый товар -->
     <div v-if="showNomenclatureForm" class="modal-backdrop" @click.self="closeNomenclatureForm">
       <div class="modal">
         <h2>Новый товар</h2>
         <form ref="nomenclatureFormRef" @submit.prevent="submitNomenclature">
-          <label class="field"><span>Название *</span>
-            <input v-model="nomenclatureForm.name" required maxlength="255" />
+          <label class="field">
+            <span>Название *</span>
+            <input 
+              id="nomenclature-name-field"
+              v-model="nomenclatureForm.name" 
+              required 
+              maxlength="255" 
+            />
           </label>
-          <label class="field"><span>Техническое название</span>
-            <input v-model="nomenclatureForm.technical_name" maxlength="255" />
+          <label class="field">
+            <span>Техническое название</span>
+            <input 
+              id="nomenclature-technical-name-field"
+              v-model="nomenclatureForm.technical_name" 
+              maxlength="255" 
+            />
           </label>
-          <label class="field"><span>Тип *</span>
-            <select v-model="nomenclatureForm.type">
+          <label class="field">
+            <span>Тип *</span>
+            <select 
+              id="nomenclature-type-field"
+              v-model="nomenclatureForm.type"
+            >
               <option value="PRODUCT">Товар</option>
               <option value="SERVICE">Услуга</option>
             </select>
           </label>
-          <label class="field"><span>Артикул</span>
-            <input v-model="nomenclatureForm.article" maxlength="100" />
+          <label class="field">
+            <span>Артикул</span>
+            <input 
+              id="nomenclature-article-field"
+              v-model="nomenclatureForm.article" 
+              maxlength="100" 
+            />
           </label>
-          <label class="field"><span>Фабрика</span>
+          <label class="field">
+            <span>Фабрика</span>
             <div class="row">
-              <select v-model="nomenclatureForm.factory">
+              <select 
+                id="nomenclature-factory-field"
+                v-model="nomenclatureForm.factory"
+              >
                 <option value="">— не указана —</option>
                 <option v-for="f in store.factories" :key="f.id" :value="f.id">{{ f.name }}</option>
               </select>
-              <button type="button" class="btn btn-ghost" @click="openCreateFactory">+ Новая фабрика</button>
+              <button 
+                id="create-factory-btn"
+                type="button" 
+                class="btn btn-ghost" 
+                @click="openCreateFactory"
+              >+ Новая фабрика</button>
             </div>
           </label>
-          <label class="field"><span>Текущая себестоимость</span>
-            <input v-model="nomenclatureForm.current_cost_price" type="number" step="0.01" />
+          <label class="field">
+            <span>Текущая себестоимость</span>
+            <input 
+              id="nomenclature-cost-price-field"
+              v-model="nomenclatureForm.current_cost_price" 
+              type="number" 
+              step="0.01" 
+            />
           </label>
-          <label class="field"><span>Текущая цена продажи</span>
-            <input v-model="nomenclatureForm.current_sale_price" type="number" step="0.01" />
+          <label class="field">
+            <span>Текущая цена продажи</span>
+            <input 
+              id="nomenclature-sale-price-field"
+              v-model="nomenclatureForm.current_sale_price" 
+              type="number" 
+              step="0.01" 
+            />
           </label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeNomenclatureForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
+            <button 
+              id="nomenclature-save-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading"
+            >Создать</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
@@ -1003,18 +1165,37 @@ watch(projectId, loadAll)
       <div class="modal">
         <h2>Новая фабрика</h2>
         <form ref="factoryFormRef" @submit.prevent="submitFactory">
-          <label class="field"><span>Название *</span>
-            <input v-model="factoryForm.name" required maxlength="255" />
+          <label class="field">
+            <span>Название *</span>
+            <input 
+              id="factory-name-field"
+              v-model="factoryForm.name" 
+              required 
+              maxlength="255" 
+            />
           </label>
-          <label class="field"><span>Адрес</span>
-            <input v-model="factoryForm.address" />
+          <label class="field">
+            <span>Адрес</span>
+            <input 
+              id="factory-address-field"
+              v-model="factoryForm.address" 
+            />
           </label>
-          <label class="field"><span>Контакты</span>
-            <input v-model="factoryForm.contacts" />
+          <label class="field">
+            <span>Контакты</span>
+            <input 
+              id="factory-contacts-field"
+              v-model="factoryForm.contacts" 
+            />
           </label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeFactoryForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
+            <button 
+              id="factory-save-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading"
+            >Создать</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
@@ -1030,24 +1211,53 @@ watch(projectId, loadAll)
           Фабрика: {{ store.factoryName(nomenclatureFactoryId(payingItem)) }}
         </p>
         <form ref="paymentFormRef" @submit.prevent="submitPayFactory">
-          <label class="field"><span>Сумма *</span>
-            <input v-model="paymentForm.amount" type="number" step="0.01" required />
+          <label class="field">
+            <span>Сумма *</span>
+            <input 
+              id="payment-amount-field"
+              v-model="paymentForm.amount" 
+              type="number" 
+              step="0.01" 
+              required 
+            />
           </label>
-          <label class="field"><span>Дата *</span>
-            <input v-model="paymentForm.date" type="date" required />
+          <label class="field">
+            <span>Дата *</span>
+            <input 
+              id="payment-date-field"
+              v-model="paymentForm.date" 
+              type="date" 
+              required 
+              @focus="$event.target.showPicker?.()"
+              @click="$event.target.showPicker?.()"
+            />
           </label>
-          <label class="field"><span>Контрагент (фабрика)</span>
-            <select v-model="paymentForm.counterparty_id">
+          <label class="field">
+            <span>Контрагент (фабрика)</span>
+            <select 
+              id="payment-counterparty-field"
+              v-model="paymentForm.counterparty_id"
+            >
               <option value="">— не указан —</option>
               <option v-for="f in store.factories" :key="f.id" :value="f.id">{{ f.name }}</option>
             </select>
           </label>
-          <label class="field"><span>Комментарий</span>
-            <textarea v-model="paymentForm.comment" rows="2"></textarea>
+          <label class="field">
+            <span>Комментарий</span>
+            <textarea 
+              id="payment-comment-field"
+              v-model="paymentForm.comment" 
+              rows="2"
+            ></textarea>
           </label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closePayFactory">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Оплатить</button>
+            <button 
+              id="payment-save-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading"
+            >Оплатить</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
@@ -1059,17 +1269,33 @@ watch(projectId, loadAll)
       <div class="modal">
         <h2>Проектный расход</h2>
         <form ref="expenseFormRef" @submit.prevent="submitProjectExpense">
-          <label class="field"><span>Сумма *</span>
-            <input v-model="expenseForm.amount" type="number" step="0.01" required />
+          <label class="field">
+            <span>Сумма *</span>
+            <input 
+              id="expense-amount-field"
+              v-model="expenseForm.amount" 
+              type="number" 
+              step="0.01" 
+              required 
+            />
           </label>
-          <label class="field"><span>Дата *</span>
-            <input v-model="expenseForm.date" type="date" required />
+          <label class="field">
+            <span>Дата *</span>
+            <input 
+              id="expense-date-field"
+              v-model="expenseForm.date" 
+              type="date" 
+              required 
+              @focus="$event.target.showPicker?.()"
+              @click="$event.target.showPicker?.()"
+            />
           </label>
           
           <label class="field">
             <span>Тип расхода *</span>
             <div class="combobox-wrapper">
               <input
+                id="expense-type-field"
                 v-model="expenseTypeSearch"
                 type="text"
                 placeholder="Введите или выберите тип расхода"
@@ -1110,20 +1336,32 @@ watch(projectId, loadAll)
             </small>
           </label>
 
-          <label class="field"><span>Контрагент</span>
-            <select v-model="expenseForm.counterparty_id">
+          <label class="field">
+            <span>Контрагент</span>
+            <select 
+              id="expense-counterparty-field"
+              v-model="expenseForm.counterparty_id"
+            >
               <option value="">— не указан —</option>
               <option v-for="c in store.clients" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </label>
-          <label class="field"><span>Комментарий</span>
-            <textarea v-model="expenseForm.comment" rows="2"></textarea>
+          <label class="field">
+            <span>Комментарий</span>
+            <textarea 
+              id="expense-comment-field"
+              v-model="expenseForm.comment" 
+              rows="2"
+            ></textarea>
           </label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeProjectExpenseForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading || !expenseForm.expense_type_name">
-              Создать
-            </button>
+            <button 
+              id="expense-save-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading || !expenseForm.expense_type_name"
+            >Создать</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
@@ -1135,24 +1373,53 @@ watch(projectId, loadAll)
       <div class="modal">
         <h2>Оплата клиента</h2>
         <form ref="paymentFormRef" @submit.prevent="submitClientPayment">
-          <label class="field"><span>Сумма *</span>
-            <input v-model="paymentForm.amount" type="number" step="0.01" required />
+          <label class="field">
+            <span>Сумма *</span>
+            <input 
+              id="payment-amount-field"
+              v-model="paymentForm.amount" 
+              type="number" 
+              step="0.01" 
+              required 
+            />
           </label>
-          <label class="field"><span>Дата *</span>
-            <input v-model="paymentForm.date" type="date" required />
+          <label class="field">
+            <span>Дата *</span>
+            <input 
+              id="payment-date-field"
+              v-model="paymentForm.date" 
+              type="date" 
+              required 
+              @focus="$event.target.showPicker?.()"
+              @click="$event.target.showPicker?.()"
+            />
           </label>
-          <label class="field"><span>Контрагент (клиент)</span>
-            <select v-model="paymentForm.counterparty_id">
+          <label class="field">
+            <span>Контрагент (клиент)</span>
+            <select 
+              id="payment-counterparty-field"
+              v-model="paymentForm.counterparty_id"
+            >
               <option value="">— не указан —</option>
               <option v-for="c in store.clients" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </label>
-          <label class="field"><span>Комментарий</span>
-            <textarea v-model="paymentForm.comment" rows="2"></textarea>
+          <label class="field">
+            <span>Комментарий</span>
+            <textarea 
+              id="payment-comment-field"
+              v-model="paymentForm.comment" 
+              rows="2"
+            ></textarea>
           </label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeClientPaymentForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
+            <button 
+              id="payment-save-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading"
+            >Создать</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
@@ -1166,12 +1433,22 @@ watch(projectId, loadAll)
         <form ref="editFormRef" @submit.prevent="submitEditProject">
           <label class="field">
             <span>Название проекта *</span>
-            <input v-model="editProjectForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
+            <input 
+              id="project-name-field"
+              v-model="editProjectForm.name" 
+              type="text" 
+              required 
+              maxlength="255" 
+              placeholder="Введите название проекта" 
+            />
           </label>
           
           <label class="field">
             <span>Клиент</span>
-            <select v-model="editProjectForm.client">
+            <select 
+              id="project-client-field"
+              v-model="editProjectForm.client"
+            >
               <option value="">— не выбран —</option>
               <option v-for="c in editFilteredClients" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
@@ -1180,7 +1457,10 @@ watch(projectId, loadAll)
           
           <label class="field">
             <span>Статус</span>
-            <select v-model="editProjectForm.status">
+            <select 
+              id="project-status-field"
+              v-model="editProjectForm.status"
+            >
               <option value="">— не выбран —</option>
               <option v-for="s in store.statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
@@ -1188,7 +1468,10 @@ watch(projectId, loadAll)
           
           <label class="field">
             <span>Технический менеджер</span>
-            <select v-model="editProjectForm.tech_manager">
+            <select 
+              id="tech-manager-field"
+              v-model="editProjectForm.tech_manager"
+            >
               <option value="">— не выбран —</option>
               <option v-for="m in store.managers" :key="m.id" :value="m.id">{{ m.full_name || m.name }}</option>
             </select>
@@ -1198,6 +1481,7 @@ watch(projectId, loadAll)
             <span>Локация</span>
             <div class="combobox-wrapper">
               <input
+                id="project-location-field"
                 v-model="editLocationSearch"
                 type="text"
                 placeholder="Введите или выберите локацию"
@@ -1213,7 +1497,11 @@ watch(projectId, loadAll)
               >
                 ▼
               </button>
-              <ul v-if="editShowLocationSuggestions && editFilteredLocationSuggestions.length > 0" class="combobox-suggestions">
+              <ul 
+                id="project-location-list"
+                v-if="editShowLocationSuggestions && editFilteredLocationSuggestions.length > 0" 
+                class="combobox-suggestions"
+              >
                 <li 
                   v-for="location in editFilteredLocationSuggestions" 
                   :key="location.id"
@@ -1234,23 +1522,103 @@ watch(projectId, loadAll)
           
           <label class="field">
             <span>Полное название локации</span>
-            <input v-model="editProjectForm.full_location_name" type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
+            <input 
+              id="project-location-full-name"
+              v-model="editProjectForm.full_location_name" 
+              type="text" 
+              maxlength="255" 
+              placeholder="Например: Москва, ул. Тверская, д. 1" 
+            />
           </label>
 
           <label class="field">
             <span>Дата создания</span>
-            <input v-model="editProjectForm.created_at" type="datetime-local" />
+            <input 
+              id="project-date-field"
+              v-model="editProjectForm.created_at" 
+              type="datetime-local"
+              @focus="$event.target.showPicker?.()"
+              @click="$event.target.showPicker?.()"
+            />
             <small class="hint">Укажите дату для старых проектов</small>
           </label>
           
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeEditProjectForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Сохранить</button>
+            <button 
+              id="project-create-btn"
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="loading"
+            >Сохранить</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
       </div>
     </div>
+
+    <!-- Компонент меню онбордингов -->
+    <OnboardingMenu>
+      <!-- Онбординг: Позиция проекта -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour('project-item')"
+      >
+        <span class="btn-icon">📦</span>
+        Добавить позицию
+        <span class="btn-glow"></span>
+      </button>
+
+      <!-- Онбординг: Создание товара -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour('nomenclature')"
+      >
+        <span class="btn-icon">🏷️</span>
+        Создать товар
+        <span class="btn-glow"></span>
+      </button>
+
+      <!-- Онбординг: Создание фабрики -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour('factory')"
+      >
+        <span class="btn-icon">🏭</span>
+        Создать фабрику
+        <span class="btn-glow"></span>
+      </button>
+
+      <!-- Онбординг: Оплата фабрике -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour('factory-payment')"
+      >
+        <span class="btn-icon">💰</span>
+        Оплатить фабрике
+        <span class="btn-glow"></span>
+      </button>
+
+      <!-- Онбординг: Проектный расход -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour('project-expense')"
+      >
+        <span class="btn-icon">💸</span>
+        Добавить расход
+        <span class="btn-glow"></span>
+      </button>
+
+      <!-- Онбординг: Оплата клиента -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour('client-payment')"
+      >
+        <span class="btn-icon">💳</span>
+        Оплата клиента
+        <span class="btn-glow"></span>
+      </button>
+    </OnboardingMenu>
   </section>
 </template>
 
@@ -1434,6 +1802,30 @@ h2 {
 .info-grid > div span:last-child {
   color: #D0D2D5;
   font-weight: 500;
+}
+
+.btn-create-nomenclature {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 12px;
+  background: none;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  color: #4a90d9;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-create-nomenclature:hover {
+  background: #f0f7ff;
+  border-color: #4a90d9;
+}
+
+.btn-create-nomenclature:active {
+  background: #dce8f5;
 }
 
 /* ============================================

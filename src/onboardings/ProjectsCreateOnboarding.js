@@ -32,7 +32,7 @@ export const onboarding = driver({
         },
     },
     {
-        element: "#project-clent-field",
+        element: "#project-client-field",
         popover: {
             title: 'Клиент',
             description: 'Поле для выбора клиента',

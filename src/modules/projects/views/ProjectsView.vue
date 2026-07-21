@@ -8,14 +8,16 @@ const router = useRouter()
 const store = useProjectsStore()
 const { projects, loading, error, count, statuses, clients, managers, locations } = storeToRefs(store)
 
-import { onboarding } from '@/onboardings/ProjectsOnboarding'
-import { nextOnboardingStep } from '@/onboardings/ProjectsOnboarding'
-import { goToOnboardingStep } from '@/onboardings/ProjectsOnboarding'
+import OnboardingMenu from '@/components/OnboardingMenu.vue'
+
+  import { onboarding as projectCreateOnboarding } from '@/onboardings/ProjectsCreateOnboarding'
+import { nextOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
+import { goToOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
 
 import { nextTick } from 'vue'
 
 function startTour() {
-    onboarding.drive();
+    projectCreateOnboarding.drive();
 }
 
 // Фильтр по статусу
@@ -560,7 +562,6 @@ function open(id) {
   <section class="page">
     <header class="page-header">
       <div>
-        <button @click="startTour">Начать обучение</button>
         <h1>Проекты</h1>
         <p class="muted">Всего: {{ count }}</p>
       </div>
@@ -653,7 +654,12 @@ function open(id) {
           </label>
           <label class="field" id="project-date-field">
             <span>Дата создания</span>
-            <input v-model="createForm.created_at" type="datetime-local" />
+            <input 
+              v-model="createForm.created_at" 
+              type="datetime-local" 
+              @focus="$event.target.showPicker?.()"
+              @click="$event.target.showPicker?.()"
+            />
             <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
           </label>
           
@@ -669,6 +675,7 @@ function open(id) {
                 @focus="clientSearch.length >= 2 && onClientInput()"
                 @blur="onClientBlur"
                 autocomplete="off"
+                id="client-list"
               />
               <div v-if="isClientLoading" class="combobox-loading">⏳</div>
               <ul v-if="showClientSuggestions && clientSuggestions.length > 0" class="combobox-suggestions">
@@ -684,15 +691,15 @@ function open(id) {
             <small v-if="selectedClient" class="hint success">
               Выбран клиент: {{ selectedClient.name }}
             </small>
-            <button type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
+            <button id="add-new-client-btn" type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
               + Создать нового клиента
             </button>
           </label>
           
           <label class="field" id="project-status-field">
             <span>Статус</span>
-            <select v-model="createForm.status">
-              <option value="" id="status-list">— не выбран —</option>
+            <select v-model="createForm.status" id="status-list">
+              <option value="">— не выбран —</option>
               <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </label>
@@ -709,6 +716,7 @@ function open(id) {
                 @focus="managerSearch.length >= 2 && onManagerInput()"
                 @blur="onManagerBlur"
                 autocomplete="off"
+                id="tech-manager-list"
               />
               <div v-if="isManagerLoading" class="combobox-loading">⏳</div>
               <ul v-if="showManagerSuggestions && managerSuggestions.length > 0" class="combobox-suggestions">
@@ -724,7 +732,7 @@ function open(id) {
             <small v-if="selectedManager" class="hint success">
               Выбран менеджер: {{ selectedManager.full_name || selectedManager.name }}
             </small>
-            <button type="button" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
+            <button type="button" id="add-new-tech-manager-btn" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
               + Создать нового менеджера
             </button>
           </label>
@@ -761,14 +769,14 @@ function open(id) {
             </small>
           </label>
           
-          <label class="field">
+          <label class="field" id="project-locatin-full-name">
             <span>Полное название локации</span>
             <input v-model="createForm.full_location_name" type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
           </label>
           
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" @click="closeCreateProjectForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
+            <button type="submit" class="btn btn-primary" id="project-create-btn" :disabled="loading">Создать</button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
         </form>
@@ -939,9 +947,20 @@ function open(id) {
         </div>
       </div>
     </div>
+
+    <OnboardingMenu>
+      <!-- Все ваши кнопки запуска инструкций -->
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour"
+      >
+        <span class="btn-icon">📁</span>
+        Создать проект
+        <span class="btn-glow"></span>
+      </button>
+    </OnboardingMenu>
   </section>
 </template>
-
 <style scoped>
 /* Стили для истории */
 .history-timeline {
@@ -1702,5 +1721,90 @@ function open(id) {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 168, 106, 0.4);
-}</style>
+  background: rgba(201, 168, 106, 0.4);}
+  
+  .onboarding-start-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  background: #16181C;
+  color: #C9A86A;
+  border: 1px solid #C9A86A;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-icon {
+  font-size: 18px;
+}
+
+/* Свечение */
+.btn-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(201, 168, 106, 0.15), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.onboarding-start-btn:hover {
+  background: #C9A86A;
+  color: #16181C;
+  box-shadow: 
+    0 0 20px rgba(201, 168, 106, 0.3),
+    inset 0 0 20px rgba(201, 168, 106, 0.1);
+  transform: translateY(-2px);
+}
+
+.onboarding-start-btn:hover .btn-glow {
+  opacity: 1;
+}
+
+.onboarding-start-btn:active {
+  transform: scale(0.95);
+}
+
+.onboarding-start-btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    #C9A86A 20%,
+    #FF6B35 40%,
+    #FF4500 60%,
+    #FF6B35 80%,
+    #C9A86A 100%
+  );
+  background-size: 300% 300%;
+  animation: rotateBorder 4s linear infinite;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.onboarding-start-btn:hover::before {
+  opacity: 0.6;
+}
+
+@keyframes rotateBorder {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+  </style>
