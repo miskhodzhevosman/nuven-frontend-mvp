@@ -771,7 +771,7 @@ function open(id) {
           
           <label class="field" id="project-locatin-full-name">
             <span>Полное название локации</span>
-            <input v-model="createForm.full_location_name" type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
+            <input v-model="createForm.full_location_name" disabled type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
           </label>
           
           <div class="modal-actions">
