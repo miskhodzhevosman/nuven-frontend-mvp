@@ -757,7 +757,7 @@ function open(id) {
                   :key="location.id"
                   @mousedown.prevent="selectLocation(location)"
                 >
-                  {{ location.name }}
+                  {{ location.full_name }}
                 </li>
               </ul>
             </div>
