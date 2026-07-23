@@ -961,6 +961,7 @@ function open(id) {
     </OnboardingMenu>
   </section>
 </template>
+
 <style scoped>
 /* Стили для истории */
 .history-timeline {
