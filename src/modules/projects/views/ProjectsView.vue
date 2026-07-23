@@ -1009,31 +1009,31 @@ function open(id) {
   font-size: 12px;
   text-transform: uppercase;
   background: #e0e0e0;
-  color: #333;
+  color: #000000;
 }
 
 .history-type.history-created {
   background: #28a745;
-  color: white;
+  color: rgb(0, 0, 0);
 }
 
 .history-type.history-changed {
   background: #ffc107;
-  color: #333;
+  color: #000000;
 }
 
 .history-type.history-deleted {
   background: #dc3545;
-  color: white;
+  color: rgb(0, 0, 0);
 }
 
 .history-date {
-  color: #666;
+  color: #000000;
   font-size: 13px;
 }
 
 .history-user {
-  color: #666;
+  color: #000000;
   font-size: 13px;
   margin-left: auto;
 }
@@ -1045,7 +1045,7 @@ function open(id) {
 .history-change-field {
   font-weight: 500;
   margin-bottom: 6px;
-  color: #333;
+  color: #000000;
 }
 
 .history-change-values {
@@ -1062,7 +1062,7 @@ function open(id) {
 }
 
 .history-label {
-  color: #666;
+  color: #000000;
   min-width: 140px;
   font-weight: 500;
 }
@@ -1115,7 +1115,7 @@ function open(id) {
   margin: 0 auto;
   padding: 24px;
   background: #16181C;
-  color: #D0D2D5;
+  color: #000000;
   min-height: 100vh;
 }
 
