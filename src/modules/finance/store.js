@@ -31,6 +31,12 @@ export const useFinanceStore = defineStore('finance', {
     projectExpensesByProject: (state) => (projectId) => {
       return state.projectExpenses.filter(e => e.project === projectId || e.project?.id === projectId)
     },
+    clientPaymentsByProject: (state) => (projectId) => {
+      return state.clientPayments.filter(p => p.project === projectId || p.project?.id === projectId)
+    },
+    factoryPaymentsByProject: (state) => (projectId) => {
+      return state.factoryPayments.filter(p => p.project === projectId || p.project?.id === projectId)
+    },
   },
 
   actions: {
@@ -105,7 +111,6 @@ export const useFinanceStore = defineStore('finance', {
       this.error = null
       try {
         const expense = await financeApi.getProjectExpense(id)
-        // Обновляем в списке если есть
         const idx = this.projectExpenses.findIndex((e) => e.id === id)
         if (idx !== -1) this.projectExpenses[idx] = expense
         return expense
@@ -225,14 +230,34 @@ export const useFinanceStore = defineStore('finance', {
       }
     },
 
-    // ---- Client Payments ----
+    // ---- Client Payments (Полный CRUD) ----
     async fetchClientPayments(params = {}) {
       this.loading = true
       this.error = null
       try {
         const data = await financeApi.getClientPayments(params)
         this.clientPayments = data.results ?? data ?? []
+        this.count = data.count ?? this.clientPayments.length
+        this.next = data.next ?? null
+        this.previous = data.previous ?? null
         return this.clientPayments
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchClientPayment(id) {
+      this.loading = true
+      this.error = null
+      try {
+        // Используем универсальный getTransaction или добавляем в api
+        const payment = await financeApi.getTransaction(id)
+        const idx = this.clientPayments.findIndex((p) => p.id === id)
+        if (idx !== -1) this.clientPayments[idx] = payment
+        return payment
       } catch (e) {
         this.setError(e)
         throw e
@@ -247,7 +272,39 @@ export const useFinanceStore = defineStore('finance', {
       try {
         const created = await financeApi.createClientPayment(payload)
         this.clientPayments.unshift(created)
+        this.count += 1
         return created
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateClientPayment(id, payload) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await financeApi.updateClientPayment(id, payload)
+        const idx = this.clientPayments.findIndex((p) => p.id === id)
+        if (idx !== -1) this.clientPayments[idx] = updated
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteClientPayment(id) {
+      this.loading = true
+      this.error = null
+      try {
+        await financeApi.deleteClientPayment(id)
+        this.clientPayments = this.clientPayments.filter((p) => p.id !== id)
+        this.count = Math.max(0, this.count - 1)
       } catch (e) {
         this.setError(e)
         throw e
@@ -263,7 +320,26 @@ export const useFinanceStore = defineStore('finance', {
       try {
         const data = await financeApi.getFactoryPayments(params)
         this.factoryPayments = data.results ?? data ?? []
+        this.count = data.count ?? this.factoryPayments.length
+        this.next = data.next ?? null
+        this.previous = data.previous ?? null
         return this.factoryPayments
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchFactoryPayment(id) {
+      this.loading = true
+      this.error = null
+      try {
+        const payment = await financeApi.getTransaction(id)
+        const idx = this.factoryPayments.findIndex((p) => p.id === id)
+        if (idx !== -1) this.factoryPayments[idx] = payment
+        return payment
       } catch (e) {
         this.setError(e)
         throw e
@@ -278,7 +354,39 @@ export const useFinanceStore = defineStore('finance', {
       try {
         const created = await financeApi.createFactoryPayment(payload)
         this.factoryPayments.unshift(created)
+        this.count += 1
         return created
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateFactoryPayment(id, payload) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await financeApi.updateFactoryPayment(id, payload)
+        const idx = this.factoryPayments.findIndex((p) => p.id === id)
+        if (idx !== -1) this.factoryPayments[idx] = updated
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteFactoryPayment(id) {
+      this.loading = true
+      this.error = null
+      try {
+        await financeApi.deleteFactoryPayment(id)
+        this.factoryPayments = this.factoryPayments.filter((p) => p.id !== id)
+        this.count = Math.max(0, this.count - 1)
       } catch (e) {
         this.setError(e)
         throw e

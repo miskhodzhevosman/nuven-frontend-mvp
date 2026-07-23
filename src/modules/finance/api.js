@@ -136,4 +136,13 @@ export const financeApi = {
     const res = await api.get(`${BASE}/reports/projects/${projectId}/`)
     return res.data
   },
+  // Client payments (project_id обязателен)
+async getClientPayments(params = {}) {
+  const res = await api.get(`${BASE}/client-payments/`, { params })
+  return res.data
+},
+async getClientPayment(id) {
+  const res = await api.get(`${BASE}/client-payments/${id}/`)
+  return res.data
+},
 }

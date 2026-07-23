@@ -1,4 +1,4 @@
-<!-- modules/app/widgets/ClientPayments/index.vue -->
+<!-- modules/finance/widgets/ClientPayments/index.vue -->
 <template>
   <section class="card">
     <div class="card-header">
@@ -7,42 +7,59 @@
         id="add-client-payment-btn"
         class="btn btn-primary" 
         @click="openCreatePayment"
-      >+ Добавить оплату</button>
+        :disabled="!projectClient"
+      >
+        + Добавить оплату
+      </button>
     </div>
 
-    <div v-if="!payments.length" class="state muted">Нет оплат.</div>
+    <div v-if="!projectClient" class="state warning">
+      ⚠️ У проекта не указан клиент. Оплаты недоступны.
+    </div>
+    <div v-else-if="loading" class="state muted">Загрузка...</div>
+    <div v-else-if="error" class="state error">{{ error }}</div>
+    <div v-else-if="!payments.length" class="state muted">Нет оплат.</div>
     <div v-else class="table-wrap">
       <table class="table">
         <thead>
           <tr>
             <th>Дата</th>
             <th class="num">Сумма</th>
-            <th>Контрагент</th>
+            <th>Клиент</th>
             <th>Комментарий</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="p in payments" :key="p.id">
             <td>{{ formatDate(p.date) }}</td>
             <td class="num">{{ formatAmount(p.amount) }}</td>
-            <td>{{ p.counterparty ?? '—' }}</td>
+            <td>{{ clientName }}</td>
             <td>{{ p.comment || '—' }}</td>
+            <td>
+              <button class="btn-icon" @click="openEditPayment(p)" title="Редактировать">✏️</button>
+              <button class="btn-icon danger" @click="deletePayment(p.id)" title="Удалить">🗑️</button>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Модалка: Создание оплаты клиента -->
+    <!-- Модалка -->
     <ClientPaymentFormModal
       v-model="showModal"
       :project-id="projectId"
+      :editing-id="editingId"
       @created="handleCreated"
+      @updated="handleUpdated"
+      @closed="handleClosed"
     />
   </section>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useFinanceStore } from '@/modules/finance/store'
 import { useProjectsStore } from '@/modules/projects/store'
 import { storeToRefs } from 'pinia'
 import ClientPaymentFormModal from '@/modules/finance/widgets/components/ClientPaymentFormModal.vue'
@@ -56,14 +73,36 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh'])
 
-const store = useProjectsStore()
-const { clientPayments } = storeToRefs(store)
+const financeStore = useFinanceStore()
+const projectsStore = useProjectsStore()
+const { clientPayments, loading, error } = storeToRefs(financeStore)
+const { currentProject, clients } = storeToRefs(projectsStore)
 
 // State
 const showModal = ref(false)
+const editingId = ref(null)
 
 // Computed
-const payments = computed(() => clientPayments.value || [])
+const payments = computed(() => {
+  return (clientPayments.value || []).filter(p => 
+    p.project === props.projectId || p.project?.id === props.projectId
+  )
+})
+
+// Клиент проекта
+const projectClient = computed(() => {
+  if (currentProject.value?.client) {
+    if (typeof currentProject.value.client === 'object') {
+      return currentProject.value.client
+    }
+    return clients.value?.find(c => c.id === currentProject.value.client)
+  }
+  return null
+})
+
+const clientName = computed(() => {
+  return projectClient.value?.name || '—'
+})
 
 // Methods
 function formatDate(d) { 
@@ -80,19 +119,62 @@ function formatAmount(v) {
 }
 
 function openCreatePayment() {
+  if (!projectClient.value) {
+    alert('У проекта не указан клиент. Добавьте клиента в проект.')
+    return
+  }
+  editingId.value = null
   showModal.value = true
 }
 
+function openEditPayment(payment) {
+  editingId.value = payment.id
+  showModal.value = true
+}
+
+async function deletePayment(id) {
+  if (!confirm('Удалить оплату клиента?')) return
+  try {
+    await financeStore.deleteClientPayment(id)
+    await financeStore.fetchClientPayments({ project_id: props.projectId })
+    emit('refresh')
+  } catch (e) {
+    console.error('Failed to delete payment:', e)
+  }
+}
+
 function handleCreated() {
+  financeStore.fetchClientPayments({ project_id: props.projectId })
   emit('refresh')
 }
+
+function handleUpdated() {
+  financeStore.fetchClientPayments({ project_id: props.projectId })
+  emit('refresh')
+}
+
+function handleClosed() {
+  editingId.value = null
+}
+
+// Загружаем данные
+onMounted(async () => {
+  await projectsStore.fetchProject(props.projectId)
+  await financeStore.fetchClientPayments({ project_id: props.projectId })
+})
+
+watch(() => props.projectId, async (newId) => {
+  if (newId) {
+    await projectsStore.fetchProject(newId)
+    await financeStore.fetchClientPayments({ project_id: newId })
+  }
+})
 </script>
 
 <style scoped>
-/* Копируем стили из основного файла для карточки */
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #1e2126;
+  border: 1px solid rgba(201, 168, 106, 0.15);
   border-radius: 12px;
   padding: 20px;
 }
@@ -101,16 +183,14 @@ function handleCreated() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .card-header h2 {
-  margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: #C9A86A;
+  margin: 0;
 }
 
 .state {
@@ -119,46 +199,39 @@ function handleCreated() {
   color: rgba(208, 210, 213, 0.5);
 }
 
-.state.muted {
-  color: rgba(208, 210, 213, 0.4);
+.state.error {
+  color: #ef4444;
+}
+
+.state.warning {
+  color: #fbbf24;
 }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(208, 210, 213, 0.08);
-  border-radius: 8px;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  color: #D0D2D5;
-  min-width: 400px;
-}
-
-.table th,
-.table td {
-  padding: 10px 14px;
-  text-align: left;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.06);
-  white-space: nowrap;
 }
 
 .table th {
-  background: rgba(255, 255, 255, 0.04);
-  font-weight: 600;
-  color: rgba(208, 210, 213, 0.7);
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.5px;
+  text-align: left;
+  padding: 8px 12px;
+  color: rgba(208, 210, 213, 0.5);
+  font-weight: 500;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.1);
 }
 
-.table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(208, 210, 213, 0.05);
+  color: #D0D2D5;
 }
 
-.num {
+.table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -173,46 +246,37 @@ function handleCreated() {
   font-weight: 500;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background: #C9A86A;
   color: #16181C;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: #d4b87a;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
 }
 
-@media (max-width: 640px) {
-  .card {
-    padding: 14px;
-  }
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: rgba(208, 210, 213, 0.5);
+  transition: color 0.2s;
+  font-size: 14px;
+}
 
-  .card-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
+.btn-icon:hover {
+  color: #C9A86A;
+}
 
-  .card-header .btn {
-    width: 100%;
-    text-align: center;
-  }
-
-  .table {
-    font-size: 12px;
-    min-width: 300px;
-  }
-
-  .table th,
-  .table td {
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  .table th {
-    font-size: 10px;
-  }
+.btn-icon.danger:hover {
+  color: #ef4444;
 }
 </style>

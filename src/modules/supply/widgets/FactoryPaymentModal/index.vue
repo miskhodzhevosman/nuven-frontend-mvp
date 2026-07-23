@@ -2,10 +2,13 @@
 <template>
   <div v-if="modelValue" class="modal-backdrop" @click.self="close">
     <div class="modal">
-      <h2>Оплата фабрике</h2>
-      <p class="muted" v-if="item">
+      <h2>{{ isEditing ? 'Редактировать оплату фабрике' : 'Оплата фабрике' }}</h2>
+      <p class="muted" v-if="item && !isEditing">
         Товар: {{ nomenclatureName(item.nomenclature) }}<br />
         Фабрика: {{ factoryName(getFactoryId(item)) }}
+      </p>
+      <p class="muted" v-else-if="isEditing && editingPayment">
+        Редактирование оплаты
       </p>
       <form ref="formRef" @submit.prevent="submit">
         <label class="field">
@@ -43,7 +46,7 @@
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" @click="close">Отмена</button>
           <button type="submit" class="btn btn-primary" :disabled="loading">
-            Оплатить
+            {{ isEditing ? 'Сохранить' : 'Оплатить' }}
           </button>
         </div>
         <div v-if="error" class="alert alert-error">{{ error }}</div>
@@ -53,12 +56,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
-import { useProjectsStore } from '@/modules/projects/store'  // 👈 как в старом коде
+import { ref, reactive, watch, computed } from 'vue'
+import { useProjectsStore } from '@/modules/projects/store'
+import { useFinanceStore } from '@/modules/finance/store'
 import { storeToRefs } from 'pinia'
 
 const props = defineProps({
-  modelValue: Boolean,
+  modelValue: {
+    type: Boolean,
+    required: true,
+  },
   projectId: {
     type: Number,
     required: true,
@@ -67,39 +74,73 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  editingPayment: {
+    type: Object,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'paid'])
+const emit = defineEmits(['update:modelValue', 'paid', 'updated'])
 
-// Используем projectsStore как в старом коде
-const store = useProjectsStore()
-const { factories, loading, error } = storeToRefs(store)
+// Stores
+const projectsStore = useProjectsStore()
+const financeStore = useFinanceStore()
+const { factories, loading, error } = storeToRefs(projectsStore)
+const { factoryPayments } = storeToRefs(financeStore)
 
 const formRef = ref(null)
+
 const form = reactive({
+  id: null,
   amount: '',
   date: new Date().toISOString().slice(0, 10),
   comment: '',
   counterparty_id: '',
 })
 
-// --- Вспомогательные функции (как в старом коде) ---
+// Computed
+const isEditing = computed(() => !!props.editingPayment)
+
+// --- Вспомогательные функции ---
 function getFactoryId(item) {
-  const n = store.nomenclatureById(item.nomenclature)
+  const n = projectsStore.nomenclatureById(item.nomenclature)
   return n?.factory ?? null
 }
 
 function nomenclatureName(id) {
-  return store.nomenclatureName(id)
+  return projectsStore.nomenclatureName(id)
 }
 
 function factoryName(id) {
-  return store.factoryName(id)
+  return projectsStore.factoryName(id)
 }
 
-// --- Автозаполнение (как в старом коде) ---
+// --- Заполнение формы при редактировании ---
+function fillFormFromPayment(payment) {
+  if (!payment) return
+  
+  form.id = payment.id
+  form.date = payment.date?.slice(0, 10) || ''
+  form.amount = payment.amount || ''
+  form.counterparty_id = payment.counterparty || payment.counterparty_id || ''
+  form.comment = payment.comment || ''
+}
+
+// --- Сброс формы ---
+function resetForm() {
+  const today = new Date().toISOString().slice(0, 10)
+  Object.assign(form, {
+    id: null,
+    amount: '',
+    date: today,
+    comment: '',
+    counterparty_id: '',
+  })
+}
+
+// --- Автозаполнение при создании (из item) ---
 watch(() => props.item, (item) => {
-  if (item) {
+  if (item && !props.editingPayment) {
     const factoryId = getFactoryId(item)
     form.counterparty_id = factoryId || ''
     
@@ -111,7 +152,34 @@ watch(() => props.item, (item) => {
   }
 }, { immediate: true })
 
-// --- Сабмит (как в старом коде) ---
+// --- Заполнение при редактировании ---
+watch(() => props.editingPayment, (payment) => {
+  if (payment) {
+    // Если пришел полный объект с данными
+    fillFormFromPayment(payment)
+  } else if (!props.item) {
+    // Если нет item и нет editingPayment - сбрасываем
+    resetForm()
+  }
+}, { immediate: true })
+
+// --- При открытии модалки ---
+watch(() => props.modelValue, (isOpen) => {
+  if (isOpen) {
+    if (props.editingPayment) {
+      // Если редактирование - заполняем из editingPayment
+      fillFormFromPayment(props.editingPayment)
+    } else if (props.item) {
+      // Если создание из item - автозаполнение уже сработает через watch
+    } else {
+      resetForm()
+    }
+  } else {
+    resetForm()
+  }
+}, { immediate: true })
+
+// --- Сабмит ---
 async function submit() {
   if (!formRef.value?.checkValidity()) return
   
@@ -124,31 +192,28 @@ async function submit() {
   }
   
   try {
-    await store.createFactoryPayment(payload)  // 👈 как в старом коде
-    emit('paid')
+    if (isEditing.value && form.id) {
+      // Редактирование
+      await financeStore.updateFactoryPayment(form.id, payload)
+      emit('updated')
+    } else {
+      // Создание
+      await projectsStore.createFactoryPayment(payload)
+      emit('paid')
+    }
     close()
   } catch (e) {
-    console.error('Failed to create factory payment:', e)
+    console.error('Failed to save factory payment:', e)
   }
 }
 
 function close() {
   emit('update:modelValue', false)
-  Object.assign(form, {
-    amount: '',
-    date: new Date().toISOString().slice(0, 10),
-    comment: '',
-    counterparty_id: '',
-  })
+  resetForm()
 }
 </script>
 
-<style>
-/* ============================================
-   СТИЛИ ДЛЯ FactoryPaymentModal
-   ============================================ */
-
-/* Модальное окно */
+<style scoped>
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -174,20 +239,21 @@ function close() {
 }
 
 .modal h2 {
-  margin: 0 0 20px;
+  margin: 0 0 12px;
   font-size: 20px;
   font-weight: 600;
   color: #C9A86A;
 }
 
-/* Текст */
 .muted {
-  color: rgba(208, 210, 213, 0.6);
+  color: rgba(208, 210, 213, 0.5);
   font-size: 14px;
   margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
 }
 
-/* Поля формы */
 .field {
   display: block;
   margin-bottom: 16px;
@@ -238,7 +304,6 @@ function close() {
   min-height: 60px;
 }
 
-/* Кнопки в модалке */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -283,7 +348,6 @@ function close() {
   border-color: rgba(208, 210, 213, 0.3);
 }
 
-/* Алерт ошибки */
 .alert {
   padding: 12px 16px;
   border-radius: 8px;
@@ -297,7 +361,6 @@ function close() {
   border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
-/* Адаптивность */
 @media (max-width: 640px) {
   .modal {
     padding: 20px;
