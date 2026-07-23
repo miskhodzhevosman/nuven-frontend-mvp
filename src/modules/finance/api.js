@@ -1,6 +1,5 @@
 import api from '../../composables/useApi'
 
-
 const BASE = '/finance'
 
 function unwrap(res) {
@@ -42,11 +41,16 @@ export const financeApi = {
     const res = await api.put(`${BASE}/transactions/${id}/`, payload)
     return res.data
   },
+  async patchTransaction(id, payload) {
+    const res = await api.patch(`${BASE}/transactions/${id}/`, payload)
+    return res.data
+  },
   async deleteTransaction(id) {
     await api.delete(`${BASE}/transactions/${id}/`)
   },
 
   // ---- Специализированные операции ----
+  
   // Client payments (project_id обязателен)
   async getClientPayments(params = {}) {
     const res = await api.get(`${BASE}/client-payments/`, { params })
@@ -55,6 +59,13 @@ export const financeApi = {
   async createClientPayment(payload) {
     const res = await api.post(`${BASE}/client-payments/`, payload)
     return res.data
+  },
+  async updateClientPayment(id, payload) {
+    const res = await api.patch(`${BASE}/client-payments/${id}/`, payload)
+    return res.data
+  },
+  async deleteClientPayment(id) {
+    await api.delete(`${BASE}/client-payments/${id}/`)
   },
 
   // Factory payments (project_id обязателен)
@@ -66,25 +77,54 @@ export const financeApi = {
     const res = await api.post(`${BASE}/factory-payments/`, payload)
     return res.data
   },
+  async updateFactoryPayment(id, payload) {
+    const res = await api.patch(`${BASE}/factory-payments/${id}/`, payload)
+    return res.data
+  },
+  async deleteFactoryPayment(id) {
+    await api.delete(`${BASE}/factory-payments/${id}/`)
+  },
 
-  // Project expenses (project_id обязателен)
+  // ---- Project expenses (project_id обязателен) ----
   async getProjectExpenses(params = {}) {
     const res = await api.get(`${BASE}/project-expenses/`, { params })
+    return res.data
+  },
+  async getProjectExpense(id) {
+    const res = await api.get(`${BASE}/project-expenses/${id}/`)
     return res.data
   },
   async createProjectExpense(payload) {
     const res = await api.post(`${BASE}/project-expenses/`, payload)
     return res.data
   },
+  async updateProjectExpense(id, payload) {
+    const res = await api.patch(`${BASE}/project-expenses/${id}/`, payload)
+    return res.data
+  },
+  async deleteProjectExpense(id) {
+    await api.delete(`${BASE}/project-expenses/${id}/`)
+  },
 
-  // Operation expenses (project_id НЕ используется)
+  // ---- Operation expenses (project_id НЕ используется) ----
   async getOperationExpenses(params = {}) {
     const res = await api.get(`${BASE}/operation-expenses/`, { params })
+    return res.data
+  },
+  async getOperationExpense(id) {
+    const res = await api.get(`${BASE}/operation-expenses/${id}/`)
     return res.data
   },
   async createOperationExpense(payload) {
     const res = await api.post(`${BASE}/operation-expenses/`, payload)
     return res.data
+  },
+  async updateOperationExpense(id, payload) {
+    const res = await api.patch(`${BASE}/operation-expenses/${id}/`, payload)
+    return res.data
+  },
+  async deleteOperationExpense(id) {
+    await api.delete(`${BASE}/operation-expenses/${id}/`)
   },
 
   // ---- Отчёты ----

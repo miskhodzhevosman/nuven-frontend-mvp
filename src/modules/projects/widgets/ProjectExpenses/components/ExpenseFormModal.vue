@@ -1,27 +1,26 @@
-<!-- modules/app/widgets/ProjectExpenses/components/ExpenseFormModal.vue -->
+<!-- modules/projects/widgets/ProjectExpenses/components/ExpenseFormModal.vue -->
 <template>
   <div v-if="modelValue" class="modal-backdrop" @click.self="close">
     <div class="modal">
-      <h2>Проектный расход</h2>
+      <h2>{{ isEditing ? 'Редактировать расход' : 'Новый расход' }}</h2>
       <form ref="formRef" @submit.prevent="submit">
-        <label class="field">
-          <span>Сумма *</span>
-          <input 
-            v-model="form.amount" 
-            type="number" 
-            step="0.01" 
-            required 
-          />
-        </label>
-        
         <label class="field">
           <span>Дата *</span>
           <input 
             v-model="form.date" 
             type="date" 
             required 
-            @focus="$event.target.showPicker?.()"
-            @click="$event.target.showPicker?.()"
+          />
+        </label>
+        
+        <label class="field">
+          <span>Сумма *</span>
+          <input 
+            v-model="form.amount" 
+            type="number" 
+            step="0.01" 
+            min="0" 
+            required 
           />
         </label>
         
@@ -58,34 +57,30 @@
               </li>
               <li 
                 v-if="expenseTypeSearch && !isExpenseTypeExists"
-                @mousedown.prevent="createNewExpenseType"
                 class="combobox-create-new"
               >
-                ✚ Создать "{{ expenseTypeSearch }}"
+                ✚ Будет создан новый тип "{{ expenseTypeSearch }}"
               </li>
             </ul>
           </div>
-          <small v-if="expenseTypeSearch && !isExpenseTypeExists" class="hint">
-            Будет создан новый тип расхода "{{ expenseTypeSearch }}"
+          <small v-if="expenseTypeSearch && !isExpenseTypeExists" class="hint warning">
+            ✚ Будет создан новый тип расхода "{{ expenseTypeSearch }}"
           </small>
           <small v-else-if="selectedExpenseType" class="hint success">
-            Выбран тип: {{ selectedExpenseType.name }}
+            ✓ Выбран тип: {{ selectedExpenseType.name }}
           </small>
-        </label>
-
-        <label class="field">
-          <span>Контрагент</span>
-          <select v-model="form.counterparty_id">
-            <option value="">— не указан —</option>
-            <option v-for="c in clients" :key="c.id" :value="c.id">
-              {{ c.name }}
-            </option>
-          </select>
+          <small v-else class="hint">
+            Начните вводить название или выберите из списка
+          </small>
         </label>
         
         <label class="field">
           <span>Комментарий</span>
-          <textarea v-model="form.comment" rows="2"></textarea>
+          <textarea 
+            v-model="form.comment" 
+            rows="3"
+            placeholder="Дополнительная информация"
+          ></textarea>
         </label>
         
         <div class="modal-actions">
@@ -93,65 +88,153 @@
           <button 
             type="submit" 
             class="btn btn-primary" 
-            :disabled="loading || !form.expense_type_name"
+            :disabled="loading || !expenseTypeSearch"
           >
-            Создать
+            {{ loading ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать') }}
           </button>
         </div>
         <div v-if="error" class="alert alert-error">{{ error }}</div>
+        <div v-if="validationErrors" class="alert alert-error">
+          <div v-for="(errors, field) in validationErrors" :key="field">
+            <strong>{{ field }}:</strong> {{ errors.join(', ') }}
+          </div>
+        </div>
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { useProjectsStore } from '@/modules/projects/store'
+import { ref, reactive, watch, computed, nextTick } from 'vue'
+import { useFinanceStore } from '@/modules/finance/store'
 import { storeToRefs } from 'pinia'
 
 const props = defineProps({
-  modelValue: Boolean,
+  modelValue: {
+    type: Boolean,
+    required: true,
+  },
   projectId: {
     type: Number,
     required: true,
   },
+  editingId: {
+    type: Number,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'created'])
+const emit = defineEmits(['update:modelValue', 'created', 'updated', 'closed'])
 
-const store = useProjectsStore()
-const { clients, loading, error } = storeToRefs(store)
+const financeStore = useFinanceStore()
+const { operationTypes, projectExpenses } = storeToRefs(financeStore)
 
 const formRef = ref(null)
+const loading = ref(false)
+const error = ref(null)
+const validationErrors = ref(null)
+
 const form = reactive({
+  date: '',
   amount: '',
-  date: new Date().toISOString().slice(0, 10),
   comment: '',
-  counterparty_id: '',
   expense_type_name: '',
 })
 
-// Expense type autocomplete
+// Expense type autocomplete state
 const expenseTypeSearch = ref('')
 const showExpenseTypeSuggestions = ref(false)
 const selectedExpenseType = ref(null)
 
+// Computed
+const isEditing = computed(() => !!props.editingId)
+
+// Список типов расходов (только PROJECT_EXPENSE)
+const expenseTypesList = computed(() => {
+  if (!operationTypes.value) return []
+  return operationTypes.value.filter(t => t.code === 'project_expense')
+})
+
+// Фильтруем типы расходов для поиска
 const filteredExpenseTypes = computed(() => {
-  if (!expenseTypeSearch.value) return store.expenseTypes || []
+  if (!expenseTypeSearch.value) return expenseTypesList.value || []
   const search = expenseTypeSearch.value.toLowerCase().trim()
-  return (store.expenseTypes || [])
+  return (expenseTypesList.value || [])
     .filter(t => t.name.toLowerCase().includes(search))
     .slice(0, 10)
 })
 
+// Проверяем, существует ли уже такой тип
 const isExpenseTypeExists = computed(() => {
   if (!expenseTypeSearch.value) return false
-  return (store.expenseTypes || []).some(t => 
+  return (expenseTypesList.value || []).some(t => 
     t.name.toLowerCase() === expenseTypeSearch.value.toLowerCase().trim()
   )
 })
 
-// --- Expense type methods (как в старом коде) ---
+// Reset form
+function resetForm() {
+  const today = new Date().toISOString().slice(0, 10)
+  Object.assign(form, {
+    date: today,
+    amount: '',
+    comment: '',
+    expense_type_name: '',
+  })
+  expenseTypeSearch.value = ''
+  selectedExpenseType.value = null
+  showExpenseTypeSuggestions.value = false
+  error.value = null
+  validationErrors.value = null
+}
+
+// Load expense for editing
+async function loadExpenseForEdit() {
+  if (!props.editingId) {
+    resetForm()
+    return
+  }
+  
+  try {
+    // Сначала ищем в store
+    let expense = projectExpenses.value?.find(e => e.id === props.editingId)
+    
+    // Если не нашли в store - загружаем через API
+    if (!expense) {
+      expense = await financeStore.fetchProjectExpense(props.editingId)
+    }
+    
+    if (expense) {
+      form.date = expense.date?.slice(0, 10) || ''
+      form.amount = expense.amount || ''
+      form.comment = expense.comment || ''
+      
+      // Находим тип расхода
+      const operationTypeId = expense.finance_operation_type || expense.operation_type_id
+      
+      if (operationTypeId) {
+        const expenseType = expenseTypesList.value?.find(t => t.id === operationTypeId)
+        if (expenseType) {
+          selectedExpenseType.value = expenseType
+          expenseTypeSearch.value = expenseType.name
+          form.expense_type_name = expenseType.name
+        } else {
+          // Если тип не найден по ID, пробуем по имени
+          const typeName = expense.operation_type_name || expense.finance_operation_type_name
+          if (typeName) {
+            expenseTypeSearch.value = typeName
+            form.expense_type_name = typeName
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load expense:', e)
+    error.value = 'Не удалось загрузить данные расхода'
+  }
+}
+
+// --- Expense type methods ---
 function onExpenseTypeInput() {
   if (selectedExpenseType.value && expenseTypeSearch.value !== selectedExpenseType.value.name) {
     selectedExpenseType.value = null
@@ -164,10 +247,8 @@ function onExpenseTypeBlur() {
   setTimeout(() => {
     showExpenseTypeSuggestions.value = false
     if (expenseTypeSearch.value && !selectedExpenseType.value) {
-      if (!isExpenseTypeExists.value) {
-        form.expense_type_name = expenseTypeSearch.value.trim()
-      } else {
-        const found = (store.expenseTypes || []).find(t => 
+      if (isExpenseTypeExists.value) {
+        const found = (expenseTypesList.value || []).find(t => 
           t.name.toLowerCase() === expenseTypeSearch.value.toLowerCase().trim()
         )
         if (found) {
@@ -190,63 +271,134 @@ function selectExpenseType(type) {
   expenseTypeSearch.value = type.name
   form.expense_type_name = type.name
   showExpenseTypeSuggestions.value = false
+  error.value = null
+  validationErrors.value = null
 }
 
-function createNewExpenseType() {
-  if (expenseTypeSearch.value && expenseTypeSearch.value.trim()) {
-    const name = expenseTypeSearch.value.trim()
-    selectedExpenseType.value = { id: 'new', name }
-    form.expense_type_name = name
-    showExpenseTypeSuggestions.value = false
-  }
-}
-
-// --- Submit (как в старом коде) ---
+// Submit
 async function submit() {
-  if (!form.expense_type_name) {
+  // Проверяем валидность формы
+  if (!formRef.value?.checkValidity()) {
+    return
+  }
+  
+  // Проверяем, что введен тип расхода
+  if (!expenseTypeSearch.value || !expenseTypeSearch.value.trim()) {
     error.value = 'Пожалуйста, укажите тип расхода'
     return
   }
-  if (!formRef.value?.checkValidity()) return
   
-  const payload = {
-    project_id: props.projectId,
-    amount: String(form.amount),
-    date: form.date,
-    expense_type_name: form.expense_type_name,
-    counterparty_id: form.counterparty_id ? Number(form.counterparty_id) : null,
-    comment: form.comment || null,
+  // Проверяем сумму
+  if (!form.amount || Number(form.amount) <= 0) {
+    error.value = 'Пожалуйста, укажите сумму больше 0'
+    return
   }
   
+  loading.value = true
+  error.value = null
+  validationErrors.value = null
+  
   try {
-    await store.createProjectExpense(payload)
-    emit('created')
+    // Формируем payload для проектного расхода
+    const payload = {
+      project_id: Number(props.projectId),
+      date: form.date,
+      amount: String(Number(form.amount).toFixed(2)),
+      expense_type_name: expenseTypeSearch.value.trim(),
+      comment: form.comment || '',
+      counterparty_id: null, // добавляем, если на бекенде ожидается
+    }
+    
+    console.log('Submitting expense payload:', payload)
+    
+    let result
+    
+    if (isEditing.value) {
+      // Обновление
+      result = await financeStore.updateProjectExpense(props.editingId, payload)
+      emit('updated', result)
+    } else {
+      // Создание
+      result = await financeStore.createProjectExpense(payload)
+      emit('created', result)
+    }
+    
     close()
   } catch (e) {
-    console.error('Failed to create project expense:', e)
+    console.error('Failed to save expense:', e)
+    
+    // Парсим ошибки валидации с бекенда
+    if (e.response?.data) {
+      const responseData = e.response.data
+      
+      if (typeof responseData === 'object') {
+        // Если это объект с ошибками полей
+        if (responseData.detail) {
+          error.value = responseData.detail
+        } else if (responseData.errors) {
+          validationErrors.value = responseData.errors
+        } else {
+          // Проверяем каждое поле
+          const errors = {}
+          let hasErrors = false
+          
+          for (const [key, value] of Object.entries(responseData)) {
+            if (Array.isArray(value)) {
+              errors[key] = value
+              hasErrors = true
+            } else if (typeof value === 'string') {
+              errors[key] = [value]
+              hasErrors = true
+            }
+          }
+          
+          if (hasErrors) {
+            validationErrors.value = errors
+          } else {
+            error.value = JSON.stringify(responseData)
+          }
+        }
+      } else {
+        error.value = String(responseData)
+      }
+    } else {
+      error.value = e.message || 'Ошибка при сохранении расхода'
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 function close() {
   emit('update:modelValue', false)
-  Object.assign(form, {
-    amount: '',
-    date: new Date().toISOString().slice(0, 10),
-    comment: '',
-    counterparty_id: '',
-    expense_type_name: '',
-  })
-  expenseTypeSearch.value = ''
-  selectedExpenseType.value = null
-  showExpenseTypeSuggestions.value = false
+  resetForm()
+  emit('closed')
 }
+
+// Watch for modal open
+watch(() => props.modelValue, async (isOpen) => {
+  if (isOpen) {
+    // Загружаем типы операций если их нет
+    if (!operationTypes.value?.length) {
+      await financeStore.fetchOperationTypes()
+    }
+    // Загружаем данные для редактирования
+    await loadExpenseForEdit()
+  } else {
+    resetForm()
+  }
+}, { immediate: true })
+
+// Watch for editingId change
+watch(() => props.editingId, async () => {
+  if (props.modelValue) {
+    await loadExpenseForEdit()
+  }
+})
 </script>
 
 <style scoped>
-/* ============================================
-   СТИЛИ ДЛЯ ExpenseFormModal
-   ============================================ */
-
+/* ... (стили остаются те же) ... */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -328,6 +480,7 @@ function close() {
   min-height: 60px;
 }
 
+/* Combobox styles */
 .combobox-wrapper {
   position: relative;
   display: flex;
@@ -388,10 +541,11 @@ function close() {
   color: #C9A86A;
   font-weight: 500;
   border-top: 1px solid rgba(201, 168, 106, 0.15);
+  cursor: default;
 }
 
 .combobox-suggestions .combobox-create-new:hover {
-  background: rgba(201, 168, 106, 0.1);
+  background: transparent;
 }
 
 .hint {
@@ -403,6 +557,10 @@ function close() {
 
 .hint.success {
   color: #4ade80;
+}
+
+.hint.warning {
+  color: #C9A86A;
 }
 
 .modal-actions {
@@ -460,6 +618,10 @@ function close() {
   background: rgba(220, 38, 38, 0.15);
   color: #ef4444;
   border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.alert-error strong {
+  color: #f87171;
 }
 
 @media (max-width: 640px) {

@@ -142,7 +142,7 @@ import { useFinanceStore } from '@/modules/finance/store'
 // Виджеты из app
 import ProjectInfo from '../widgets/ProjectInfo/index.vue'
 import ProjectItems from '../widgets/ProjectItems/index.vue'
-import ProjectExpenses from '../widgets/ProjectExpenses/index.vue'
+
 import ProjectReport from '@/modules/finance/widgets/ProjectReport/index.vue' 
 
 // Виджеты из finance
@@ -151,7 +151,7 @@ import EditProjectModal from '../widgets/EditProjectModal/index.vue'
 // Виджеты из supply
 import FactoryPaymentModal from '@/modules/supply/widgets/FactoryPaymentModal/index.vue'
 import FactoryPayments from '@/modules/supply/widgets/FactoryPayments/index.vue'
-
+import ProjectExpenses from '@/modules/projects/widgets/ProjectExpenses/index.vue'
 // Компоненты
 import OnboardingMenu from '@/components/OnboardingMenu.vue'
 
