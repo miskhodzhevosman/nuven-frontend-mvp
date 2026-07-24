@@ -2,7 +2,7 @@
   <div class="dashboard-container">
     <!-- Боковое меню -->
     <aside class="sidebar">
-      <div class="logo">My ERP</div>
+      <div class="logo">Nuven</div>
       <nav>
         <router-link to="/main" class="nav-item">
           📊 Дашборд
@@ -15,7 +15,7 @@
         <router-link to="/projects" class="nav-item">
           🚀 Проекты
         </router-link>
-        
+
         <router-link to="/finance" class="nav-item">
           💰 Финансы
         </router-link>
