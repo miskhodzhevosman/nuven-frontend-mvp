@@ -3,15 +3,24 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { authApi } from '@/api/auth'
 import { useRouter } from 'vue-router'
 
+// ✅ ГЛОБАЛЬНЫЙ СЧЕТЧИК ВЫЗОВОВ
+let instanceCount = 0
+let refreshCallCount = 0
+let timerCount = 0
+
 const user = ref(null)
 const isAuthenticated = ref(!!localStorage.getItem('access_token'))
 let refreshTimer = null
-let tokenCheckTimer = null
 
 export function useAuth() {
+  // ✅ Увеличиваем счетчик при каждом создании
+  instanceCount++
+  const instanceId = instanceCount
+  console.log(`🔵 useAuth() создан #${instanceId}`)
+  console.trace(`📍 Стек создания #${instanceId}`)
+
   const router = useRouter()
 
-  // Декодирование JWT токена
   function decodeToken(token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
@@ -21,116 +30,106 @@ export function useAuth() {
     }
   }
 
-  // Получение времени истечения токена
   function getTokenExpiration(token) {
     const decoded = decodeToken(token)
     if (!decoded || !decoded.exp) return null
-    return decoded.exp * 1000 // конвертируем в миллисекунды
+    return decoded.exp * 1000
   }
 
-  // Проверка, истек ли токен
-  function isTokenExpired(token) {
-    const exp = getTokenExpiration(token)
-    if (!exp) return true
-    return Date.now() >= exp
+// composables/useAuth.js
+function scheduleTokenRefresh() {
+  timerCount++
+  console.log(`⏱️ scheduleTokenRefresh() вызван #${timerCount}`)
+
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
   }
 
-  // Планирование обновления токена
-  function scheduleTokenRefresh() {
-    // Очищаем старые таймеры
-    if (refreshTimer) {
-      clearTimeout(refreshTimer)
-      refreshTimer = null
+  const accessToken = localStorage.getItem('access_token')
+  if (!accessToken) return
+
+  const expTime = getTokenExpiration(accessToken)
+  if (!expTime) return
+
+  const now = Date.now()
+  const timeUntilExpiry = expTime - now
+  
+  if (timeUntilExpiry <= 0) {
+    refreshToken().catch(() => logout())
+    return
+  }
+
+  // ✅ ОБНОВЛЯЕМ РАЗ В ДЕНЬ (24 часа)
+  const ONE_DAY = 24 * 60 * 60 * 1000
+  let timeUntilRefresh = Math.min(
+    Math.max(timeUntilExpiry - 5 * 60 * 1000, 30 * 1000),
+    ONE_DAY // Максимум 24 часа
+  )
+  
+  console.log(`📅 Токен истекает через ${Math.round(timeUntilExpiry / 60000)} минут`)
+  console.log(`📅 Обновление через ${Math.round(timeUntilRefresh / 60000)} минут`)
+
+  refreshTimer = setTimeout(async () => {
+    console.log(`🔄 Обновление токена...`)
+    try {
+      await refreshToken()
+    } catch (error) {
+      console.error(`❌ Не удалось обновить токен:`, error)
+      logout()
     }
-    if (tokenCheckTimer) {
-      clearInterval(tokenCheckTimer)
-      tokenCheckTimer = null
-    }
-
-    const accessToken = localStorage.getItem('access_token')
-    if (!accessToken) return
-
-    const expTime = getTokenExpiration(accessToken)
-    if (!expTime) return
-
-    const now = Date.now()
-    const timeUntilExpiry = expTime - now
-    const timeUntilRefresh = Math.max(timeUntilExpiry - 60000, 10000) // за 1 минуту до истечения, минимум 10 сек
-
-    console.log(`⏰ Токен истекает через ${Math.round(timeUntilExpiry / 60000)} минут`)
-    console.log(`🔄 Обновление запланировано через ${Math.round(timeUntilRefresh / 1000)} секунд`)
-
-    // Таймер для обновления
-    refreshTimer = setTimeout(async () => {
-      console.log('🔄 Выполняю плановое обновление токена...')
-      try {
-        await refreshToken()
-      } catch (error) {
-        console.error('❌ Плановое обновление токена не удалось:', error)
-        // Если не удалось обновить - выходим
-        logout()
-      }
-    }, timeUntilRefresh)
-
-    // Проверка каждую минуту (на случай, если таймер сбросился)
-    tokenCheckTimer = setInterval(() => {
-      const token = localStorage.getItem('access_token')
-      if (token && isTokenExpired(token)) {
-        console.log('⚠️ Токен истек, выполняю обновление...')
-        refreshToken().catch(() => logout())
-      }
-    }, 60000)
-  }
-
-  // Функция обновления токена
+  }, timeUntilRefresh)
+}
   async function refreshToken() {
+    // ✅ Счетчик вызовов refreshToken
+    refreshCallCount++
+    console.log(`🔄 refreshToken() вызван #${refreshCallCount} из экземпляра #${instanceId}`)
+    
+    if (refreshCallCount > 10) {
+      console.error(`🚨 СЛИШКОМ МНОГО ВЫЗОВОВ refreshToken! #${refreshCallCount}`)
+      console.trace('📚 Стек вызовов:')
+    }
+
     try {
       const refreshTokenValue = localStorage.getItem('refresh_token')
       if (!refreshTokenValue) {
         throw new Error('Нет refresh токена')
       }
 
+      console.log(`📤 #${instanceId}: Отправка запроса на обновление...`)
       const response = await authApi.refreshToken({ 
         refresh: refreshTokenValue 
       })
       
-      // Сохраняем новый access_token
       localStorage.setItem('access_token', response.data.access)
       
-      // Если пришел новый refresh_token - сохраняем
       if (response.data.refresh) {
         localStorage.setItem('refresh_token', response.data.refresh)
       }
 
       isAuthenticated.value = true
       
-      // Планируем следующее обновление
       scheduleTokenRefresh()
       
-      console.log('✅ Токен успешно обновлен')
+      console.log(`✅ #${instanceId}: Токен обновлен`)
       return response.data
     } catch (error) {
-      console.error('❌ Ошибка обновления токена:', error)
+      console.error(`❌ #${instanceId}: Ошибка обновления токена:`, error)
       throw error
     }
   }
 
-  // Функция входа
   async function login(username, password) {
+    console.log(`🔐 #${instanceId}: login() вызван`)
     try {
-      const response = await authApi.login({ 
-        username, 
-        password 
-      })
+      const response = await authApi.login({ username, password })
       
-      // Сохраняем токены
       localStorage.setItem('access_token', response.data.access)
       localStorage.setItem('refresh_token', response.data.refresh)
       
       isAuthenticated.value = true
       user.value = response.data.user || { username }
       
-      // Планируем автоматическое обновление
       scheduleTokenRefresh()
       
       await router.push('/main')
@@ -142,16 +141,12 @@ export function useAuth() {
     }
   }
 
-  // Функция выхода
   function logout() {
-    // Очищаем таймеры
+    console.log(`🚪 #${instanceId}: logout() вызван`)
     if (refreshTimer) {
+      console.log(`🧹 #${instanceId}: Очищаю таймер`, refreshTimer)
       clearTimeout(refreshTimer)
       refreshTimer = null
-    }
-    if (tokenCheckTimer) {
-      clearInterval(tokenCheckTimer)
-      tokenCheckTimer = null
     }
     
     localStorage.removeItem('access_token')
@@ -159,14 +154,12 @@ export function useAuth() {
     isAuthenticated.value = false
     user.value = null
     
-    // Триггерим событие для других компонентов
     window.dispatchEvent(new Event('auth:logout'))
-    
     router.push('/login')
   }
 
-  // Проверка валидности токена при загрузке
   async function checkAuth() {
+    console.log(`🔍 #${instanceId}: checkAuth() вызван`)
     const token = localStorage.getItem('access_token')
     const refreshTokenValue = localStorage.getItem('refresh_token')
     
@@ -175,34 +168,30 @@ export function useAuth() {
       return false
     }
 
-    try {
-      // Пытаемся обновить токен
-      await refreshToken()
-      isAuthenticated.value = true
-      return true
-    } catch (error) {
-      // Если не удалось - пробуем получить данные пользователя
+    const expTime = getTokenExpiration(token)
+    if (expTime && Date.now() >= expTime) {
       try {
-        const response = await authApi.me()
+        await refreshToken()
         isAuthenticated.value = true
-        user.value = response.data
-        scheduleTokenRefresh()
         return true
-      } catch (meError) {
-        console.warn('❌ Проверка авторизации не удалась')
+      } catch (error) {
         logout()
         return false
       }
     }
+
+    isAuthenticated.value = true
+    scheduleTokenRefresh()
+    return true
   }
 
-  // Слушатель события выхода
   const handleLogoutEvent = () => {
+    console.log(`📢 #${instanceId}: Получен auth:logout`)
     logout()
   }
 
-  // Инициализация при монтировании
   onMounted(() => {
+    console.log(`🔌 #${instanceId}: onMounted()`)
     window.addEventListener('auth:logout', handleLogoutEvent)
     
     if (localStorage.getItem('access_token')) {
@@ -211,14 +200,25 @@ export function useAuth() {
   })
 
   onUnmounted(() => {
+    console.log(`🔌 #${instanceId}: onUnmounted()`)
     window.removeEventListener('auth:logout', handleLogoutEvent)
-    if (refreshTimer) clearTimeout(refreshTimer)
-    if (tokenCheckTimer) clearInterval(tokenCheckTimer)
+    if (refreshTimer) {
+      clearTimeout(refreshTimer)
+      refreshTimer = null
+    }
   })
 
   return {
-    user: computed(() => user.value),
-    isAuthenticated: computed(() => isAuthenticated.value),
+    user: computed(() => {
+      // ✅ Логируем каждый доступ к user
+      console.log(`👤 #${instanceId}: доступ к user`)
+      return user.value
+    }),
+    isAuthenticated: computed(() => {
+      // ✅ Логируем каждый доступ к isAuthenticated
+      console.log(`🔑 #${instanceId}: доступ к isAuthenticated = ${isAuthenticated.value}`)
+      return isAuthenticated.value
+    }),
     login,
     logout,
     refreshToken,

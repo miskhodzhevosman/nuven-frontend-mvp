@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://admin.nuven.space/api/',
+  baseURL: 'http://147.45.230.130:8000/api/',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -78,7 +78,7 @@ api.interceptors.response.use(
       }
       
       // Используем axios напрямую, чтобы избежать цикла
-      const response = await axios.post('https://admin.nuven.space/api/token/refresh/', {
+      const response = await axios.post('http://147.45.230.130:8000/api/token/refresh/', {
         refresh: refreshToken
       })
       
