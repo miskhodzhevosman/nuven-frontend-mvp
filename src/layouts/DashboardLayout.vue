@@ -7,14 +7,25 @@
         <router-link to="/main" class="nav-item">
           📊 Дашборд
         </router-link>
+
         <router-link to="/supply" class="nav-item">
           📦 Поставки
         </router-link>
+
         <router-link to="/projects" class="nav-item">
           🚀 Проекты
         </router-link>
+        
         <router-link to="/finance" class="nav-item">
           💰 Финансы
+        </router-link>
+
+        <router-link to="/profile" class="nav-item">
+          Профиль
+        </router-link>
+        
+        <router-link to="/users" class="nav-item">
+          Пользователи
         </router-link>
       </nav>
     </aside>

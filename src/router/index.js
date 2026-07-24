@@ -44,7 +44,31 @@ const routes = [
         name: 'finance',
         component: () => import('@/modules/finance/views/FinanceView.vue'),
         meta: { title: 'Финансы' }
-      }
+      },
+      {
+    path: '/users',
+    name: 'Users',
+    component: () => import('@/modules/users/views/UsersList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/users/create',
+    name: 'UserCreate',
+    component: () => import('@/modules/users/views/UserCreate.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/users/:id/edit',
+    name: 'UserEdit',
+    component: () => import('@/modules/users/views/UserEdit.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/profile',
+    name: 'UserProfile',
+    component: () => import('@/modules/users/views/UserProfile.vue'),
+    meta: { requiresAuth: true }
+  }
     ]
   }
 ]
