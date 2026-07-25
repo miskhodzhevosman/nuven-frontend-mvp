@@ -62,7 +62,7 @@ async function handleLogin() {
 /*
  * ============================================
  * СТИЛИ ДЛЯ СТРАНИЦЫ ВХОДА (login.vue)
- * Цветовая схема: #16181C (фон), #C9A86A (золото), #D0D2D5 (текст)
+ * Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
  * ============================================
  */
 
@@ -74,7 +74,7 @@ async function handleLogin() {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #16181C;
+  background: #F8F9FA;
   padding: 20px;
 }
 
@@ -82,14 +82,18 @@ async function handleLogin() {
    КАРТОЧКА ВХОДА
    ============================================ */
 .login-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(201, 168, 106, 0.12);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   padding: 40px 36px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
+}
+
+.login-card:hover {
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.12);
 }
 
 /* ============================================
@@ -103,13 +107,13 @@ async function handleLogin() {
 .login-card .logo h1 {
   font-size: 28px;
   font-weight: 700;
-  color: #C9A86A;
+  color: #2C3E50;
   margin: 0;
   letter-spacing: 1px;
 }
 
 .login-card .logo p {
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.4);
   font-size: 14px;
   margin: 6px 0 0;
 }
@@ -119,7 +123,7 @@ async function handleLogin() {
    ============================================ */
 .login-card h2 {
   text-align: center;
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 24px;
@@ -136,31 +140,31 @@ async function handleLogin() {
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   margin-bottom: 4px;
 }
 
 .form-group input {
   width: 100%;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(208, 210, 213, 0.12);
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
-  color: #D0D2D5;
+  color: #1A1A1A;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
 .form-group input::placeholder {
-  color: rgba(208, 210, 213, 0.2);
+  color: rgba(26, 26, 26, 0.2);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #C9A86A;
-  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.1);
+  border-color: #2C3E50;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
 }
 
 /* ============================================
@@ -169,8 +173,8 @@ async function handleLogin() {
 .login-card button {
   width: 100%;
   padding: 10px 16px;
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -181,9 +185,9 @@ async function handleLogin() {
 }
 
 .login-card button:hover:not(:disabled) {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(201, 168, 106, 0.25);
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.25);
 }
 
 .login-card button:disabled {
@@ -197,14 +201,14 @@ async function handleLogin() {
    ОШИБКИ
    ============================================ */
 .error {
-  color: #f87171;
+  color: #DC2626;
   margin-top: 12px;
   text-align: center;
   font-size: 14px;
   padding: 8px 12px;
-  background: rgba(220, 38, 38, 0.1);
+  background: rgba(220, 38, 38, 0.06);
   border-radius: 6px;
-  border: 1px solid rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.1);
 }
 
 /* ============================================
@@ -214,8 +218,8 @@ async function handleLogin() {
   text-align: center;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(208, 210, 213, 0.05);
-  color: rgba(208, 210, 213, 0.3);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  color: rgba(26, 26, 26, 0.3);
   font-size: 12px;
 }
 

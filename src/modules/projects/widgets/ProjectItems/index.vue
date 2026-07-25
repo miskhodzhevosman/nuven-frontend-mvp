@@ -141,14 +141,15 @@ function handleUpdated() {
 
 <style scoped>
 /* ============================================
-   ТЕМНЫЕ СТИЛИ ДЛЯ ProjectItems
+   СВЕТЛЫЕ СТИЛИ ДЛЯ ProjectItems
    ============================================ */
 
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
@@ -164,22 +165,22 @@ function handleUpdated() {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .state {
   padding: 24px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 .state.muted {
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.3);
 }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 8px;
 }
 
@@ -187,7 +188,7 @@ function handleUpdated() {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
   min-width: 600px;
 }
 
@@ -195,21 +196,21 @@ function handleUpdated() {
 .table td {
   padding: 10px 14px;
   text-align: left;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   white-space: nowrap;
 }
 
 .table th {
-  background: rgba(255, 255, 255, 0.04);
+  background: #F8F9FA;
   font-weight: 600;
-  color: rgba(208, 210, 213, 0.7);
+  color: rgba(26, 26, 26, 0.6);
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.5px;
 }
 
 .table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(44, 62, 80, 0.02);
 }
 
 .num {
@@ -229,7 +230,7 @@ function handleUpdated() {
   gap: 4px;
   align-items: center;
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.6);
+  color: rgba(26, 26, 26, 0.6);
 }
 
 /* ============================================
@@ -241,7 +242,7 @@ function handleUpdated() {
   padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -252,45 +253,45 @@ function handleUpdated() {
 }
 
 .btn-primary {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
 }
 
 .btn-ghost {
   background: transparent;
-  color: #D0D2D5;
-  border-color: rgba(208, 210, 213, 0.2);
+  color: #1A1A1A;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(208, 210, 213, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(220, 38, 38, 0.06);
+  color: #DC2626;
+  border-color: rgba(220, 38, 38, 0.1);
 }
 
 .btn-danger:hover {
-  background: rgba(239, 68, 68, 0.25);
+  background: rgba(220, 38, 38, 0.12);
 }
 
 .btn-pay {
-  background: rgba(74, 222, 128, 0.12);
-  color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.15);
+  background: rgba(22, 163, 74, 0.06);
+  color: #16A34A;
+  border-color: rgba(22, 163, 74, 0.1);
 }
 
 .btn-pay:hover {
-  background: rgba(74, 222, 128, 0.2);
+  background: rgba(22, 163, 74, 0.12);
 }
 
 /* ============================================

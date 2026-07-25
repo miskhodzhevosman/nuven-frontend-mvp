@@ -240,52 +240,127 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* ============================================
+   СВЕТЛЫЕ СТИЛИ ДЛЯ СТРАНИЦЫ
+   Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
+   ============================================ */
+
 .page {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
-  color: #1f2937;
+  color: #1A1A1A;
+  background: #F8F9FA;
+  min-height: 100vh;
 }
+
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(44, 62, 80, 0.1);
 }
-.page-header h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; }
-.muted { color: #6b7280; font-size: 14px; }
 
+.page-header h1 { 
+  margin: 0 0 4px; 
+  font-size: 24px; 
+  font-weight: 600;
+  color: #2C3E50;
+}
+
+.muted { 
+  color: rgba(26, 26, 26, 0.5); 
+  font-size: 14px; 
+}
+
+/* ============================================
+   АЛЕРТЫ
+   ============================================ */
 .alert {
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 16px;
 }
-.alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
-.state { padding: 32px; text-align: center; }
+.alert-error { 
+  background: rgba(220, 38, 38, 0.06); 
+  color: #DC2626; 
+  border: 1px solid rgba(220, 38, 38, 0.1); 
+}
 
-.table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+/* ============================================
+   СОСТОЯНИЯ
+   ============================================ */
+.state { 
+  padding: 32px; 
+  text-align: center; 
+  color: rgba(26, 26, 26, 0.4);
+}
+
+/* ============================================
+   ТАБЛИЦА
+   ============================================ */
+.table-wrap { 
+  overflow-x: auto; 
+  border: 1px solid rgba(0, 0, 0, 0.06); 
+  border-radius: 10px;
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  font-size: 14px; 
+}
+
 .table th, .table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   white-space: nowrap;
 }
+
 .table th {
-  background: #f8fafc;
+  background: #F8F9FA;
   font-weight: 600;
-  color: #475569;
+  color: rgba(26, 26, 26, 0.6);
   position: sticky;
   top: 0;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
 }
-.table tbody tr:hover { background: #f9fafb; }
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-.comment { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
-.actions { white-space: nowrap; }
 
+.table tbody tr:hover { 
+  background: rgba(44, 62, 80, 0.03); 
+}
+
+.num { 
+  text-align: right; 
+  font-variant-numeric: tabular-nums; 
+  font-weight: 500;
+  color: #2C3E50;
+}
+
+.comment { 
+  max-width: 260px; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
+
+.actions { 
+  white-space: nowrap; 
+}
+
+/* ============================================
+   БЕЙДЖИ
+   ============================================ */
 .badge {
   display: inline-block;
   padding: 2px 8px;
@@ -293,67 +368,239 @@ onMounted(async () => {
   font-size: 12px;
   font-weight: 500;
 }
-.badge-green { background: #dcfce7; color: #166534; }
-.badge-blue { background: #dbeafe; color: #1e40af; }
-.badge-orange { background: #ffedd5; color: #9a3412; }
-.badge-red { background: #fee2e2; color: #991b1b; }
-.badge-gray { background: #e5e7eb; color: #374151; }
 
+.badge-green { 
+  background: #dcfce7; 
+  color: #166534; 
+}
+
+.badge-blue { 
+  background: #dbeafe; 
+  color: #1e40af; 
+}
+
+.badge-orange { 
+  background: #ffedd5; 
+  color: #9a3412; 
+}
+
+.badge-red { 
+  background: #fee2e2; 
+  color: #991b1b; 
+}
+
+.badge-gray { 
+  background: #e5e7eb; 
+  color: #374151; 
+}
+
+/* ============================================
+   КНОПКИ
+   ============================================ */
 .btn {
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
-.btn:disabled { opacity: .6; cursor: not-allowed; }
-.btn-primary { background: #2563eb; color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.btn-ghost { background: transparent; color: #334155; border-color: #cbd5e1; }
-.btn-ghost:hover { background: #f1f5f9; }
-.btn-danger { background: #ef4444; color: #fff; }
-.btn-danger:hover { background: #dc2626; }
-.confirm { margin-left: 8px; display: inline-flex; gap: 4px; align-items: center; }
 
+.btn:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+}
+
+.btn-primary { 
+  background: #2C3E50; 
+  color: #FFFFFF; 
+}
+
+.btn-primary:hover:not(:disabled) { 
+  background: #34495E; 
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+}
+
+.btn-ghost { 
+  background: transparent; 
+  color: #1A1A1A; 
+  border-color: rgba(0, 0, 0, 0.12); 
+}
+
+.btn-ghost:hover { 
+  background: rgba(0, 0, 0, 0.04); 
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.btn-danger { 
+  background: #DC2626; 
+  color: #FFFFFF; 
+}
+
+.btn-danger:hover:not(:disabled) { 
+  background: #B91C1C; 
+}
+
+.confirm { 
+  margin-left: 8px; 
+  display: inline-flex; 
+  gap: 4px; 
+  align-items: center; 
+  color: rgba(26, 26, 26, 0.5);
+  font-size: 13px;
+}
+
+/* ============================================
+   МОДАЛЬНОЕ ОКНО
+   ============================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, .5);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
   padding: 16px;
 }
+
 .modal {
-  background: #fff;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 24px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,.1);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
 }
-.modal h2 { margin: 0 0 16px; font-size: 18px; font-weight: 600; }
-.field { display: block; margin-bottom: 14px; }
-.field span { display: block; margin-bottom: 4px; font-size: 13px; color: #374151; font-weight: 500; }
-.field input, .field select, .field textarea {
+
+.modal h2 { 
+  margin: 0 0 16px; 
+  font-size: 18px; 
+  font-weight: 600;
+  color: #2C3E50;
+}
+
+/* ============================================
+   ПОЛЯ ФОРМ
+   ============================================ */
+.field { 
+  display: block; 
+  margin-bottom: 14px; 
+}
+
+.field span { 
+  display: block; 
+  margin-bottom: 4px; 
+  font-size: 13px; 
+  color: rgba(26, 26, 26, 0.6); 
+  font-weight: 500; 
+}
+
+.field input, 
+.field select, 
+.field textarea {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
+  color: #1A1A1A;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.field input:focus, .field select:focus, .field textarea:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
-}
-.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(26, 26, 26, 0.3);
+}
+
+.field input:focus, 
+.field select:focus, 
+.field textarea:focus {
+  outline: none;
+  border-color: #2C3E50;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
+}
+
+.field select option {
+  background: #FFFFFF;
+  color: #1A1A1A;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* ============================================
+   ДЕЙСТВИЯ В МОДАЛКЕ
+   ============================================ */
+.modal-actions { 
+  display: flex; 
+  justify-content: flex-end; 
+  gap: 8px; 
+  margin-top: 8px; 
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
 @media (max-width: 640px) {
-  .page { padding: 16px; }
-  .page-header { flex-direction: column; }
+  .page { 
+    padding: 16px; 
+  }
+  
+  .page-header { 
+    flex-direction: column; 
+    align-items: stretch;
+  }
+
+  .modal {
+    padding: 20px;
+    max-width: 100%;
+    margin: 8px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .modal-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 12px;
+  }
+
+  .table th, .table td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .modal {
+    padding: 16px;
+  }
+  
+  .field {
+    margin-bottom: 12px;
+  }
+  
+  .field input,
+  .field select,
+  .field textarea {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
 }
 </style>

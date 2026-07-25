@@ -205,7 +205,7 @@ onMounted(() => {
 /*
  * ============================================
  * СТИЛИ ДЛЯ ДАШБОРДА (Dashboard.vue)
- * Цветовая схема: #16181C (фон), #C9A86A (золото), #D0D2D5 (текст)
+ * Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
  * ============================================
  */
 
@@ -216,8 +216,8 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
-  background: #16181C;
-  color: #D0D2D5;
+  background: #F8F9FA;
+  color: #1A1A1A;
   min-height: 100vh;
 }
 
@@ -230,18 +230,18 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(201, 168, 106, 0.15);
+  border-bottom: 1px solid rgba(44, 62, 80, 0.12);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 28px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .page-header .muted {
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   font-size: 14px;
   margin: 4px 0 0;
 }
@@ -257,18 +257,25 @@ onMounted(() => {
 }
 
 .kpi-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .kpi-label {
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -276,20 +283,20 @@ onMounted(() => {
 .kpi-value {
   font-size: 24px;
   font-weight: 700;
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-variant-numeric: tabular-nums;
 }
 
 .kpi-value.gold {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .kpi-value.positive {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .kpi-value.negative {
-  color: #f87171;
+  color: #DC2626;
 }
 
 /* ============================================
@@ -306,17 +313,18 @@ onMounted(() => {
 }
 
 .report-column {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .report-column h3 {
   margin: 0 0 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .report-item {
@@ -324,7 +332,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .report-item:last-child {
@@ -334,37 +342,37 @@ onMounted(() => {
 .report-item.total {
   padding-top: 12px;
   margin-top: 4px;
-  border-top: 2px solid rgba(201, 168, 106, 0.15);
+  border-top: 2px solid rgba(44, 62, 80, 0.12);
   border-bottom: none;
 }
 
 .report-label {
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.7);
+  color: rgba(26, 26, 26, 0.6);
 }
 
 .report-value {
   font-size: 14px;
   font-weight: 600;
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-variant-numeric: tabular-nums;
 }
 
 .report-value.gold {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .report-value.positive {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .report-value.negative {
-  color: #f87171;
+  color: #DC2626;
 }
 
 .report-divider {
   border: none;
-  border-top: 1px solid rgba(208, 210, 213, 0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
   margin: 4px 0;
 }
 
@@ -372,17 +380,18 @@ onMounted(() => {
    ДВИЖЕНИЕ ДЕНЕГ
    ============================================ */
 .cashflow-section {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .cashflow-section h3 {
   margin: 0 0 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .cashflow-grid {
@@ -396,34 +405,34 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: #F8F9FA;
   border-radius: 8px;
-  border: 1px solid rgba(208, 210, 213, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .cashflow-item.total {
-  background: rgba(201, 168, 106, 0.06);
-  border-color: rgba(201, 168, 106, 0.15);
+  background: rgba(44, 62, 80, 0.04);
+  border-color: rgba(44, 62, 80, 0.1);
 }
 
 .cashflow-label {
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.7);
+  color: rgba(26, 26, 26, 0.6);
 }
 
 .cashflow-value {
   font-size: 16px;
   font-weight: 600;
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-variant-numeric: tabular-nums;
 }
 
 .cashflow-value.positive {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .cashflow-value.negative {
-  color: #f87171;
+  color: #DC2626;
 }
 
 /* ============================================
@@ -437,24 +446,24 @@ onMounted(() => {
 }
 
 .alert-error {
-  background: rgba(220, 38, 38, 0.12);
-  color: #f87171;
-  border: 1px solid rgba(220, 38, 38, 0.15);
+  background: rgba(220, 38, 38, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.1);
 }
 
 .alert-error strong {
-  color: #f87171;
+  color: #DC2626;
 }
 
 .state {
   padding: 40px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.35);
   font-size: 16px;
 }
 
 .muted {
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 /* ============================================
@@ -477,13 +486,13 @@ onMounted(() => {
 
 .btn-ghost {
   background: transparent;
-  color: #D0D2D5;
-  border-color: rgba(208, 210, 213, 0.15);
+  color: #1A1A1A;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(208, 210, 213, 0.25);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================
@@ -605,16 +614,16 @@ onMounted(() => {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(201, 168, 106, 0.2);
+  background: rgba(44, 62, 80, 0.15);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 168, 106, 0.35);
+  background: rgba(44, 62, 80, 0.25);
 }
 </style>

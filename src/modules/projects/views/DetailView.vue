@@ -437,7 +437,7 @@ onMounted(loadAll)
 /*
  * ============================================
  * Стили для страницы деталей проекта (project-detail.vue)
- * Цветовая схема: #16181C (фон), #C9A86A (золото), #D0D2D5 (текст)
+ * Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
  * ============================================
  */
 
@@ -452,8 +452,8 @@ onMounted(loadAll)
   max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
-  background: #16181C;
-  color: #D0D2D5;
+  background: #F8F9FA;
+  color: #1A1A1A;
   min-height: 100vh;
   width: 100%;
 }
@@ -469,7 +469,7 @@ onMounted(loadAll)
   gap: 12px;
   flex-wrap: wrap;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(201, 168, 106, 0.2);
+  border-bottom: 1px solid rgba(44, 62, 80, 0.15);
 }
 
 /* ============================================
@@ -479,7 +479,7 @@ h1 {
   margin: 0 0 20px;
   font-size: 28px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 /* ============================================
@@ -493,23 +493,23 @@ h1 {
 }
 
 .alert-error {
-  background: rgba(220, 38, 38, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.08);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 .alert-error strong {
-  color: #ef4444;
+  color: #DC2626;
 }
 
 .state {
   padding: 24px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 .state.muted {
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.3);
 }
 
 /* ============================================
@@ -545,14 +545,15 @@ h1 {
    ФИНАНСОВЫЙ ОТЧЕТ (ПРАВАЯ КОЛОНКА)
    ============================================ */
 .report-card {
-  background: rgba(201, 168, 106, 0.06);
-  border: 1px solid rgba(201, 168, 106, 0.2);
+  background: #FFFFFF;
+  border: 1px solid rgba(44, 62, 80, 0.12);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .report-card h2 {
-  color: #C9A86A;
+  color: #2C3E50;
   margin-bottom: 16px;
 }
 
@@ -567,50 +568,51 @@ h1 {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 8px;
-  border: 1px solid rgba(208, 210, 213, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   transition: background 0.2s;
 }
 
 .report-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .report-item.total {
-  background: rgba(201, 168, 106, 0.1);
-  border-color: rgba(201, 168, 106, 0.3);
+  background: rgba(44, 62, 80, 0.06);
+  border-color: rgba(44, 62, 80, 0.15);
   margin-top: 4px;
 }
 
 .report-label {
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.7);
+  color: rgba(26, 26, 26, 0.6);
   font-weight: 400;
 }
 
 .report-value {
   font-size: 14px;
   font-weight: 600;
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-variant-numeric: tabular-nums;
 }
 
 .report-value.positive {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .report-value.negative {
-  color: #f87171;
+  color: #DC2626;
 }
 
 .report-value.gold {
-  color: #C9A86A;
+  color: #2C3E50;
+  font-weight: 700;
 }
 
 .report-divider {
   border: none;
-  border-top: 1px solid rgba(201, 168, 106, 0.15);
+  border-top: 1px solid rgba(44, 62, 80, 0.1);
   margin: 8px 0;
 }
 
@@ -633,25 +635,25 @@ h1 {
 }
 
 .btn-primary {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
 }
 
 .btn-ghost {
   background: transparent;
-  color: #D0D2D5;
-  border-color: rgba(208, 210, 213, 0.2);
+  color: #1A1A1A;
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(208, 210, 213, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.25);
 }
 
 /* ============================================
@@ -660,7 +662,7 @@ h1 {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(22, 24, 28, 0.85);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -670,13 +672,13 @@ h1 {
 }
 
 .modal {
-  background: #1e2126;
-  border: 1px solid rgba(201, 168, 106, 0.15);
+  background: #FFFFFF;
+  border: 1px solid rgba(44, 62, 80, 0.1);
   border-radius: 12px;
   padding: 28px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -685,7 +687,7 @@ h1 {
   margin: 0 0 20px;
   font-size: 20px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .field {
@@ -697,7 +699,7 @@ h1 {
   display: block;
   margin-bottom: 4px;
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.6);
+  color: rgba(26, 26, 26, 0.6);
   font-weight: 500;
 }
 
@@ -705,32 +707,32 @@ h1 {
 .field select,
 .field textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(208, 210, 213, 0.15);
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
-  color: #D0D2D5;
+  color: #1A1A1A;
   transition: border-color 0.2s;
 }
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: rgba(208, 210, 213, 0.3);
+  color: rgba(26, 26, 26, 0.3);
 }
 
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   outline: none;
-  border-color: #C9A86A;
-  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.15);
+  border-color: #2C3E50;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1);
 }
 
 .field select option {
-  background: #1e2126;
-  color: #D0D2D5;
+  background: #FFFFFF;
+  color: #1A1A1A;
 }
 
 .field textarea {
@@ -764,12 +766,12 @@ h1 {
   cursor: pointer;
   padding: 4px 8px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
   transition: color 0.2s;
 }
 
 .combobox-toggle:hover {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .combobox-suggestions {
@@ -779,14 +781,14 @@ h1 {
   right: 0;
   max-height: 200px;
   overflow-y: auto;
-  background: #1e2126;
-  border: 1px solid rgba(208, 210, 213, 0.1);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   margin: 4px 0 0 0;
   padding: 4px 0;
   list-style: none;
   z-index: 1000;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .combobox-suggestions li {
@@ -794,22 +796,22 @@ h1 {
   cursor: pointer;
   transition: background 0.15s;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
 }
 
 .combobox-suggestions li:hover {
-  background: rgba(201, 168, 106, 0.1);
+  background: rgba(44, 62, 80, 0.06);
 }
 
 .hint {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 .hint.success {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 /* ============================================
@@ -820,18 +822,18 @@ h1 {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(208, 210, 213, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
   transition: all 0.2s;
 }
 
 .onboarding-start-btn:hover {
-  background: rgba(201, 168, 106, 0.1);
-  border-color: #C9A86A;
+  background: rgba(44, 62, 80, 0.06);
+  border-color: #2C3E50;
 }
 
 .btn-icon {
@@ -970,7 +972,7 @@ h1 {
 }
 
 /* ============================================
-   СКРОЛЛБАР (для темной темы)
+   СКРОЛЛБАР (для светлой темы)
    ============================================ */
 ::-webkit-scrollbar {
   width: 8px;
@@ -978,16 +980,16 @@ h1 {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(201, 168, 106, 0.3);
+  background: rgba(44, 62, 80, 0.25);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 168, 106, 0.5);
+  background: rgba(44, 62, 80, 0.4);
 }
 </style>

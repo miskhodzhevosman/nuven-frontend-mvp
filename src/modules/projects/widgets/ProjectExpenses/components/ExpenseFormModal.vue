@@ -398,11 +398,14 @@ watch(() => props.editingId, async () => {
 </script>
 
 <style scoped>
-/* ... (стили остаются те же) ... */
+/* ============================================
+   СВЕТЛЫЕ СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА
+   ============================================ */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(22, 24, 28, 0.85);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -412,13 +415,13 @@ watch(() => props.editingId, async () => {
 }
 
 .modal {
-  background: #1e2126;
-  border: 1px solid rgba(201, 168, 106, 0.15);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 28px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -427,7 +430,7 @@ watch(() => props.editingId, async () => {
   margin: 0 0 20px;
   font-size: 20px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .field {
@@ -439,7 +442,7 @@ watch(() => props.editingId, async () => {
   display: block;
   margin-bottom: 4px;
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.6);
+  color: rgba(26, 26, 26, 0.6);
   font-weight: 500;
 }
 
@@ -447,32 +450,32 @@ watch(() => props.editingId, async () => {
 .field select,
 .field textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(208, 210, 213, 0.15);
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
-  color: #D0D2D5;
-  transition: border-color 0.2s;
+  color: #1A1A1A;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: rgba(208, 210, 213, 0.3);
+  color: rgba(26, 26, 26, 0.3);
 }
 
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   outline: none;
-  border-color: #C9A86A;
-  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.15);
+  border-color: #2C3E50;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
 }
 
 .field select option {
-  background: #1e2126;
-  color: #D0D2D5;
+  background: #FFFFFF;
+  color: #1A1A1A;
 }
 
 .field textarea {
@@ -500,12 +503,12 @@ watch(() => props.editingId, async () => {
   cursor: pointer;
   padding: 4px 8px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.5);
-  transition: color 0.2s;
+  color: rgba(26, 26, 26, 0.4);
+  transition: color 0.2s ease;
 }
 
 .combobox-toggle:hover {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .combobox-suggestions {
@@ -515,32 +518,32 @@ watch(() => props.editingId, async () => {
   right: 0;
   max-height: 200px;
   overflow-y: auto;
-  background: #1e2126;
-  border: 1px solid rgba(208, 210, 213, 0.1);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 8px;
   margin: 4px 0 0 0;
   padding: 4px 0;
   list-style: none;
   z-index: 1000;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .combobox-suggestions li {
   padding: 8px 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s ease;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
 }
 
 .combobox-suggestions li:hover {
-  background: rgba(201, 168, 106, 0.1);
+  background: rgba(44, 62, 80, 0.05);
 }
 
 .combobox-suggestions .combobox-create-new {
-  color: #C9A86A;
+  color: #2C3E50;
   font-weight: 500;
-  border-top: 1px solid rgba(201, 168, 106, 0.15);
+  border-top: 1px solid rgba(44, 62, 80, 0.08);
   cursor: default;
 }
 
@@ -552,15 +555,15 @@ watch(() => props.editingId, async () => {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 .hint.success {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .hint.warning {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .modal-actions {
@@ -576,7 +579,7 @@ watch(() => props.editingId, async () => {
   padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-weight: 500;
 }
 
@@ -586,25 +589,25 @@ watch(() => props.editingId, async () => {
 }
 
 .btn-primary {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
 }
 
 .btn-ghost {
   background: transparent;
-  color: #D0D2D5;
-  border-color: rgba(208, 210, 213, 0.2);
+  color: #1A1A1A;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(208, 210, 213, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .alert {
@@ -615,13 +618,13 @@ watch(() => props.editingId, async () => {
 }
 
 .alert-error {
-  background: rgba(220, 38, 38, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.1);
 }
 
 .alert-error strong {
-  color: #f87171;
+  color: #DC2626;
 }
 
 @media (max-width: 640px) {

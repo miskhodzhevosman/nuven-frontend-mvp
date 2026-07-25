@@ -1014,7 +1014,7 @@ function open(id) {
 
 .history-type.history-created {
   background: #28a745;
-  color: rgb(0, 0, 0);
+  color: #ffffff;
 }
 
 .history-type.history-changed {
@@ -1024,7 +1024,7 @@ function open(id) {
 
 .history-type.history-deleted {
   background: #dc3545;
-  color: rgb(0, 0, 0);
+  color: #ffffff;
 }
 
 .history-date {
@@ -1109,13 +1109,15 @@ function open(id) {
   }
 }
 
-
+/* ============================================
+   ОСНОВНЫЕ СТИЛИ
+   ============================================ */
 .page {
   max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
-  background: #16181C;
-  color: #000000;
+  background: #F8F9FA;
+  color: #1A1A1A;
   min-height: 100vh;
 }
 
@@ -1128,18 +1130,18 @@ function open(id) {
   align-items: flex-start;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(201, 168, 106, 0.15);
+  border-bottom: 1px solid rgba(44, 62, 80, 0.12);
 }
 
 .page-header h1 {
   margin: 0 0 4px;
   font-size: 28px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .page-header .muted {
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   font-size: 14px;
 }
 
@@ -1147,11 +1149,12 @@ function open(id) {
    ФИЛЬТРЫ ПО СТАТУСАМ (ПЛИТКИ)
    ============================================ */
 .status-filters {
-  background: rgba(59, 59, 59, 0.03);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 16px 20px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .status-filters-header {
@@ -1164,7 +1167,7 @@ function open(id) {
 .status-filters-title {
   font-size: 13px;
   font-weight: 500;
-  color: rgba(208, 210, 213, 0.6);
+  color: rgba(26, 26, 26, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1181,27 +1184,27 @@ function open(id) {
   gap: 8px;
   padding: 6px 16px;
   border-radius: 20px;
-  background: rgba(0, 0, 0, 0.04);
-  border: 2px solid rgba(208, 210, 213, 0.1);
+  background: #F8F9FA;
+  border: 2px solid rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: all 0.25s ease;
   font-size: 14px;
   user-select: none;
-  color: #D0D2D5;
+  color: #1A1A1A;
 }
 
 .status-tile:hover:not(.disabled) {
-  border-color: rgba(201, 168, 106, 0.4);
+  border-color: #2C3E50;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
 }
 
 .status-tile.active {
-  border-color: #C9A86A;
-  background: rgba(201, 168, 106, 0.12);
-  color: #C9A86A;
-  box-shadow: 0 0 20px rgba(201, 168, 106, 0.05);
+  border-color: #2C3E50;
+  background: rgba(44, 62, 80, 0.08);
+  color: #2C3E50;
+  box-shadow: 0 0 20px rgba(44, 62, 80, 0.05);
 }
 
 .status-tile.disabled {
@@ -1214,17 +1217,17 @@ function open(id) {
 }
 
 .status-tile .status-count {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.05);
   padding: 0 10px;
   border-radius: 12px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   font-weight: 500;
 }
 
 .status-tile.active .status-count {
-  background: rgba(201, 168, 106, 0.15);
-  color: #C9A86A;
+  background: rgba(44, 62, 80, 0.12);
+  color: #2C3E50;
 }
 
 /* ============================================
@@ -1235,20 +1238,20 @@ function open(id) {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(201, 168, 106, 0.06);
-  border: 1px solid rgba(201, 168, 106, 0.15);
+  background: rgba(44, 62, 80, 0.05);
+  border: 1px solid rgba(44, 62, 80, 0.1);
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
 }
 
 .filter-info strong {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .filter-info-count {
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   font-size: 13px;
 }
 
@@ -1263,19 +1266,19 @@ function open(id) {
 }
 
 .alert-error {
-  background: rgba(220, 38, 38, 0.12);
-  color: #f87171;
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.08);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.15);
 }
 
 .alert-error strong {
-  color: #f87171;
+  color: #DC2626;
 }
 
 .state {
   padding: 40px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.35);
   font-size: 16px;
 }
 
@@ -1284,30 +1287,31 @@ function open(id) {
    ============================================ */
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
 }
 
 .table th,
 .table td {
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   white-space: nowrap;
 }
 
 .table th {
-  background: rgba(255, 255, 255, 0.03);
+  background: #F8F9FA;
   font-weight: 600;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.6);
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.5px;
@@ -1318,7 +1322,7 @@ function open(id) {
 }
 
 .table tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(44, 62, 80, 0.03);
 }
 
 .table .clickable {
@@ -1338,9 +1342,9 @@ function open(id) {
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #D0D2D5;
-  background: #16181C;
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  color: #ffffff;
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 /* ============================================
@@ -1366,25 +1370,25 @@ function open(id) {
 }
 
 .btn-primary {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(201, 168, 106, 0.3);
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.25);
 }
 
 .btn-ghost {
   background: transparent;
-  color: #D0D2D5;
-  border-color: rgba(208, 210, 213, 0.15);
+  color: #1A1A1A;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(208, 210, 213, 0.25);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
 }
 
@@ -1394,23 +1398,23 @@ function open(id) {
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.15);
+  background: rgba(220, 38, 38, 0.08);
+  color: #DC2626;
+  border-color: rgba(220, 38, 38, 0.12);
 }
 
 .btn-danger:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(220, 38, 38, 0.15);
 }
 
 .btn-pay {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.12);
+  background: rgba(22, 163, 74, 0.08);
+  color: #16A34A;
+  border-color: rgba(22, 163, 74, 0.12);
 }
 
 .btn-pay:hover {
-  background: rgba(74, 222, 128, 0.18);
+  background: rgba(22, 163, 74, 0.15);
 }
 
 /* ============================================
@@ -1419,7 +1423,7 @@ function open(id) {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(22, 24, 28, 0.85);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -1429,13 +1433,13 @@ function open(id) {
 }
 
 .modal {
-  background: #1e2126;
-  border: 1px solid rgba(201, 168, 106, 0.12);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 28px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -1444,7 +1448,7 @@ function open(id) {
   margin: 0 0 20px;
   font-size: 20px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .modal-sm {
@@ -1463,7 +1467,7 @@ function open(id) {
   display: block;
   margin-bottom: 4px;
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.6);
   font-weight: 500;
 }
 
@@ -1471,32 +1475,32 @@ function open(id) {
 .field select,
 .field textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(208, 210, 213, 0.12);
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 14px;
   font-family: inherit;
-  color: #D0D2D5;
+  color: #1A1A1A;
   transition: all 0.2s ease;
 }
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: rgba(208, 210, 213, 0.25);
+  color: rgba(26, 26, 26, 0.25);
 }
 
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   outline: none;
-  border-color: #C9A86A;
-  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.1);
+  border-color: #2C3E50;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
 }
 
 .field select option {
-  background: #1e2126;
-  color: #D0D2D5;
+  background: #FFFFFF;
+  color: #1A1A1A;
 }
 
 .field textarea {
@@ -1530,24 +1534,24 @@ function open(id) {
   flex: 1;
   padding-right: 30px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(208, 210, 213, 0.12);
+  background: #F8F9FA;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 8px 30px 8px 12px;
   font-size: 14px;
   font-family: inherit;
-  color: #D0D2D5;
+  color: #1A1A1A;
   transition: all 0.2s ease;
 }
 
 .combobox-wrapper input::placeholder {
-  color: rgba(208, 210, 213, 0.25);
+  color: rgba(26, 26, 26, 0.25);
 }
 
 .combobox-wrapper input:focus {
   outline: none;
-  border-color: #C9A86A;
-  box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.1);
+  border-color: #2C3E50;
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
 }
 
 .combobox-toggle {
@@ -1558,12 +1562,12 @@ function open(id) {
   cursor: pointer;
   padding: 4px 8px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.3);
+  color: rgba(26, 26, 26, 0.3);
   transition: color 0.2s;
 }
 
 .combobox-toggle:hover {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .combobox-suggestions {
@@ -1573,14 +1577,14 @@ function open(id) {
   right: 0;
   max-height: 200px;
   overflow-y: auto;
-  background: #1e2126;
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 8px;
   margin: 4px 0 0;
   padding: 4px 0;
   list-style: none;
   z-index: 101;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .combobox-suggestions li {
@@ -1588,25 +1592,25 @@ function open(id) {
   cursor: pointer;
   transition: background 0.15s;
   font-size: 14px;
-  color: #D0D2D5;
+  color: #1A1A1A;
 }
 
 .combobox-suggestions li:hover {
-  background: rgba(201, 168, 106, 0.08);
+  background: rgba(44, 62, 80, 0.05);
 }
 
 .combobox-suggestions li:not(:last-child) {
-  border-bottom: 1px solid rgba(208, 210, 213, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .combobox-suggestions .combobox-create-new {
-  color: #C9A86A;
+  color: #2C3E50;
   font-weight: 500;
-  border-top: 1px solid rgba(201, 168, 106, 0.1);
+  border-top: 1px solid rgba(44, 62, 80, 0.08);
 }
 
 .combobox-suggestions .combobox-create-new:hover {
-  background: rgba(201, 168, 106, 0.08);
+  background: rgba(44, 62, 80, 0.05);
 }
 
 /* ============================================
@@ -1616,11 +1620,11 @@ function open(id) {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.35);
+  color: rgba(26, 26, 26, 0.35);
 }
 
 .hint.success {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 /* ============================================
@@ -1632,7 +1636,7 @@ function open(id) {
   gap: 8px;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid rgba(208, 210, 213, 0.05);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* ============================================
@@ -1712,27 +1716,31 @@ function open(id) {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(201, 168, 106, 0.25);
+  background: rgba(44, 62, 80, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 168, 106, 0.4);}
-  
-  .onboarding-start-btn {
+  background: rgba(44, 62, 80, 0.35);
+}
+
+/* ============================================
+   ОНБОРДИНГ КНОПКА
+   ============================================ */
+.onboarding-start-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 12px 28px;
-  background: #16181C;
-  color: #C9A86A;
-  border: 1px solid #C9A86A;
+  background: #FFFFFF;
+  color: #2C3E50;
+  border: 2px solid #2C3E50;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -1751,18 +1759,18 @@ function open(id) {
 .btn-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(201, 168, 106, 0.15), transparent 70%);
+  background: radial-gradient(circle at center, rgba(44, 62, 80, 0.1), transparent 70%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
 .onboarding-start-btn:hover {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
   box-shadow: 
-    0 0 20px rgba(201, 168, 106, 0.3),
-    inset 0 0 20px rgba(201, 168, 106, 0.1);
+    0 0 20px rgba(44, 62, 80, 0.2),
+    inset 0 0 20px rgba(44, 62, 80, 0.05);
   transform: translateY(-2px);
 }
 
@@ -1782,11 +1790,11 @@ function open(id) {
   background: conic-gradient(
     from 0deg,
     transparent 0%,
-    #C9A86A 20%,
-    #FF6B35 40%,
-    #FF4500 60%,
-    #FF6B35 80%,
-    #C9A86A 100%
+    #2C3E50 20%,
+    #E67E22 40%,
+    #E74C3C 60%,
+    #E67E22 80%,
+    #2C3E50 100%
   );
   background-size: 300% 300%;
   animation: rotateBorder 4s linear infinite;
@@ -1807,5 +1815,4 @@ function open(id) {
     background-position: 300% 50%;
   }
 }
-
-  </style>
+</style>

@@ -172,11 +172,17 @@ watch(() => props.projectId, async (newId) => {
 </script>
 
 <style scoped>
+/* ============================================
+   СВЕТЛЫЕ СТИЛИ ДЛЯ КАРТОЧКИ
+   Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
+   ============================================ */
+
 .card {
-  background: #1e2126;
-  border: 1px solid rgba(201, 168, 106, 0.15);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
@@ -184,31 +190,35 @@ watch(() => props.projectId, async (newId) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .card-header h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
   margin: 0;
 }
 
 .state {
   padding: 24px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 .state.error {
-  color: #ef4444;
+  color: #DC2626;
 }
 
 .state.warning {
-  color: #fbbf24;
+  color: #D97706;
 }
 
 .table-wrap {
   overflow-x: auto;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
 }
 
 .table {
@@ -220,20 +230,34 @@ watch(() => props.projectId, async (newId) => {
 .table th {
   text-align: left;
   padding: 8px 12px;
-  color: rgba(208, 210, 213, 0.5);
-  font-weight: 500;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.1);
+  color: rgba(26, 26, 26, 0.5);
+  font-weight: 600;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+  background: #F8F9FA;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
 }
 
 .table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.05);
-  color: #D0D2D5;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: #1A1A1A;
+}
+
+.table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background: rgba(44, 62, 80, 0.02);
 }
 
 .table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: #2C3E50;
 }
 
 .btn {
@@ -242,7 +266,7 @@ watch(() => props.projectId, async (newId) => {
   padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-weight: 500;
 }
 
@@ -252,14 +276,14 @@ watch(() => props.projectId, async (newId) => {
 }
 
 .btn-primary {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
 }
 
 .btn-icon {
@@ -267,16 +291,58 @@ watch(() => props.projectId, async (newId) => {
   border: none;
   cursor: pointer;
   padding: 4px 8px;
-  color: rgba(208, 210, 213, 0.5);
-  transition: color 0.2s;
+  color: rgba(26, 26, 26, 0.4);
+  transition: color 0.2s ease;
   font-size: 14px;
 }
 
 .btn-icon:hover {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .btn-icon.danger:hover {
-  color: #ef4444;
+  color: #DC2626;
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
+@media (max-width: 640px) {
+  .card {
+    padding: 14px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-header .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .table th,
+  .table td {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .table th {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 12px;
+  }
+
+  .table th,
+  .table td {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
 }
 </style>

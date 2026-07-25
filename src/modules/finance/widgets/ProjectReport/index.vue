@@ -157,18 +157,20 @@ function getProfitClass(value) {
 
 <style scoped>
 /* ============================================
-   ТЕМНЫЕ СТИЛИ ДЛЯ ProjectReport
+   СВЕТЛЫЕ СТИЛИ ДЛЯ ProjectReport
+   Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
    ============================================ */
 
 .report-card {
-  background: rgba(201, 168, 106, 0.06);
-  border: 1px solid rgba(201, 168, 106, 0.2);
+  background: rgba(44, 62, 80, 0.04);
+  border: 1px solid rgba(44, 62, 80, 0.12);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .report-card h2 {
-  color: #C9A86A;
+  color: #2C3E50;
   margin-bottom: 16px;
   font-size: 18px;
   font-weight: 600;
@@ -177,11 +179,11 @@ function getProfitClass(value) {
 .state {
   padding: 24px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 .state.muted {
-  color: rgba(208, 210, 213, 0.4);
+  color: rgba(26, 26, 26, 0.3);
 }
 
 .report-grid {
@@ -195,50 +197,51 @@ function getProfitClass(value) {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 8px;
-  border: 1px solid rgba(208, 210, 213, 0.06);
-  transition: background 0.2s;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .report-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 .report-item.total {
-  background: rgba(201, 168, 106, 0.1);
-  border-color: rgba(201, 168, 106, 0.3);
+  background: rgba(44, 62, 80, 0.06);
+  border-color: rgba(44, 62, 80, 0.15);
   margin-top: 4px;
 }
 
 .report-label {
   font-size: 13px;
-  color: rgba(208, 210, 213, 0.7);
+  color: rgba(26, 26, 26, 0.6);
   font-weight: 400;
 }
 
 .report-value {
   font-size: 14px;
   font-weight: 600;
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-variant-numeric: tabular-nums;
 }
 
 .report-value.positive {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .report-value.negative {
-  color: #f87171;
+  color: #DC2626;
 }
 
 .report-value.gold {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .report-divider {
   border: none;
-  border-top: 1px solid rgba(201, 168, 106, 0.15);
+  border-top: 1px solid rgba(44, 62, 80, 0.1);
   margin: 8px 0;
 }
 

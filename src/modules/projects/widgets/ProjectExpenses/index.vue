@@ -214,6 +214,7 @@ onMounted(async () => {
   color: #666;
   cursor: pointer;
   border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .btn-ghost:hover {
@@ -228,6 +229,7 @@ onMounted(async () => {
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -248,13 +250,16 @@ onMounted(async () => {
   margin: 12px 0;
 }
 
-/* Стили для карточки и таблицы */
+/* ============================================
+   КАРТОЧКА И ТАБЛИЦА (СВЕТЛАЯ ТЕМА)
+   ============================================ */
 .card {
-  background: #1e2126;
-  border: 1px solid rgba(201, 168, 106, 0.15);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
@@ -268,28 +273,28 @@ onMounted(async () => {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .btn-primary {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
   border: none;
   padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  background: #d4b87a;
+  background: #34495E;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(201, 168, 106, 0.3);
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
 }
 
 .state.muted {
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
   text-align: center;
   padding: 40px 0;
   font-size: 14px;
@@ -308,12 +313,13 @@ onMounted(async () => {
 .table thead th {
   text-align: left;
   padding: 12px 12px;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.1);
-  color: rgba(208, 210, 213, 0.6);
-  font-weight: 500;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+  color: rgba(26, 26, 26, 0.6);
+  font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: #F8F9FA;
 }
 
 .table thead th.num {
@@ -326,29 +332,35 @@ onMounted(async () => {
 
 .table tbody td {
   padding: 12px 12px;
-  border-bottom: 1px solid rgba(208, 210, 213, 0.05);
-  color: #D0D2D5;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: #1A1A1A;
 }
 
 .table tbody td.num {
   text-align: right;
-  font-weight: 500;
-  color: #C9A86A;
+  font-weight: 600;
+  color: #2C3E50;
 }
 
 .table tbody td.actions {
   text-align: center;
 }
 
-.table tbody tr:hover {
-  background: rgba(201, 168, 106, 0.05);
+.table tbody tr {
+  transition: background 0.15s ease;
 }
 
-/* Модалка подтверждения */
+.table tbody tr:hover {
+  background: rgba(44, 62, 80, 0.03);
+}
+
+/* ============================================
+   МОДАЛКА ПОДТВЕРЖДЕНИЯ (СВЕТЛАЯ)
+   ============================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(22, 24, 28, 0.85);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -358,24 +370,24 @@ onMounted(async () => {
 }
 
 .modal {
-  background: #1e2126;
-  border: 1px solid rgba(201, 168, 106, 0.15);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 28px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
 }
 
 .modal h2 {
   margin: 0 0 16px;
   font-size: 20px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .modal p {
-  color: #D0D2D5;
+  color: #1A1A1A;
   margin-bottom: 12px;
 }
 
@@ -386,6 +398,9 @@ onMounted(async () => {
   margin-top: 16px;
 }
 
+/* ============================================
+   АЛЕРТЫ
+   ============================================ */
 .alert {
   padding: 12px 16px;
   border-radius: 8px;
@@ -394,11 +409,14 @@ onMounted(async () => {
 }
 
 .alert-error {
-  background: rgba(220, 38, 38, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.1);
 }
 
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
 @media (max-width: 768px) {
   .card {
     padding: 16px;

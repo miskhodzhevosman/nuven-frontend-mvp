@@ -63,15 +63,16 @@ function formatDate(d) {
 
 <style scoped>
 /* ============================================
-   ТЕМНЫЕ СТИЛИ ДЛЯ ProjectInfo
+   СВЕТЛЫЕ СТИЛИ ДЛЯ ProjectInfo
    ============================================ */
 
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(208, 210, 213, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
@@ -87,13 +88,13 @@ function formatDate(d) {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .state {
   padding: 24px;
   text-align: center;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.4);
 }
 
 /* ============================================
@@ -113,14 +114,14 @@ function formatDate(d) {
 
 .label {
   font-size: 12px;
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .info-grid > div span:last-child {
-  color: #D0D2D5;
+  color: #1A1A1A;
   font-weight: 500;
 }
 
@@ -133,19 +134,19 @@ function formatDate(d) {
   padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-weight: 500;
 }
 
 .btn-ghost {
   background: transparent;
-  color: #D0D2D5;
-  border-color: rgba(208, 210, 213, 0.2);
+  color: #1A1A1A;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(208, 210, 213, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================
@@ -195,7 +196,7 @@ function formatDate(d) {
     flex-direction: row;
     justify-content: space-between;
     padding: 4px 0;
-    border-bottom: 1px solid rgba(208, 210, 213, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .info-grid > div:last-child {

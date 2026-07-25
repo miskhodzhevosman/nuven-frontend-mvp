@@ -64,7 +64,7 @@ function logout() {
 /*
  * ============================================
  * СТИЛИ ДЛЯ ГЛАВНОГО ЛЕЙАУТА (DashboardLayout.vue)
- * Цветовая схема: #16181C (фон), #C9A86A (золото), #D0D2D5 (текст)
+ * Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
  * ============================================
  */
 
@@ -74,8 +74,8 @@ function logout() {
 .dashboard-container {
   display: flex;
   height: 100vh;
-  background: #16181C;
-  color: #D0D2D5;
+  background: #F8F9FA;
+  color: #1A1A1A;
 }
 
 /* ============================================
@@ -83,23 +83,24 @@ function logout() {
    ============================================ */
 .sidebar {
   width: 240px;
-  background: rgba(255, 255, 255, 0.03);
-  border-right: 1px solid rgba(201, 168, 106, 0.1);
+  background: #FFFFFF;
+  border-right: 1px solid rgba(44, 62, 80, 0.08);
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.03);
 }
 
 /* Логотип */
 .logo {
   font-size: 22px;
   font-weight: 700;
-  color: #C9A86A;
+  color: #2C3E50;
   text-align: center;
   padding: 12px 0 20px;
   letter-spacing: 1px;
-  border-bottom: 1px solid rgba(201, 168, 106, 0.08);
+  border-bottom: 1px solid rgba(44, 62, 80, 0.08);
   margin-bottom: 24px;
 }
 
@@ -116,7 +117,7 @@ nav {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  color: rgba(208, 210, 213, 0.6);
+  color: rgba(26, 26, 26, 0.6);
   text-decoration: none;
   border-radius: 8px;
   font-size: 14px;
@@ -125,8 +126,8 @@ nav {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: #D0D2D5;
+  background: rgba(44, 62, 80, 0.04);
+  color: #1A1A1A;
 }
 
 .nav-item .icon {
@@ -137,12 +138,12 @@ nav {
 
 /* Активная ссылка */
 .router-link-active {
-  background: rgba(201, 168, 106, 0.1);
-  color: #C9A86A;
+  background: rgba(44, 62, 80, 0.08);
+  color: #2C3E50;
 }
 
 .router-link-active:hover {
-  background: rgba(201, 168, 106, 0.15);
+  background: rgba(44, 62, 80, 0.12);
 }
 
 /* ============================================
@@ -153,34 +154,35 @@ nav {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #16181C;
+  background: #F8F9FA;
 }
 
 /* ============================================
    ВЕРХНЯЯ ПАНЕЛЬ (TOPBAR)
    ============================================ */
 .top-bar {
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(201, 168, 106, 0.08);
+  background: #FFFFFF;
+  border-bottom: 1px solid rgba(44, 62, 80, 0.06);
   padding: 14px 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .top-bar h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 /* Кнопка выхода */
 .logout-btn {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.15);
+  background: rgba(220, 38, 38, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.1);
   padding: 6px 16px;
   border-radius: 8px;
   font-size: 13px;
@@ -190,8 +192,8 @@ nav {
 }
 
 .logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 /* ============================================
@@ -219,11 +221,12 @@ nav {
     flex-direction: row;
     padding: 8px 12px;
     border-right: none;
-    border-bottom: 1px solid rgba(201, 168, 106, 0.08);
+    border-bottom: 1px solid rgba(44, 62, 80, 0.06);
     flex-shrink: 0;
     align-items: center;
     gap: 16px;
     overflow-x: auto;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
   }
 
   .logo {
@@ -313,15 +316,15 @@ nav {
 }
 
 .content > :not(.top-bar)::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .content > :not(.top-bar)::-webkit-scrollbar-thumb {
-  background: rgba(201, 168, 106, 0.2);
+  background: rgba(44, 62, 80, 0.15);
   border-radius: 3px;
 }
 
 .content > :not(.top-bar)::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 168, 106, 0.35);
+  background: rgba(44, 62, 80, 0.25);
 }
 </style>

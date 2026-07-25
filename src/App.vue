@@ -6,7 +6,7 @@
 /*
  * ============================================
  * ГЛОБАЛЬНЫЕ СТИЛИ (main.css / global)
- * Цветовая схема: #16181C (фон), #C9A86A (золото), #D0D2D5 (текст)
+ * Цветовая схема: #F8F9FA (фон), #2C3E50 (акцент), #1A1A1A (текст)
  * ============================================
  */
 
@@ -21,8 +21,8 @@
 
 html,
 body {
-  background: #16181C;
-  color: #D0D2D5;
+  background: #F8F9FA;
+  color: #1A1A1A;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -31,12 +31,13 @@ body {
 }
 
 a {
-  color: #C9A86A;
+  color: #2C3E50;
   text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #d4b87a;
+  color: #34495E;
 }
 
 /* ============================================
@@ -48,17 +49,17 @@ a:hover {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(201, 168, 106, 0.2);
+  background: rgba(44, 62, 80, 0.15);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 168, 106, 0.35);
+  background: rgba(44, 62, 80, 0.25);
 }
 
 /* ============================================
@@ -69,24 +70,24 @@ a:hover {
 }
 
 .text-gold {
-  color: #C9A86A;
+  color: #2C3E50;
 }
 
 .text-muted {
-  color: rgba(208, 210, 213, 0.5);
+  color: rgba(26, 26, 26, 0.5);
 }
 
 .text-positive {
-  color: #4ade80;
+  color: #16A34A;
 }
 
 .text-negative {
-  color: #f87171;
+  color: #DC2626;
 }
 
 .bg-gold {
-  background: #C9A86A;
-  color: #16181C;
+  background: #2C3E50;
+  color: #FFFFFF;
 }
 
 .flex {
