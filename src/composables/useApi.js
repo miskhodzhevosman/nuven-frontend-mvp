@@ -8,7 +8,6 @@ const api = axios.create({
   }
 })
 
-// Переменная для предотвращения множественных запросов на обновление
 let isRefreshing = false
 let failedQueue = []
 
@@ -26,7 +25,6 @@ const processQueue = (error, token = null) => {
 // Interceptor для добавления токена
 api.interceptors.request.use(
   (config) => {
-    // Пропускаем запросы на обновление токена
     if (config.url?.includes('/token/refresh/')) {
       return config
     }
@@ -40,23 +38,20 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Interceptor для обработки 401 и refresh токена
+// Interceptor для обработки 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
     
-    // Если это запрос на обновление токена или уже был повтор - не обрабатываем
     if (originalRequest.url?.includes('/token/refresh/') || originalRequest._retry) {
       return Promise.reject(error)
     }
     
-    // Только 401 ошибки
     if (error.response?.status !== 401) {
       return Promise.reject(error)
     }
     
-    // Если уже идет обновление, добавляем запрос в очередь
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject })
@@ -77,7 +72,6 @@ api.interceptors.response.use(
         throw new Error('No refresh token')
       }
       
-      // Используем axios напрямую, чтобы избежать цикла
       const response = await axios.post('https://api.nuven.space/api/token/refresh/', {
         refresh: refreshToken
       })
@@ -85,28 +79,22 @@ api.interceptors.response.use(
       const newAccessToken = response.data.access
       localStorage.setItem('access_token', newAccessToken)
       
-      // Если пришел новый refresh_token (при rotate), сохраняем
       if (response.data.refresh) {
         localStorage.setItem('refresh_token', response.data.refresh)
       }
       
-      // Обрабатываем очередь запросов
       processQueue(null, newAccessToken)
       
-      // Повторяем исходный запрос
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
       return api(originalRequest)
       
     } catch (refreshError) {
-      // Очищаем очередь с ошибкой
       processQueue(refreshError, null)
       
-      // Если не удалось обновить - выходим
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       
-      // Триггерим событие для logout
-      window.dispatchEvent(new Event('auth:logout'))
+      window.dispatchEvent(new CustomEvent('auth:logout'))
       
       return Promise.reject(refreshError)
     } finally {
