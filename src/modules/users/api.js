@@ -13,9 +13,9 @@ export const userApi = {
     return api.get(`${API_URL}/${id}/`)
   },
 
-  // Создать пользователя
+  // Создать пользователя - ИСПРАВЛЕНО!
   createUser(data) {
-    return api.post(API_URL, data)
+    return api.post(`${API_URL}/`, data)  // ← добавили слеш
   },
 
   // Обновить пользователя
