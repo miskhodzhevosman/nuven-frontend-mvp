@@ -1,12 +1,14 @@
 import { ref } from 'vue'
 import { supplyApi } from '@/modules/supply/api'
+import { defineStore } from 'pinia'
 
-const factories = ref([])
-const nomenclatures = ref([])
-const loading = ref(false)
-const error = ref(null)
+export const useSupplyStore = defineStore('supply', () => {
+  // State
+  const factories = ref([])
+  const nomenclatures = ref([])
+  const loading = ref(false)
+  const error = ref(null)
 
-export function useSupplyStore() {
   // --- Factories ---
   async function fetchFactories() {
     loading.value = true
@@ -14,6 +16,7 @@ export function useSupplyStore() {
     try {
       const res = await supplyApi.factories.list()
       factories.value = res.data.results || res.data || []
+      console.log('Factories loaded:', factories.value) // Для отладки
     } catch (e) {
       error.value = e.message
       console.error('Failed to fetch factories:', e)
@@ -82,4 +85,4 @@ export function useSupplyStore() {
     fetchNomenclatures,
     createNomenclature,
   }
-}
+})

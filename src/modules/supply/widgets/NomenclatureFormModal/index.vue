@@ -1,4 +1,3 @@
-<!-- modules/supply/widgets/NomenclatureFormModal/index.vue -->
 <template>
   <div v-if="modelValue" class="modal-backdrop" @click.self="close">
     <div class="modal">
@@ -44,6 +43,10 @@
               + Новая фабрика
             </button>
           </div>
+          <!-- Отладочная информация -->
+          <div v-if="factories.length === 0" style="color: #999; font-size: 12px; margin-top: 4px;">
+            Нет доступных фабрик. Загрузка...
+          </div>
         </label>
         
         <label class="field">
@@ -75,7 +78,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useSupplyStore } from '../../store'
 import { storeToRefs } from 'pinia'
 import FactoryFormModal from '../FactoryFormModal/index.vue'
@@ -101,6 +104,13 @@ const form = reactive({
   current_cost_price: '',
   current_sale_price: '',
 })
+
+// Загружаем фабрики при открытии модалки
+watch(() => props.modelValue, async (newVal) => {
+  if (newVal) {
+    await store.fetchFactories()
+  }
+}, { immediate: true })
 
 async function submit() {
   if (!formRef.value?.checkValidity()) return
@@ -149,6 +159,8 @@ function close() {
   })
 }
 </script>
+
+
 
 <style scoped>
 /* ============================================
