@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/',
+  baseURL: 'https://api.nuven.space/api/',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -72,7 +72,7 @@ api.interceptors.response.use(
         throw new Error('No refresh token')
       }
       
-      const response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+      const response = await axios.post('https://api.nuven.space/api/token/refresh/', {
         refresh: refreshToken
       })
       
