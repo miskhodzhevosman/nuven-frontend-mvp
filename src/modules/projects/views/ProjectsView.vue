@@ -644,144 +644,145 @@ function open(id) {
     </div>
 
     <!-- Модалка: Создание проекта -->
-    <div v-if="showCreateProjectForm" class="modal-backdrop" @click.self="closeCreateProjectForm">
-      <div class="modal">
-        <h2>Создать проект</h2>
-        <form ref="createFormRef" @submit.prevent="submitCreateProject">
-          <label class="field" id="project-name-field">
-            <span>Название проекта *</span>
-            <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
-          </label>
-          <label class="field" id="project-date-field">
-            <span>Дата создания</span>
-            <input 
-              v-model="createForm.created_at" 
-              type="datetime-local" 
-              @focus="$event.target.showPicker?.()"
-              @click="$event.target.showPicker?.()"
-            />
-            <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
-          </label>
-          
-          <!-- Поле клиента с автокомплитом -->
-          <label class="field" id="project-client-field">
-            <span>Клиент</span>
-            <div class="combobox-wrapper">
-              <input
-                v-model="clientSearch"
-                type="text"
-                placeholder="Введите название клиента"
-                @input="onClientInput"
-                @focus="clientSearch.length >= 2 && onClientInput()"
-                @blur="onClientBlur"
-                autocomplete="off"
-                id="client-list"
-              />
-              <div v-if="isClientLoading" class="combobox-loading">⏳</div>
-              <ul v-if="showClientSuggestions && clientSuggestions.length > 0" class="combobox-suggestions">
-                <li 
-                  v-for="client in clientSuggestions" 
-                  :key="client.id"
-                  @mousedown.prevent="selectClient(client)"
-                >
-                  {{ client.name }}
-                </li>
-              </ul>
-            </div>
-            <small v-if="selectedClient" class="hint success">
-              Выбран клиент: {{ selectedClient.name }}
-            </small>
-            <button id="add-new-client-btn" type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
-              + Создать нового клиента
-            </button>
-          </label>
-          
-          <label class="field" id="project-status-field">
-            <span>Статус</span>
-            <select v-model="createForm.status" id="status-list">
-              <option value="">— не выбран —</option>
-              <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </label>
-          
-          <!-- Поле тех. менеджера с автокомплитом -->
-          <label class="field" id="tech-manager-field">
-            <span>Технический менеджер</span>
-            <div class="combobox-wrapper">
-              <input
-                v-model="managerSearch"
-                type="text"
-                placeholder="Введите ФИО менеджера"
-                @input="onManagerInput"
-                @focus="managerSearch.length >= 2 && onManagerInput()"
-                @blur="onManagerBlur"
-                autocomplete="off"
-                id="tech-manager-list"
-              />
-              <div v-if="isManagerLoading" class="combobox-loading">⏳</div>
-              <ul v-if="showManagerSuggestions && managerSuggestions.length > 0" class="combobox-suggestions">
-                <li 
-                  v-for="manager in managerSuggestions" 
-                  :key="manager.id"
-                  @mousedown.prevent="selectManager(manager)"
-                >
-                  {{ manager.full_name || manager.name }}
-                </li>
-              </ul>
-            </div>
-            <small v-if="selectedManager" class="hint success">
-              Выбран менеджер: {{ selectedManager.full_name || selectedManager.name }}
-            </small>
-            <button type="button" id="add-new-tech-manager-btn" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
-              + Создать нового менеджера
-            </button>
-          </label>
-          
-          <!-- Поле локации с автокомплитом -->
-          <label class="field" id="project-location-field">
-            <span>Локация</span>
-            <div class="combobox-wrapper">
-              <input
-                v-model="locationSearch"
-                type="text"
-                placeholder="Введите название локации"
-                @input="onLocationInput"
-                @focus="locationSearch.length >= 2 && onLocationInput()"
-                @blur="onLocationBlur"
-                autocomplete="off"
-              />
-              <div v-if="isLocationLoading" class="combobox-loading">⏳</div>
-              <ul v-if="showLocationSuggestions && locationSuggestions.length > 0" class="combobox-suggestions">
-                <li 
-                  v-for="location in locationSuggestions" 
-                  :key="location.id"
-                  @mousedown.prevent="selectLocation(location)"
-                >
-                  {{ location.full_name }}
-                </li>
-              </ul>
-            </div>
-            <small v-if="selectedLocation" class="hint success">
-              Выбрана локация: {{ selectedLocation.name }}
-            </small>
-            <small v-else-if="locationSearch && !selectedLocation" class="hint">
-              Начните вводить название для поиска
-            </small>
-          </label>
-          
-          <label class="field" id="project-locatin-full-name">
-            <span>Полное название локации</span>
-            <input v-model="createForm.full_location_name" disabled type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
-          </label>
-          
-          <div class="modal-actions">
-            <button type="button" class="btn btn-ghost" @click="closeCreateProjectForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" id="project-create-btn" :disabled="loading">Создать</button>
-          </div>
-          <div v-if="error" class="alert alert-error">{{ error }}</div>
-        </form>
+<div v-if="showCreateProjectForm" class="modal-backdrop" @click.self="closeCreateProjectForm">
+  <div class="modal">
+    <h2>Создать проект</h2>
+    <form ref="createFormRef" @submit.prevent="submitCreateProject">
+      <label class="field" id="project-name-field">
+        <span>Название проекта *</span>
+        <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
+      </label>
+      
+      <label class="field" id="project-date-field">
+        <span>Дата создания</span>
+        <input 
+          v-model="createForm.created_at" 
+          type="date"
+          @focus="$event.target.showPicker?.()"
+          @click="$event.target.showPicker?.()"
+        />
+        <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
+      </label>
+      
+      <!-- Поле клиента с автокомплитом -->
+      <label class="field" id="project-client-field">
+        <span>Клиент</span>
+        <div class="combobox-wrapper">
+          <input
+            v-model="clientSearch"
+            type="text"
+            placeholder="Введите название клиента"
+            @input="onClientInput"
+            @focus="clientSearch.length >= 2 && onClientInput()"
+            @blur="onClientBlur"
+            autocomplete="off"
+            id="client-list"
+          />
+          <div v-if="isClientLoading" class="combobox-loading">⏳</div>
+          <ul v-if="showClientSuggestions && clientSuggestions.length > 0" class="combobox-suggestions">
+            <li 
+              v-for="client in clientSuggestions" 
+              :key="client.id"
+              @mousedown.prevent="selectClient(client)"
+            >
+              {{ client.name }}
+            </li>
+          </ul>
+        </div>
+        <small v-if="selectedClient" class="hint success">
+          Выбран клиент: {{ selectedClient.name }}
+        </small>
+        <button id="add-new-client-btn" type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
+          + Создать нового клиента
+        </button>
+      </label>
+      
+      <label class="field" id="project-status-field">
+        <span>Статус</span>
+        <select v-model="createForm.status" id="status-list">
+          <option value="">— не выбран —</option>
+          <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
+        </select>
+      </label>
+      
+      <!-- Поле тех. менеджера с автокомплитом -->
+      <label class="field" id="tech-manager-field">
+        <span>Технический менеджер</span>
+        <div class="combobox-wrapper">
+          <input
+            v-model="managerSearch"
+            type="text"
+            placeholder="Введите ФИО менеджера"
+            @input="onManagerInput"
+            @focus="managerSearch.length >= 2 && onManagerInput()"
+            @blur="onManagerBlur"
+            autocomplete="off"
+            id="tech-manager-list"
+          />
+          <div v-if="isManagerLoading" class="combobox-loading">⏳</div>
+          <ul v-if="showManagerSuggestions && managerSuggestions.length > 0" class="combobox-suggestions">
+            <li 
+              v-for="manager in managerSuggestions" 
+              :key="manager.id"
+              @mousedown.prevent="selectManager(manager)"
+            >
+              {{ manager.full_name || manager.name }}
+            </li>
+          </ul>
+        </div>
+        <small v-if="selectedManager" class="hint success">
+          Выбран менеджер: {{ selectedManager.full_name || selectedManager.name }}
+        </small>
+        <button type="button" id="add-new-tech-manager-btn" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
+          + Создать нового менеджера
+        </button>
+      </label>
+      
+      <!-- Поле локации с автокомплитом -->
+      <label class="field" id="project-location-field">
+        <span>Локация</span>
+        <div class="combobox-wrapper">
+          <input
+            v-model="locationSearch"
+            type="text"
+            placeholder="Введите название локации"
+            @input="onLocationInput"
+            @focus="locationSearch.length >= 2 && onLocationInput()"
+            @blur="onLocationBlur"
+            autocomplete="off"
+          />
+          <div v-if="isLocationLoading" class="combobox-loading">⏳</div>
+          <ul v-if="showLocationSuggestions && locationSuggestions.length > 0" class="combobox-suggestions">
+            <li 
+              v-for="location in locationSuggestions" 
+              :key="location.id"
+              @mousedown.prevent="selectLocation(location)"
+            >
+              {{ location.full_name }}
+            </li>
+          </ul>
+        </div>
+        <small v-if="selectedLocation" class="hint success">
+          Выбрана локация: {{ selectedLocation.name }}
+        </small>
+        <small v-else-if="locationSearch && !selectedLocation" class="hint">
+          Начните вводить название для поиска
+        </small>
+      </label>
+      
+      <label class="field" id="project-locatin-full-name">
+        <span>Полное название локации</span>
+        <input v-model="createForm.full_location_name" disabled type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
+      </label>
+      
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" @click="closeCreateProjectForm">Отмена</button>
+        <button type="submit" class="btn btn-primary" id="project-create-btn" :disabled="loading">Создать</button>
       </div>
-    </div>
+      <div v-if="error" class="alert alert-error">{{ error }}</div>
+    </form>
+  </div>
+</div>
 
     <!-- Модалка: Создание клиента -->
     <div v-if="showCreateClientForm" class="modal-backdrop" @click.self="closeCreateClientForm">
