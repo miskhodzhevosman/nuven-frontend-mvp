@@ -1,3 +1,5 @@
+// modules/supply/api/index.js
+
 import api from '@/composables/useApi'
 
 export const supplyApi = {
@@ -12,6 +14,7 @@ export const supplyApi = {
   // Номенклатура
   nomenclatures: {
     list: (params) => api.get('/supplies/nomenclatures/', { params }),
+    search: (query) => api.get('/supplies/nomenclatures/search/', { params: { q: query } }), // НОВЫЙ МЕТОД
     create: (data) => api.post('/supplies/nomenclatures/', data),
     update: (id, data) => api.put(`/supplies/nomenclatures/${id}/`, data),
     delete: (id) => api.delete(`/supplies/nomenclatures/${id}/`)

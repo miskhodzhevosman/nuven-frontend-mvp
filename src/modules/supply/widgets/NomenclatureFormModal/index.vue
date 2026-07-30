@@ -22,11 +22,6 @@
         </label>
         
         <label class="field">
-          <span>Артикул</span>
-          <input v-model="form.article" maxlength="100" />
-        </label>
-        
-        <label class="field">
           <span>Фабрика</span>
           <div class="row">
             <select v-model="form.factory">
@@ -152,7 +147,6 @@ function close() {
     name: '',
     technical_name: '',
     type: 'PRODUCT',
-    article: '',
     factory: '',
     current_cost_price: '',
     current_sale_price: '',

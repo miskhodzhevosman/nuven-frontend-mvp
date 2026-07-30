@@ -31,16 +31,16 @@ export const projectsApi = {
   },
 
   // ---- История изменений проектов ----
-async getProjectHistory(projectId, params = {}) {
-  const res = await api.get(`${CRM}/projects/${projectId}/history/`, { params })
-  return res.data
-},
+  async getProjectHistory(projectId, params = {}) {
+    const res = await api.get(`${CRM}/projects/${projectId}/history/`, { params })
+    return res.data
+  },
 
-// ---- История изменений статусов ----
-async getStatusHistory(statusId, params = {}) {
-  const res = await api.get(`${CRM}/project-statuses/${statusId}/history/`, { params })
-  return res.data
-},
+  // ---- История изменений статусов ----
+  async getStatusHistory(statusId, params = {}) {
+    const res = await api.get(`${CRM}/project-statuses/${statusId}/history/`, { params })
+    return res.data
+  },
 
   // ---- Project items ----
   async getProjectItems(projectId, params = {}) {
@@ -189,21 +189,21 @@ async getStatusHistory(statusId, params = {}) {
 
   // ПОТОМ ПЕРЕЕХАТЬ В SYPPLY
   // ---- Supplies: locations ----
-async getLocations(params = {}) {
-  const res = await api.get(`${SUPPLIES}/locations/`, { params })
-  return res.data
-},
-async getLocationsTree() {
-  const res = await api.get(`${SUPPLIES}/locations/tree/`)
-  return unwrap(res)
-},
-// Добавьте метод для автокомплита локаций
-async autocompleteLocations(query = '') {
-  const res = await api.get(`${SUPPLIES}/locations/autocomplete/`, { 
-    params: { q: query } 
-  })
-  return res.data
-},
+  async getLocations(params = {}) {
+    const res = await api.get(`${SUPPLIES}/locations/`, { params })
+    return res.data
+  },
+  async getLocationsTree() {
+    const res = await api.get(`${SUPPLIES}/locations/tree/`)
+    return unwrap(res)
+  },
+  // Добавьте метод для автокомплита локаций
+  async autocompleteLocations(query = '') {
+    const res = await api.get(`${SUPPLIES}/locations/autocomplete/`, { 
+      params: { q: query } 
+    })
+    return res.data
+  },
 
   // ---- Finance: платежи и расходы по проекту ----
   getClientPayments: (params) => financeApi.getClientPayments(params),

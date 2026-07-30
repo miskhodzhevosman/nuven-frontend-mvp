@@ -1,3 +1,5 @@
+// modules/supply/store/index.js
+
 import { ref } from 'vue'
 import { supplyApi } from '@/modules/supply/api'
 import { defineStore } from 'pinia'
@@ -16,7 +18,7 @@ export const useSupplyStore = defineStore('supply', () => {
     try {
       const res = await supplyApi.factories.list()
       factories.value = res.data.results || res.data || []
-      console.log('Factories loaded:', factories.value) // Для отладки
+      console.log('Factories loaded:', factories.value)
     } catch (e) {
       error.value = e.message
       console.error('Failed to fetch factories:', e)
@@ -56,6 +58,26 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
+  // НОВЫЙ МЕТОД ПОИСКА
+  async function searchNomenclatures(query) {
+    if (!query || query.trim().length < 3) {
+      return []
+    }
+    
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.nomenclatures.search(query.trim())
+      return res.data || []
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to search nomenclatures:', e)
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function createNomenclature(data) {
     loading.value = true
     error.value = null
@@ -83,6 +105,7 @@ export const useSupplyStore = defineStore('supply', () => {
     fetchFactories,
     createFactory,
     fetchNomenclatures,
+    searchNomenclatures, // НОВЫЙ ЭКСПОРТ
     createNomenclature,
   }
 })

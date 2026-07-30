@@ -31,16 +31,34 @@
               class="combobox-suggestions"
             >
               <li 
-                v-for="n in filteredNomenclatures" 
+                v-for="n in searchResults" 
                 :key="n.id"
                 @mousedown.prevent="selectNomenclature(n)"
               >
                 <span class="suggestion-name">{{ n.name }}</span>
                 <span v-if="n.article" class="suggestion-article">{{ n.article }}</span>
+                <span v-if="n.factory_name" class="suggestion-factory">
+                  {{ n.factory_name }}
+                </span>
                 <span class="suggestion-prices">
                   {{ formatAmount(n.current_cost_price) }} / 
                   {{ formatAmount(n.current_sale_price) }}
                 </span>
+              </li>
+              <li v-if="isSearching" class="suggestion-loading">
+                Поиск...
+              </li>
+              <li 
+                v-if="!isSearching && searchResults.length === 0 && searchQuery.trim().length >= 3" 
+                class="suggestion-empty"
+              >
+                Ничего не найдено
+              </li>
+              <li 
+                v-if="searchQuery.trim().length > 0 && searchQuery.trim().length < 3" 
+                class="suggestion-hint"
+              >
+                Введите минимум 3 символа
               </li>
             </ul>
           </div>
@@ -58,6 +76,7 @@
           <small v-if="selectedNomenclature" class="hint success">
             Выбран: {{ selectedNomenclature.name }}
             <span v-if="selectedNomenclature.article">({{ selectedNomenclature.article }})</span>
+            <span v-if="selectedNomenclature.factory_name">— {{ selectedNomenclature.factory_name }}</span>
           </small>
           <small v-else class="hint">
             Начните вводить название или выберите из списка
@@ -129,6 +148,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useProjectsStore } from '@/modules/projects/store'
+import { useSupplyStore } from '@/modules/supply/store' // ИЗМЕНЕНО
 import { storeToRefs } from 'pinia'
 
 // Импорт supply-виджетов
@@ -152,8 +172,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'created', 'updated'])
 
-const store = useProjectsStore()
-const { nomenclatures, loading, error } = storeToRefs(store)
+const projectStore = useProjectsStore()
+const supplyStore = useSupplyStore() // НОВЫЙ СТОР
+
+const { loading, error } = storeToRefs(projectStore)
+const { nomenclatures } = storeToRefs(supplyStore) // ИСПОЛЬЗУЕМ supplyStore
 
 const formRef = ref(null)
 const form = reactive({
@@ -167,23 +190,13 @@ const form = reactive({
 const searchQuery = ref('')
 const showSuggestions = ref(false)
 const selectedNomenclature = ref(null)
+const searchResults = ref([]) // НОВОЕ
+const isSearching = ref(false) // НОВОЕ
+let searchTimeout = null // НОВОЕ
 
 // Supply modals state
 const showNomenclatureModal = ref(false)
 const showFactoryModal = ref(false)
-
-// Computed
-const filteredNomenclatures = computed(() => {
-  if (!nomenclatures.value) return []
-  if (!searchQuery.value) return nomenclatures.value.slice(0, 10)
-  const search = searchQuery.value.toLowerCase().trim()
-  return nomenclatures.value
-    .filter(n => 
-      n.name.toLowerCase().includes(search) || 
-      (n.article && n.article.toLowerCase().includes(search))
-    )
-    .slice(0, 10)
-})
 
 // Methods
 function formatAmount(v) {
@@ -195,24 +208,58 @@ function formatAmount(v) {
   }) : String(v)
 }
 
+// НОВАЯ ФУНКЦИЯ ПОИСКА
+async function performSearch(query) {
+  const trimmed = query.trim()
+  if (trimmed.length < 3) {
+    searchResults.value = []
+    return
+  }
+  
+  isSearching.value = true
+  try {
+    const results = await supplyStore.searchNomenclatures(trimmed)
+    searchResults.value = results
+  } catch (e) {
+    console.error('Search error:', e)
+    searchResults.value = []
+  } finally {
+    isSearching.value = false
+  }
+}
+
 function onSearchInput() {
   if (selectedNomenclature.value && searchQuery.value !== selectedNomenclature.value.name) {
     selectedNomenclature.value = null
     form.nomenclature = ''
-    // Очищаем цены при смене выбора
     if (!props.editingId) {
       form.fixed_cost_price = ''
       form.fixed_sale_price = ''
     }
   }
-  showSuggestions.value = true
+  
+  // Debounce поиска
+  clearTimeout(searchTimeout)
+  const query = searchQuery.value
+  
+  if (query.trim().length < 3) {
+    searchResults.value = []
+    showSuggestions.value = true
+    return
+  }
+  
+  searchTimeout = setTimeout(() => {
+    performSearch(query)
+    showSuggestions.value = true
+  }, 300)
 }
 
 function onSearchBlur() {
   setTimeout(() => {
     showSuggestions.value = false
     if (searchQuery.value && !selectedNomenclature.value) {
-      const found = nomenclatures.value.find(n => 
+      // Проверяем в результатах поиска
+      const found = searchResults.value.find(n => 
         n.name.toLowerCase() === searchQuery.value.toLowerCase().trim()
       )
       if (found) {
@@ -226,6 +273,7 @@ function toggleSuggestions() {
   showSuggestions.value = !showSuggestions.value
   if (showSuggestions.value && !searchQuery.value) {
     searchQuery.value = ''
+    searchResults.value = []
   }
 }
 
@@ -234,30 +282,30 @@ function selectNomenclature(nomenclature) {
   searchQuery.value = nomenclature.name
   form.nomenclature = String(nomenclature.id)
   
-  // Подтягиваем цены из номенклатуры (только при создании)
   if (!props.editingId) {
     form.fixed_cost_price = nomenclature.current_cost_price || ''
     form.fixed_sale_price = nomenclature.current_sale_price || ''
   }
   
   showSuggestions.value = false
+  searchResults.value = [] // Очищаем результаты
+  clearTimeout(searchTimeout)
 }
 
 function openNomenclatureModal() {
   showNomenclatureModal.value = true
 }
 
-function onNomenclatureCreated(nomenclature) {
+async function onNomenclatureCreated(nomenclature) {
   // Обновляем список номенклатур
-  store.fetchNomenclatures()
+  await supplyStore.fetchNomenclatures()
   // Автоматически выбираем созданную номенклатуру
   selectNomenclature(nomenclature)
 }
 
 function onFactoryCreated(factory) {
-  // Обновляем список фабрик в supply store
-  // Они уже обновятся через supply-виджет
-  // Можно дополнительно обновить если нужно
+  // Обновляем список фабрик если нужно
+  supplyStore.fetchFactories()
 }
 
 // Reset form
@@ -271,41 +319,38 @@ function resetForm() {
   searchQuery.value = ''
   selectedNomenclature.value = null
   showSuggestions.value = false
+  searchResults.value = []
+  isSearching.value = false
+  clearTimeout(searchTimeout)
 }
 
 // Load data for editing
 watch(() => props.editingId, async (id) => {
   if (id) {
-    const items = store.projectItems || []
+    const items = projectStore.projectItems || []
     const item = items.find(i => i.id === id)
     if (item) {
-      const nomenclature = nomenclatures.value?.find(n => n.id === item.nomenclature)
+      // Ищем номенклатуру через поиск или в существующем списке
+      let nomenclature = nomenclatures.value?.find(n => n.id === item.nomenclature)
+      
+      // Если не нашли в списке, пробуем найти через поиск
+      if (!nomenclature) {
+        const searchResults = await supplyStore.searchNomenclatures(item.nomenclature_name || '')
+        nomenclature = searchResults.find(n => n.id === item.nomenclature)
+      }
+      
       if (nomenclature) {
         searchQuery.value = nomenclature.name
         selectedNomenclature.value = nomenclature
+        form.nomenclature = String(nomenclature.id)
       }
-      form.nomenclature = item.nomenclature ? String(item.nomenclature) : ''
+      
       form.quantity = item.quantity ?? '1'
       form.fixed_cost_price = item.fixed_cost_price ?? ''
       form.fixed_sale_price = item.fixed_sale_price ?? ''
     }
   } else {
     resetForm()
-  }
-}, { immediate: true })
-
-// Watch for nomenclature change to auto-fill prices
-watch(() => form.nomenclature, (newValue) => {
-  if (newValue && !props.editingId && !selectedNomenclature.value) {
-    const nomenclature = nomenclatures.value?.find(n => n.id === Number(newValue))
-    if (nomenclature) {
-      if (!form.fixed_cost_price) {
-        form.fixed_cost_price = nomenclature.current_cost_price || ''
-      }
-      if (!form.fixed_sale_price) {
-        form.fixed_sale_price = nomenclature.current_sale_price || ''
-      }
-    }
   }
 }, { immediate: true })
 
@@ -330,10 +375,10 @@ async function submit() {
   
   try {
     if (props.editingId) {
-      await store.updateProjectItem(props.editingId, payload)
+      await projectStore.updateProjectItem(props.editingId, payload)
       emit('updated')
     } else {
-      await store.createProjectItem(payload)
+      await projectStore.createProjectItem(payload)
       emit('created')
     }
     close()
@@ -345,11 +390,11 @@ async function submit() {
 function close() {
   emit('update:modelValue', false)
   resetForm()
-  // Закрываем вложенные модалки если открыты
   showNomenclatureModal.value = false
   showFactoryModal.value = false
 }
 </script>
+
 
 <style scoped>
 /* ============================================
@@ -660,5 +705,30 @@ function close() {
     padding: 6px 8px;
     font-size: 13px;
   }
+}
+
+/* Добавить в стили компонента */
+
+.suggestion-factory {
+  font-size: 0.75rem;
+  color: #666;
+  margin-left: 8px;
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.suggestion-loading,
+.suggestion-empty,
+.suggestion-hint {
+  padding: 8px 12px;
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.suggestion-hint {
+  color: #f59e0b;
 }
 </style>
