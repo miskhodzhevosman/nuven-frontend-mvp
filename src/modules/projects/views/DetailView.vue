@@ -46,7 +46,9 @@
 
           <!-- Виджет: Оплаты фабрикам -->
           <FactoryPayments
+            ref="factoryPaymentsRef"
             :project-id="projectId"
+            @refresh="refreshAllData"
           />
         </div>
 
@@ -62,15 +64,28 @@
       v-model="showPayFactory"
       :project-id="projectId"
       :item="payingItem"
-      @paid="refreshAllData"
+      @paid="onFactoryPaymentPaid"
     />
 
-    <!-- Модалка: Редактирование проекта (остается здесь) -->
+    <!-- Модалка: Редактирование проекта -->
     <EditProjectModal
       v-model="showEditProjectForm"
       :project-id="projectId"
       :project="currentProject"
       @updated="refreshAllData"
+    />
+
+    <!-- Модалка: Создание товара -->
+    <NomenclatureModal
+      v-model="showCreateNomenclature"
+      @created="onNomenclatureCreated"
+      @factory-created="onFactoryCreated"
+    />
+
+    <!-- Модалка: Создание фабрики -->
+    <FactoryFormModal
+      v-model="showCreateFactory"
+      @created="onFactoryCreated"
     />
 
     <!-- Компонент меню онбордингов -->
@@ -148,10 +163,16 @@ import ProjectReport from '@/modules/finance/widgets/ProjectReport/index.vue'
 // Виджеты из finance
 import ClientPayments from '@/modules/finance/widgets/ClientPayments/index.vue'
 import EditProjectModal from '../widgets/EditProjectModal/index.vue'
+
 // Виджеты из supply
 import FactoryPaymentModal from '@/modules/supply/widgets/FactoryPaymentModal/index.vue'
 import FactoryPayments from '@/modules/supply/widgets/FactoryPayments/index.vue'
 import ProjectExpenses from '@/modules/projects/widgets/ProjectExpenses/index.vue'
+
+// Модалки создания
+import NomenclatureModal from '@/modules/supply/widgets/NomenclatureFormModal/index.vue'
+import FactoryFormModal from '@/modules/supply/widgets/FactoryFormModal/index.vue'
+
 // Компоненты
 import OnboardingMenu from '@/components/OnboardingMenu.vue'
 
@@ -179,6 +200,9 @@ const {
 } = storeToRefs(store)
 
 const { report: financeReport } = storeToRefs(financeStore)
+
+// --- Refs для компонентов ---
+const factoryPaymentsRef = ref(null)
 
 // --- Computed ---
 const projectId = computed(() => Number(route.params.id))
@@ -218,6 +242,8 @@ const projectReport = computed(() => {
 const showPayFactory = ref(false)
 const payingItem = ref(null)
 const showEditProjectForm = ref(false)
+const showCreateNomenclature = ref(false)
+const showCreateFactory = ref(false)
 
 // --- Edit project form ---
 const editFormRef = ref(null)
@@ -350,6 +376,34 @@ function openPayFactory(item) {
   showPayFactory.value = true
 }
 
+// --- Обработчик успешной оплаты фабрике ---
+async function onFactoryPaymentPaid() {
+  // Закрываем модалку
+  showPayFactory.value = false
+  
+  // Обновляем все данные
+  await refreshAllData()
+  
+  // Принудительно обновляем таблицу оплат фабрикам
+  if (factoryPaymentsRef.value && factoryPaymentsRef.value.refresh) {
+    await factoryPaymentsRef.value.refresh()
+  }
+  
+  // Дополнительно обновляем factoryPayments в store
+  await store.fetchFactoryPayments(projectId.value)
+}
+
+// --- Create nomenclature & factory ---
+async function onNomenclatureCreated() {
+  await refreshAllData()
+  await store.fetchNomenclatures()
+}
+
+async function onFactoryCreated() {
+  await refreshAllData()
+  await store.fetchFactories()
+}
+
 // --- Helpers ---
 function formatCurrency(v) {
   if (v === null || v === undefined || v === '') return '—'
@@ -406,7 +460,14 @@ function startTour(type) {
       tour.destroy()
     }
     setTimeout(() => {
-      tour.drive()
+      // Открываем соответствующие модалки для создания
+      if (type === 'nomenclature') {
+        showCreateNomenclature.value = true
+      } else if (type === 'factory') {
+        showCreateFactory.value = true
+      } else {
+        tour.drive()
+      }
     }, 300)
   }
 }

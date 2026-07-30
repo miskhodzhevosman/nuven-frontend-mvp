@@ -85,7 +85,64 @@ const payments = computed(() => {
   )
 })
 
-// Methods
+// --- Основные методы ---
+
+// Метод для обновления данных (вызывается из родителя)
+async function refresh() {
+  try {
+    await Promise.all([
+      projectsStore.fetchFactories(),
+      financeStore.fetchFactoryPayments({ project_id: props.projectId })
+    ])
+    emit('refresh')
+  } catch (e) {
+    console.error('Failed to refresh factory payments:', e)
+  }
+}
+
+// Экспортируем метод для родительского компонента
+defineExpose({
+  refresh
+})
+
+// --- Методы для работы с модалкой ---
+
+function openCreatePayment() {
+  selectedPayment.value = null
+  showModal.value = true
+}
+
+function openEditPayment(payment) {
+  selectedPayment.value = payment
+  showModal.value = true
+}
+
+function handleCreated() {
+  refresh()
+}
+
+function handleUpdated() {
+  refresh()
+}
+
+function handleClosed() {
+  selectedPayment.value = null
+}
+
+// --- Методы удаления ---
+
+async function deletePayment(id) {
+  if (!confirm('Удалить оплату фабрике?')) return
+  try {
+    await financeStore.deleteFactoryPayment(id)
+    await refresh()
+  } catch (e) {
+    console.error('Failed to delete payment:', e)
+  }
+}
+
+// --- Вспомогательные методы ---
+
 function formatDate(d) { 
   return d ? d.slice(0, 10) : '—' 
 }
@@ -114,53 +171,28 @@ function getFactoryName(payment) {
   return '—'
 }
 
-function openCreatePayment() {
-  selectedPayment.value = null
-  showModal.value = true
-}
+// --- Загрузка данных ---
 
-function openEditPayment(payment) {
-  selectedPayment.value = payment
-  showModal.value = true
-}
-
-async function deletePayment(id) {
-  if (!confirm('Удалить оплату фабрике?')) return
+async function loadData() {
   try {
-    await financeStore.deleteFactoryPayment(id)
-    await financeStore.fetchFactoryPayments({ project_id: props.projectId })
-    emit('refresh')
+    await Promise.all([
+      projectsStore.fetchFactories(),
+      financeStore.fetchFactoryPayments({ project_id: props.projectId })
+    ])
   } catch (e) {
-    console.error('Failed to delete payment:', e)
+    console.error('Failed to load factory payments data:', e)
   }
 }
 
-function handleCreated() {
-  financeStore.fetchFactoryPayments({ project_id: props.projectId })
-  emit('refresh')
-}
+// --- Lifecycle hooks ---
 
-function handleUpdated() {
-  financeStore.fetchFactoryPayments({ project_id: props.projectId })
-  emit('refresh')
-}
-
-function handleClosed() {
-  selectedPayment.value = null
-}
-
-// Загружаем данные
-onMounted(async () => {
-  await projectsStore.fetchFactories()
-  await financeStore.fetchFactoryPayments({ project_id: props.projectId })
-})
+onMounted(loadData)
 
 watch(() => props.projectId, async (newId) => {
   if (newId) {
-    await projectsStore.fetchFactories()
-    await financeStore.fetchFactoryPayments({ project_id: newId })
+    await loadData()
   }
-})
+}, { immediate: true })
 </script>
 
 <style scoped>

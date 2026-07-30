@@ -26,7 +26,7 @@
           <div class="row">
             <select v-model="form.factory">
               <option value="">— не указана —</option>
-              <option v-for="f in factories" :key="f.id" :value="f.id">
+              <option v-for="f in factoriesList" :key="f.id" :value="f.id">
                 {{ f.name }}
               </option>
             </select>
@@ -38,8 +38,7 @@
               + Новая фабрика
             </button>
           </div>
-          <!-- Отладочная информация -->
-          <div v-if="factories.length === 0" style="color: #999; font-size: 12px; margin-top: 4px;">
+          <div v-if="factoriesList.length === 0" style="color: #999; font-size: 12px; margin-top: 4px;">
             Нет доступных фабрик. Загрузка...
           </div>
         </label>
@@ -73,8 +72,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useSupplyStore } from '../../store'
+import { useProjectsStore } from '@/modules/projects/store'
 import { storeToRefs } from 'pinia'
 import FactoryFormModal from '../FactoryFormModal/index.vue'
 
@@ -82,10 +82,15 @@ const props = defineProps({
   modelValue: Boolean,
 })
 
-const emit = defineEmits(['update:modelValue', 'created'])
+const emit = defineEmits(['update:modelValue', 'created', 'factory-created'])
 
-const store = useSupplyStore()
-const { factories, loading, error } = storeToRefs(store)
+const supplyStore = useSupplyStore()
+const projectsStore = useProjectsStore()
+
+const { factories, loading, error } = storeToRefs(supplyStore)
+
+// Используем фабрики из projectsStore как основной источник
+const factoriesList = computed(() => projectsStore.factories || [])
 
 const formRef = ref(null)
 const showFactoryModal = ref(false)
@@ -103,7 +108,11 @@ const form = reactive({
 // Загружаем фабрики при открытии модалки
 watch(() => props.modelValue, async (newVal) => {
   if (newVal) {
-    await store.fetchFactories()
+    // Загружаем в оба стора
+    await Promise.all([
+      supplyStore.fetchFactories(),
+      projectsStore.fetchFactories()
+    ])
   }
 }, { immediate: true })
 
@@ -121,7 +130,9 @@ async function submit() {
   }
   
   try {
-    const created = await store.createNomenclature(payload)
+    const created = await projectsStore.createNomenclature(payload)
+    // Обновляем номенклатуры в supplyStore тоже
+    await supplyStore.fetchNomenclatures()
     emit('created', created)
     close()
   } catch (e) {
@@ -133,16 +144,20 @@ function openFactoryModal() {
   showFactoryModal.value = true
 }
 
-function onFactoryCreated(factory) {
+async function onFactoryCreated(factory) {
   // Автоматически выбираем созданную фабрику
   form.factory = factory.id
-  // Обновляем список фабрик
-  store.fetchFactories()
+  // Обновляем списки фабрик в обоих сторах
+  await Promise.all([
+    supplyStore.fetchFactories(),
+    projectsStore.fetchFactories()
+  ])
+  // Эмитим событие для родительского компонента
+  emit('factory-created', factory)
 }
 
 function close() {
   emit('update:modelValue', false)
-  // Сбрасываем форму
   Object.assign(form, {
     name: '',
     technical_name: '',
@@ -153,9 +168,6 @@ function close() {
   })
 }
 </script>
-
-
-
 <style scoped>
 /* ============================================
    СВЕТЛЫЕ СТИЛИ ДЛЯ NomenclatureFormModal

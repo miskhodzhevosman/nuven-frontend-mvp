@@ -1,4 +1,3 @@
-<!-- modules/supply/widgets/FactoryFormModal/index.vue -->
 <template>
   <div v-if="modelValue" class="modal-backdrop" @click.self="close">
     <div class="modal">
@@ -34,6 +33,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useSupplyStore } from '@/modules/supply/store'
+import { useProjectsStore } from '@/modules/projects/store'
 import { storeToRefs } from 'pinia'
 
 const props = defineProps({
@@ -42,8 +42,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'created'])
 
-const store = useSupplyStore()
-const { loading, error } = storeToRefs(store)
+const supplyStore = useSupplyStore()
+const projectsStore = useProjectsStore()
+
+const { loading, error } = storeToRefs(supplyStore)
 
 const formRef = ref(null)
 const form = reactive({
@@ -56,11 +58,18 @@ async function submit() {
   if (!formRef.value?.checkValidity()) return
   
   try {
-    const created = await store.createFactory({
+    const created = await projectsStore.createFactory({
       name: form.name,
       address: form.address || '',
       contacts: form.contacts || '',
     })
+    
+    // Обновляем фабрики в supplyStore
+    await supplyStore.fetchFactories()
+    
+    // Обновляем фабрики в projectsStore
+    await projectsStore.fetchFactories()
+    
     emit('created', created)
     close()
   } catch (e) {
