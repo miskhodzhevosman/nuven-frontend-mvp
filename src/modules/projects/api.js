@@ -205,6 +205,45 @@ export const projectsApi = {
     return res.data
   },
 
+  // ---- Supplies: images ----
+async uploadNomenclatureImage(data) {
+  const res = await api.post(`${SUPPLIES}/images/`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+  return res.data
+},
+async deleteNomenclatureImage(id) {
+  await api.delete(`${SUPPLIES}/images/${id}/`)
+},
+async setMainNomenclatureImage(id) {
+  const res = await api.post(`${SUPPLIES}/images/${id}/set_main/`)
+  return res.data
+},
+async updateNomenclatureImage(id, payload) {
+  const res = await api.patch(`${SUPPLIES}/images/${id}/`, payload)
+  return res.data
+},
+
+// ---- Supplies: files ----
+async uploadNomenclatureFile(data) {
+  const res = await api.post(`${SUPPLIES}/files/`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+  return res.data
+},
+async deleteNomenclatureFile(id) {
+  await api.delete(`${SUPPLIES}/files/${id}/`)
+},
+async updateNomenclatureFile(id, payload) {
+  const res = await api.patch(`${SUPPLIES}/files/${id}/`, payload)
+  return res.data
+},
+
+// ---- Supplies: get nomenclature with images and files ----
+async getNomenclature(id) {
+  const res = await api.get(`${SUPPLIES}/nomenclatures/${id}/`)
+  return res.data
+},
   // ---- Finance: платежи и расходы по проекту ----
   getClientPayments: (params) => financeApi.getClientPayments(params),
   createClientPayment: (payload) => financeApi.createClientPayment(payload),

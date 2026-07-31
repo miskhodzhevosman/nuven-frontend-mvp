@@ -1,3 +1,5 @@
+// modules/projects/store/index.js
+
 import { defineStore } from 'pinia'
 import { projectsApi } from '@/modules/projects/api'
 
@@ -297,17 +299,17 @@ export const useProjectsStore = defineStore('projects', {
         throw e
       }
     },
-// ПОТОМ ПЕРЕЕХАТЬ В SYPPLY
-// ---- Автокомплит локаций ----
-async autocompleteLocations(query = '') {
-  try {
-    const data = await projectsApi.autocompleteLocations(query)
-    return data || []
-  } catch (e) {
-    this.setError(e)
-    throw e
-  }
-},
+
+    async autocompleteLocations(query = '') {
+      try {
+        const data = await projectsApi.autocompleteLocations(query)
+        return data || []
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
     // ---- Fetch expense types ----
     async fetchExpenseTypes() {
       try {
@@ -319,6 +321,7 @@ async autocompleteLocations(query = '') {
       }
     },
 
+    // ---- Номенклатура ----
     async createNomenclature(payload) {
       try {
         const created = await projectsApi.createNomenclature(payload)
@@ -329,6 +332,39 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
+
+    async updateNomenclature(id, payload) {
+      try {
+        const updated = await projectsApi.updateNomenclature(id, payload)
+        const idx = this.nomenclatures.findIndex((n) => n.id === id)
+        if (idx !== -1) this.nomenclatures[idx] = updated
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    async deleteNomenclature(id) {
+      try {
+        await projectsApi.deleteNomenclature(id)
+        this.nomenclatures = this.nomenclatures.filter((n) => n.id !== id)
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    async getNomenclature(id) {
+      try {
+        return await projectsApi.getNomenclature(id)
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    // ---- Фабрики ----
     async createFactory(payload) {
       try {
         const created = await projectsApi.createFactory(payload)
@@ -337,6 +373,202 @@ async autocompleteLocations(query = '') {
       } catch (e) {
         this.setError(e)
         throw e
+      }
+    },
+
+    async updateFactory(id, payload) {
+      try {
+        const updated = await projectsApi.updateFactory(id, payload)
+        const idx = this.factories.findIndex((f) => f.id === id)
+        if (idx !== -1) this.factories[idx] = updated
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    async deleteFactory(id) {
+      try {
+        await projectsApi.deleteFactory(id)
+        this.factories = this.factories.filter((f) => f.id !== id)
+      } catch (e) {
+        this.setError(e)
+        throw e
+      }
+    },
+
+    // ---- Изображения номенклатуры ----
+    async uploadNomenclatureImage(nomenclatureId, file, isMain = false, altText = '') {
+      this.loading = true
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('nomenclature', nomenclatureId)
+        formData.append('image', file)
+        formData.append('is_main', isMain ? 'true' : 'false')
+        if (altText) formData.append('alt_text', altText)
+        
+        const created = await projectsApi.uploadNomenclatureImage(formData)
+        
+        const idx = this.nomenclatures.findIndex((n) => n.id === nomenclatureId)
+        if (idx !== -1) {
+          if (!this.nomenclatures[idx].images) {
+            this.nomenclatures[idx].images = []
+          }
+          this.nomenclatures[idx].images.push(created)
+        }
+        
+        return created
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteNomenclatureImage(imageId) {
+      this.loading = true
+      this.error = null
+      try {
+        await projectsApi.deleteNomenclatureImage(imageId)
+        
+        this.nomenclatures.forEach(n => {
+          if (n.images) {
+            n.images = n.images.filter(img => img.id !== imageId)
+          }
+        })
+        
+        return true
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async setMainNomenclatureImage(imageId) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await projectsApi.setMainNomenclatureImage(imageId)
+        
+        this.nomenclatures.forEach(n => {
+          if (n.images) {
+            n.images = n.images.map(img => ({
+              ...img,
+              is_main: img.id === imageId
+            }))
+          }
+        })
+        
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateNomenclatureImage(imageId, data) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await projectsApi.updateNomenclatureImage(imageId, data)
+        
+        this.nomenclatures.forEach(n => {
+          if (n.images) {
+            const idx = n.images.findIndex(img => img.id === imageId)
+            if (idx !== -1) {
+              n.images[idx] = { ...n.images[idx], ...updated }
+            }
+          }
+        })
+        
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ---- Файлы номенклатуры ----
+    async uploadNomenclatureFile(nomenclatureId, file, name = '', description = '') {
+      this.loading = true
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('nomenclature', nomenclatureId)
+        formData.append('file', file)
+        if (name) formData.append('name', name)
+        if (description) formData.append('description', description)
+        
+        const created = await projectsApi.uploadNomenclatureFile(formData)
+        
+        const idx = this.nomenclatures.findIndex((n) => n.id === nomenclatureId)
+        if (idx !== -1) {
+          if (!this.nomenclatures[idx].files) {
+            this.nomenclatures[idx].files = []
+          }
+          this.nomenclatures[idx].files.push(created)
+        }
+        
+        return created
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteNomenclatureFile(fileId) {
+      this.loading = true
+      this.error = null
+      try {
+        await projectsApi.deleteNomenclatureFile(fileId)
+        
+        this.nomenclatures.forEach(n => {
+          if (n.files) {
+            n.files = n.files.filter(f => f.id !== fileId)
+          }
+        })
+        
+        return true
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateNomenclatureFile(fileId, data) {
+      this.loading = true
+      this.error = null
+      try {
+        const updated = await projectsApi.updateNomenclatureFile(fileId, data)
+        
+        this.nomenclatures.forEach(n => {
+          if (n.files) {
+            const idx = n.files.findIndex(f => f.id === fileId)
+            if (idx !== -1) {
+              n.files[idx] = { ...n.files[idx], ...updated }
+            }
+          }
+        })
+        
+        return updated
+      } catch (e) {
+        this.setError(e)
+        throw e
+      } finally {
+        this.loading = false
       }
     },
 
@@ -350,6 +582,7 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
+
     async createClientPayment(payload) {
       try {
         const created = await projectsApi.createClientPayment(payload)
@@ -360,6 +593,7 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
+
     async fetchFactoryPayments(projectId) {
       try {
         const data = await projectsApi.getFactoryPayments({ project_id: projectId })
@@ -369,6 +603,7 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
+
     async createFactoryPayment(payload) {
       try {
         const created = await projectsApi.createFactoryPayment(payload)
@@ -379,6 +614,7 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
+
     async fetchProjectExpenses(projectId) {
       try {
         const data = await projectsApi.getProjectExpenses({ project_id: projectId })
@@ -388,6 +624,7 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
+
     async createProjectExpense(payload) {
       try {
         const created = await projectsApi.createProjectExpense(payload)
@@ -398,8 +635,6 @@ async autocompleteLocations(query = '') {
         throw e
       }
     },
-
-    // Добавьте этот метод в store.js в раздел actions
 
     // ---- История изменений ----
     async fetchProjectHistory(projectId) {
@@ -412,7 +647,6 @@ async autocompleteLocations(query = '') {
       }
     },
 
-    // Также добавьте метод для статусов истории (опционально)
     async fetchStatusHistory(statusId) {
       try {
         const response = await projectsApi.getStatusHistory(statusId)

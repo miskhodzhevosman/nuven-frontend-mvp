@@ -58,7 +58,6 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
-  // НОВЫЙ МЕТОД ПОИСКА
   async function searchNomenclatures(query) {
     if (!query || query.trim().length < 3) {
       return []
@@ -94,6 +93,125 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
+  async function getNomenclature(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.nomenclatures.get(id)
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to get nomenclature:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // --- Images ---
+  async function uploadImage(nomenclatureId, file, isMain = false, altText = '') {
+    loading.value = true
+    error.value = null
+    try {
+      const formData = new FormData()
+      formData.append('nomenclature', nomenclatureId)
+      formData.append('image', file)
+      formData.append('is_main', isMain ? 'true' : 'false')
+      if (altText) formData.append('alt_text', altText)
+      
+      const res = await supplyApi.images.create(formData)
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to upload image:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteImage(imageId) {
+    loading.value = true
+    error.value = null
+    try {
+      await supplyApi.images.delete(imageId)
+      return true
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to delete image:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function setMainImage(imageId) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.images.setMain(imageId)
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to set main image:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // --- Files ---
+  async function uploadFile(nomenclatureId, file, name = '', description = '') {
+    loading.value = true
+    error.value = null
+    try {
+      const formData = new FormData()
+      formData.append('nomenclature', nomenclatureId)
+      formData.append('file', file)
+      if (name) formData.append('name', name)
+      if (description) formData.append('description', description)
+      
+      const res = await supplyApi.files.create(formData)
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to upload file:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteFile(fileId) {
+    loading.value = true
+    error.value = null
+    try {
+      await supplyApi.files.delete(fileId)
+      return true
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to delete file:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateFile(fileId, data) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.files.update(fileId, data)
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to update file:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     factories,
@@ -105,7 +223,18 @@ export const useSupplyStore = defineStore('supply', () => {
     fetchFactories,
     createFactory,
     fetchNomenclatures,
-    searchNomenclatures, // НОВЫЙ ЭКСПОРТ
+    searchNomenclatures,
     createNomenclature,
+    getNomenclature,
+    
+    // Images
+    uploadImage,
+    deleteImage,
+    setMainImage,
+    
+    // Files
+    uploadFile,
+    deleteFile,
+    updateFile,
   }
 })
