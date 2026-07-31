@@ -202,6 +202,10 @@ async function loadNomenclatureData(id) {
   }
 }
 
+// modules/supply/widgets/NomenclatureFormModal/index.vue
+
+// Замените метод submit:
+
 async function submit() {
   if (!formRef.value?.checkValidity()) return
   
@@ -214,22 +218,30 @@ async function submit() {
     current_sale_price: form.current_sale_price ? String(form.current_sale_price) : null,
   }
   
+  console.log('📤 Submitting form:', payload)
+  console.log('🔍 isEdit:', isEdit.value)
+  console.log('🔍 nomenclatureId:', props.nomenclatureId)
+  
   try {
     let result
     
     if (isEdit.value) {
-      // При редактировании - обновляем
+      console.log('✏️ Updating nomenclature...')
       result = await projectsStore.updateNomenclature(props.nomenclatureId, payload)
+      console.log('✅ Updated:', result)
       emit('updated', result)
     } else {
-      // При создании - сначала создаем номенклатуру
+      console.log('➕ Creating new nomenclature...')
       result = await projectsStore.createNomenclature(payload)
+      console.log('✅ Created:', result)
       const newId = result.id
+      console.log('🆕 New ID:', newId)
       
-      // Загружаем изображения, если они есть
+      // Загружаем изображения
       if (images.value.length > 0) {
+        console.log('📸 Uploading images:', images.value.length)
         for (const image of images.value) {
-          if (image.file) { // Если это новый файл (есть свойство file)
+          if (image.file) {
             await projectsStore.uploadNomenclatureImage(
               newId,
               image.file,
@@ -240,10 +252,11 @@ async function submit() {
         }
       }
       
-      // Загружаем файлы, если они есть
+      // Загружаем файлы
       if (files.value.length > 0) {
+        console.log('📄 Uploading files:', files.value.length)
         for (const file of files.value) {
-          if (file.file) { // Если это новый файл
+          if (file.file) {
             await projectsStore.uploadNomenclatureFile(
               newId,
               file.file,
@@ -254,15 +267,17 @@ async function submit() {
         }
       }
       
+      console.log('🔄 Refreshing stores...')
       await supplyStore.fetchNomenclatures()
       await projectsStore.fetchNomenclatures()
       
+      console.log('📤 Emitting created event')
       emit('created', result)
     }
     
     close()
   } catch (e) {
-    console.error('Failed to save nomenclature:', e)
+    console.error('❌ Failed to save nomenclature:', e)
   }
 }
 

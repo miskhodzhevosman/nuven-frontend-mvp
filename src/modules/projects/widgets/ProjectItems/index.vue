@@ -26,7 +26,6 @@
         </thead>
         <tbody>
           <tr v-for="item in items" :key="item.id">
-            <!-- Товар - теперь кликабельный -->
             <td>
               <a 
                 href="#"
@@ -59,7 +58,6 @@
       </table>
     </div>
 
-    <!-- Модалка: Создание/редактирование позиции -->
     <ItemFormModal
       v-model="showModal"
       :editing-id="editingId"
@@ -68,7 +66,6 @@
       @updated="handleUpdated"
     />
 
-    <!-- Модалка: Детали номенклатуры -->
     <NomenclatureDetailModal
       v-model="showDetailModal"
       :nomenclature-id="selectedNomenclatureId"
@@ -78,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectsStore } from '../../store'
 import { storeToRefs } from 'pinia'
 import ItemFormModal from './components/ItemFormModal.vue'
@@ -96,25 +93,59 @@ const emit = defineEmits(['refresh', 'payFactory'])
 const store = useProjectsStore()
 const { projectItems, nomenclatures, factories } = storeToRefs(store)
 
+console.log('🔍 ProjectItems mounted, projectId:', props.projectId)
+
 // State
 const showModal = ref(false)
 const editingId = ref(null)
 const confirmDeleteId = ref(null)
-
-// State для модалки деталей
 const showDetailModal = ref(false)
 const selectedNomenclatureId = ref(null)
 
-// Computed
 const items = computed(() => projectItems.value || [])
 
-// Methods
+// Логи при изменении данных
+watch(nomenclatures, (newVal) => {
+  console.log('📦 nomenclatures changed:', {
+    count: newVal?.length || 0,
+    ids: newVal?.map(n => ({ id: n.id, name: n.name }))
+  })
+}, { deep: true })
+
+watch(projectItems, (newVal) => {
+  console.log('📋 projectItems changed:', {
+    count: newVal?.length || 0,
+    items: newVal?.map(i => ({ 
+      id: i.id, 
+      nomenclatureId: i.nomenclature,
+      quantity: i.quantity 
+    }))
+  })
+}, { deep: true })
+
 function nomenclatureName(id) {
-  const n = nomenclatures.value?.find(n => n.id === id)
+  console.log(`🔍 Поиск товара с ID: ${id}`)
+  console.log(`📦 Доступно номенклатур: ${nomenclatures.value?.length || 0}`)
+  
+  if (!nomenclatures.value || nomenclatures.value.length === 0) {
+    console.warn('⚠️ Список номенклатур пуст!')
+    return '—'
+  }
+  
+  const n = nomenclatures.value.find(n => n.id === id)
+  
+  if (n) {
+    console.log(`✅ Найден товар: ${n.name} (ID: ${n.id})`)
+  } else {
+    console.warn(`❌ Товар с ID ${id} НЕ НАЙДЕН!`)
+    console.log('Доступные ID:', nomenclatures.value.map(n => n.id))
+  }
+  
   return n?.name || '—'
 }
 
 function factoryName(id) {
+  if (!id) return '—'
   const f = factories.value?.find(f => f.id === id)
   return f?.name || '—'
 }
@@ -158,17 +189,32 @@ async function deleteItem(id) {
 }
 
 function handleCreated() {
+  console.log('✅ Позиция создана, обновляем...')
   emit('refresh')
 }
 
 function handleUpdated() {
+  console.log('✅ Позиция обновлена, обновляем...')
   emit('refresh')
 }
 
 async function handleNomenclatureUpdated() {
-  // Обновляем список номенклатур
+  console.log('🔄 Номенклатура обновлена, загружаем данные...')
   await store.fetchNomenclatures()
+  await store.fetchProjectItems(props.projectId)
+  console.log('✅ Данные обновлены')
 }
+
+// Загружаем данные при монтировании
+onMounted(async () => {
+  console.log('🔄 Загружаем начальные данные...')
+  await Promise.all([
+    store.fetchNomenclatures(),
+    store.fetchProjectItems(props.projectId),
+    store.fetchFactories()
+  ])
+  console.log('✅ Начальные данные загружены')
+})
 </script>
 
 <style scoped>

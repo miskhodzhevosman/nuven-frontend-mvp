@@ -142,19 +142,22 @@ export const useProjectsStore = defineStore('projects', {
 
     // ---- Project items ----
     async fetchProjectItems(projectId) {
-      this.loading = true
-      this.error = null
-      try {
-        const data = await projectsApi.getProjectItems(projectId)
-        this.projectItems = data ?? []
-        return this.projectItems
-      } catch (e) {
-        this.setError(e)
-        throw e
-      } finally {
-        this.loading = false
-      }
-    },
+  console.log(`🔍 fetchProjectItems: projectId=${projectId}`)
+  this.loading = true
+  this.error = null
+  try {
+    const data = await projectsApi.getProjectItems(projectId)
+    console.log('📋 API /items/ response:', data)
+    this.projectItems = data ?? []
+    console.log('📋 projectItems set:', this.projectItems)
+    return this.projectItems
+  } catch (e) {
+    this.setError(e)
+    throw e
+  } finally {
+    this.loading = false
+  }
+},
 
     async createProjectItem(payload) {
       this.loading = true
@@ -227,24 +230,32 @@ export const useProjectsStore = defineStore('projects', {
         throw e
       }
     },
-    async fetchNomenclatures() {
-      try {
-        const data = await projectsApi.getNomenclatures()
-        this.nomenclatures = data.results ?? []
-      } catch (e) {
-        this.setError(e)
-        throw e
-      }
-    },
-    async fetchFactories() {
-      try {
-        const data = await projectsApi.getFactories()
-        this.factories = data.results ?? []
-      } catch (e) {
-        this.setError(e)
-        throw e
-      }
-    },
+async fetchNomenclatures() {
+  console.log('🔍 fetchNomenclatures called')
+  try {
+    const data = await projectsApi.getNomenclatures()
+    console.log('📦 API /nomenclatures/ response:', data)
+    console.log('📦 results:', data.results)
+    this.nomenclatures = data.results ?? []
+    console.log('📦 nomenclatures set:', this.nomenclatures)
+    console.log('📊 Count:', this.nomenclatures.length)
+  } catch (e) {
+    this.setError(e)
+    throw e
+  }
+},
+async fetchFactories() {
+  console.log('🔍 fetchFactories called')
+  try {
+    const data = await projectsApi.getFactories()
+    console.log('🏭 API /factories/ response:', data)
+    this.factories = data.results ?? []
+    console.log('🏭 factories set:', this.factories)
+  } catch (e) {
+    this.setError(e)
+    throw e
+  }
+},
     async fetchLocations() {
       try {
         const data = await projectsApi.getLocations()
@@ -254,6 +265,16 @@ export const useProjectsStore = defineStore('projects', {
         throw e
       }
     },
+    // Добавьте этот метод для принудительного обновления
+async refreshAllData(projectId) {
+  console.log('🔄 refreshAllData called for project:', projectId)
+  await Promise.all([
+    this.fetchNomenclatures(),
+    this.fetchProjectItems(projectId),
+    this.fetchFactories()
+  ])
+  console.log('✅ All data refreshed')
+},
 
     // ---- CRUD для клиентов (Counterparty) ----
     async createCounterparty(payload) {
@@ -322,16 +343,19 @@ export const useProjectsStore = defineStore('projects', {
     },
 
     // ---- Номенклатура ----
-    async createNomenclature(payload) {
-      try {
-        const created = await projectsApi.createNomenclature(payload)
-        this.nomenclatures.unshift(created)
-        return created
-      } catch (e) {
-        this.setError(e)
-        throw e
-      }
-    },
+async createNomenclature(payload) {
+  console.log('🔍 createNomenclature called with:', payload)
+  try {
+    const created = await projectsApi.createNomenclature(payload)
+    console.log('✅ Created nomenclature:', created)
+    this.nomenclatures.unshift(created)
+    console.log('📦 nomenclatures after unshift:', this.nomenclatures)
+    return created
+  } catch (e) {
+    this.setError(e)
+    throw e
+  }
+},
 
     async updateNomenclature(id, payload) {
       try {
