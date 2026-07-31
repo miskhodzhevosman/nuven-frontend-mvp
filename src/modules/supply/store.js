@@ -160,6 +160,23 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
+  // НОВЫЙ МЕТОД
+async function fetchNomenclatureImages(nomenclatureId) {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await supplyApi.images.list({ nomenclature_id: nomenclatureId })
+    // Берем results, а не весь response
+    return res.data?.results || res.data || []
+  } catch (e) {
+    error.value = e.message
+    console.error('Failed to fetch images:', e)
+    return []
+  } finally {
+    loading.value = false
+  }
+}
+
   // --- Files ---
   async function uploadFile(nomenclatureId, file, name = '', description = '') {
     loading.value = true
@@ -211,6 +228,22 @@ export const useSupplyStore = defineStore('supply', () => {
       loading.value = false
     }
   }
+// ---- Получение файлов номенклатуры ----
+async function fetchNomenclatureFiles(nomenclatureId) {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await supplyApi.files.list({ nomenclature_id: nomenclatureId })
+    // Берем results, а не весь response
+    return res.data?.results || res.data || []
+  } catch (e) {
+    error.value = e.message
+    console.error('Failed to fetch files:', e)
+    return []
+  } finally {
+    loading.value = false
+  }
+}
 
   return {
     // State
@@ -231,10 +264,12 @@ export const useSupplyStore = defineStore('supply', () => {
     uploadImage,
     deleteImage,
     setMainImage,
+    fetchNomenclatureImages, // <-- добавить
     
     // Files
     uploadFile,
     deleteFile,
     updateFile,
+    fetchNomenclatureFiles, // <-- добавить
   }
 })

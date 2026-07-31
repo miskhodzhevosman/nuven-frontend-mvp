@@ -2,7 +2,12 @@
 
 <template>
   <div class="image-uploader">
-    <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop">
+    <div 
+      class="upload-area" 
+      @dragover.prevent 
+      @drop.prevent="handleDrop"
+      @click="triggerFileInput"
+    >
       <input
         type="file"
         ref="fileInput"
@@ -14,13 +19,17 @@
       
       <div v-if="!uploading && images.length === 0" class="upload-placeholder">
         <div class="upload-icon">📸</div>
-        <p>Перетащите изображения сюда или <a href="#" @click.prevent="triggerFileInput">выберите файлы</a></p>
+        <p>Перетащите изображения сюда или нажмите для выбора</p>
         <small>Поддерживаются: JPEG, PNG, GIF, WEBP</small>
       </div>
       
       <div v-else-if="uploading" class="upload-loading">
         <div class="spinner"></div>
         <p>Загрузка...</p>
+      </div>
+      
+      <div v-else-if="!uploading && images.length > 0" class="upload-hint">
+        <p>➕ Нажмите или перетащите для добавления</p>
       </div>
     </div>
     
@@ -39,14 +48,14 @@
             v-if="!image.is_main"
             class="btn-icon"
             title="Сделать основным"
-            @click="setMain(image)"
+            @click.stop="setMain(image)"
           >
             ⭐
           </button>
           <button
             class="btn-icon danger"
             title="Удалить"
-            @click="removeImage(image)"
+            @click.stop="removeImage(image)"
           >
             ✕
           </button>
@@ -58,6 +67,7 @@
           v-model="image.alt_text"
           class="alt-text-input"
           placeholder="Альтернативный текст"
+          @click.stop
           @blur="updateAltText(image)"
         />
       </div>
@@ -93,7 +103,7 @@ function triggerFileInput() {
 async function handleFileSelect(event) {
   const files = Array.from(event.target.files)
   await uploadFiles(files)
-  event.target.value = '' // Reset input
+  event.target.value = ''
 }
 
 async function handleDrop(event) {
@@ -102,17 +112,13 @@ async function handleDrop(event) {
 }
 
 async function uploadFiles(files) {
-  // Если нет ID - сохраняем файлы локально
   if (!props.nomenclatureId) {
     for (const file of files) {
-      if (!file.type.startsWith('image/')) {
-        console.warn('Skipping non-image file:', file.name)
-        continue
-      }
+      if (!file.type.startsWith('image/')) continue
       
       const preview = URL.createObjectURL(file)
       const newImage = {
-        file: file, // Сохраняем сам файл для последующей загрузки
+        file: file,
         preview: preview,
         is_main: props.images.length === 0,
         alt_text: file.name,
@@ -124,15 +130,11 @@ async function uploadFiles(files) {
     return
   }
   
-  // Если ID есть - загружаем на сервер
   uploading.value = true
   
   try {
     for (const file of files) {
-      if (!file.type.startsWith('image/')) {
-        console.warn('Skipping non-image file:', file.name)
-        continue
-      }
+      if (!file.type.startsWith('image/')) continue
       
       const preview = URL.createObjectURL(file)
       
@@ -154,9 +156,7 @@ async function uploadFiles(files) {
 }
 
 async function setMain(image) {
-  // Если изображение еще не загружено (нет ID)
   if (!image.id) {
-    // Просто обновляем локально
     emit('update:images', props.images.map(img => ({
       ...img,
       is_main: img.tempId === image.tempId
@@ -165,7 +165,7 @@ async function setMain(image) {
   }
   
   try {
-    const updated = await projectsStore.setMainNomenclatureImage(image.id)
+    await projectsStore.setMainNomenclatureImage(image.id)
     emit('update:images', props.images.map(img => 
       img.id === image.id ? { ...img, is_main: true } : { ...img, is_main: false }
     ))
@@ -177,7 +177,6 @@ async function setMain(image) {
 async function removeImage(image) {
   if (!confirm(`Удалить изображение "${image.alt_text || image.image}"?`)) return
   
-  // Если это временный файл (нет ID)
   if (!image.id) {
     if (image.preview) {
       URL.revokeObjectURL(image.preview)
@@ -240,17 +239,17 @@ async function updateAltText(image) {
   color: #666;
 }
 
-.upload-placeholder a {
-  color: #4CAF50;
-  text-decoration: none;
-}
-
-.upload-placeholder a:hover {
-  text-decoration: underline;
-}
-
 .upload-placeholder small {
   color: #999;
+}
+
+.upload-hint {
+  color: #999;
+  font-size: 14px;
+}
+
+.upload-hint p {
+  margin: 0;
 }
 
 .images-grid {

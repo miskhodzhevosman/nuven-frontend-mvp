@@ -1,4 +1,5 @@
 <!-- modules/app/widgets/ProjectItems/index.vue -->
+
 <template>
   <section class="card">
     <div class="card-header">
@@ -25,7 +26,16 @@
         </thead>
         <tbody>
           <tr v-for="item in items" :key="item.id">
-            <td>{{ nomenclatureName(item.nomenclature) }}</td>
+            <!-- Товар - теперь кликабельный -->
+            <td>
+              <a 
+                href="#"
+                class="nomenclature-link"
+                @click.prevent="openNomenclatureDetail(item.nomenclature)"
+              >
+                {{ nomenclatureName(item.nomenclature) }}
+              </a>
+            </td>
             <td class="num">{{ item.quantity }}</td>
             <td class="num">{{ formatAmount(item.fixed_cost_price) }}</td>
             <td class="num">{{ formatAmount(item.fixed_sale_price) }}</td>
@@ -57,6 +67,13 @@
       @created="handleCreated"
       @updated="handleUpdated"
     />
+
+    <!-- Модалка: Детали номенклатуры -->
+    <NomenclatureDetailModal
+      v-model="showDetailModal"
+      :nomenclature-id="selectedNomenclatureId"
+      @updated="handleNomenclatureUpdated"
+    />
   </section>
 </template>
 
@@ -65,6 +82,7 @@ import { ref, computed } from 'vue'
 import { useProjectsStore } from '../../store'
 import { storeToRefs } from 'pinia'
 import ItemFormModal from './components/ItemFormModal.vue'
+import NomenclatureDetailModal from '@/modules/supply/widgets/NomenclatureDetailModal/index.vue'
 
 const props = defineProps({
   projectId: {
@@ -82,6 +100,10 @@ const { projectItems, nomenclatures, factories } = storeToRefs(store)
 const showModal = ref(false)
 const editingId = ref(null)
 const confirmDeleteId = ref(null)
+
+// State для модалки деталей
+const showDetailModal = ref(false)
+const selectedNomenclatureId = ref(null)
 
 // Computed
 const items = computed(() => projectItems.value || [])
@@ -121,6 +143,11 @@ function openEditItem(item) {
   showModal.value = true
 }
 
+function openNomenclatureDetail(nomenclatureId) {
+  selectedNomenclatureId.value = nomenclatureId
+  showDetailModal.value = true
+}
+
 async function deleteItem(id) {
   try {
     await store.deleteProjectItem(id)
@@ -137,9 +164,136 @@ function handleCreated() {
 function handleUpdated() {
   emit('refresh')
 }
+
+async function handleNomenclatureUpdated() {
+  // Обновляем список номенклатур
+  await store.fetchNomenclatures()
+}
 </script>
 
 <style scoped>
+/* Добавляем стили для ссылки */
+.nomenclature-link {
+  color: #4CAF50;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nomenclature-link:hover {
+  text-decoration: underline;
+  color: #45a049;
+}
+
+/* Остальные стили из вашего компонента */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid #e0e0e0;
+  font-weight: 600;
+  color: #666;
+}
+
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.table .num {
+  text-align: right;
+}
+
+.table .actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #4CAF50;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #45a049;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #666;
+}
+
+.btn-ghost:hover {
+  background: #f5f5f5;
+}
+
+.btn-danger {
+  background: #f44336;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #d32f2f;
+}
+
+.btn-pay {
+  background: #FF9800;
+  color: #fff;
+}
+
+.btn-pay:hover {
+  background: #F57C00;
+}
+
+.confirm {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.state {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+}
+
 /* ============================================
    СВЕТЛЫЕ СТИЛИ ДЛЯ ProjectItems
    ============================================ */

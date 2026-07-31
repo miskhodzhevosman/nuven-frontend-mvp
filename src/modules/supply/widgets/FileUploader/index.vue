@@ -2,7 +2,7 @@
 
 <template>
   <div class="file-uploader">
-    <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop">
+    <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop" @click="triggerFileInput">
       <input
         type="file"
         ref="fileInput"
@@ -13,7 +13,7 @@
       
       <div v-if="!uploading" class="upload-placeholder">
         <div class="upload-icon">📄</div>
-        <p>Перетащите файлы сюда или <a href="#" @click.prevent="triggerFileInput">выберите файлы</a></p>
+        <p>Перетащите файлы сюда или нажмите для выбора</p>
         <small>Максимальный размер: 10 MB</small>
       </div>
       
@@ -201,15 +201,6 @@ function formatDate(date) {
 .upload-placeholder p {
   margin: 8px 0;
   color: #666;
-}
-
-.upload-placeholder a {
-  color: #2196F3;
-  text-decoration: none;
-}
-
-.upload-placeholder a:hover {
-  text-decoration: underline;
 }
 
 .upload-placeholder small {
