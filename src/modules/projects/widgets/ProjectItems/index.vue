@@ -77,6 +77,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectsStore } from '../../store'
+import { useSupplyStore } from '@/modules/supply/store'
 import { storeToRefs } from 'pinia'
 import ItemFormModal from './components/ItemFormModal.vue'
 import NomenclatureDetailModal from '@/modules/supply/widgets/NomenclatureDetailModal/index.vue'
@@ -90,8 +91,12 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh', 'payFactory'])
 
-const store = useProjectsStore()
-const { projectItems, nomenclatures, factories } = storeToRefs(store)
+const projectsStore = useProjectsStore()
+const supplyStore = useSupplyStore()
+
+// Используем supplyStore для номенклатур и фабрик
+const { nomenclatures, factories } = storeToRefs(supplyStore)
+const { projectItems } = storeToRefs(projectsStore)
 
 console.log('🔍 ProjectItems mounted, projectId:', props.projectId)
 
@@ -181,7 +186,7 @@ function openNomenclatureDetail(nomenclatureId) {
 
 async function deleteItem(id) {
   try {
-    await store.deleteProjectItem(id)
+    await projectsStore.deleteProjectItem(id)
     await emit('refresh')
   } finally {
     confirmDeleteId.value = null
@@ -200,8 +205,9 @@ function handleUpdated() {
 
 async function handleNomenclatureUpdated() {
   console.log('🔄 Номенклатура обновлена, загружаем данные...')
-  await store.fetchNomenclatures()
-  await store.fetchProjectItems(props.projectId)
+  // Используем supplyStore для обновления номенклатур
+  await supplyStore.fetchNomenclatures()
+  await projectsStore.fetchProjectItems(props.projectId)
   console.log('✅ Данные обновлены')
 }
 
@@ -209,14 +215,13 @@ async function handleNomenclatureUpdated() {
 onMounted(async () => {
   console.log('🔄 Загружаем начальные данные...')
   await Promise.all([
-    store.fetchNomenclatures(),
-    store.fetchProjectItems(props.projectId),
-    store.fetchFactories()
+    supplyStore.fetchNomenclatures(),  // <-- supplyStore
+    projectsStore.fetchProjectItems(props.projectId),
+    supplyStore.fetchFactories()       // <-- supplyStore
   ])
   console.log('✅ Начальные данные загружены')
 })
 </script>
-
 <style scoped>
 /* Добавляем стили для ссылки */
 .nomenclature-link {

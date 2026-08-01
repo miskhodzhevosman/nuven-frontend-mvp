@@ -141,7 +141,7 @@ export const useProjectsStore = defineStore('projects', {
     },
 
     // ---- Project items ----
-    async fetchProjectItems(projectId) {
+  async fetchProjectItems(projectId) {
   console.log(`🔍 fetchProjectItems: projectId=${projectId}`)
   this.loading = true
   this.error = null

@@ -93,6 +93,26 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
+  async function updateNomenclature(id, data) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.nomenclatures.update(id, data)
+      // Обновляем в списке
+      const index = nomenclatures.value.findIndex(n => n.id === id)
+      if (index !== -1) {
+        nomenclatures.value[index] = res.data
+      }
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to update nomenclature:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function getNomenclature(id) {
     loading.value = true
     error.value = null
@@ -160,22 +180,35 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
-  // НОВЫЙ МЕТОД
-async function fetchNomenclatureImages(nomenclatureId) {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await supplyApi.images.list({ nomenclature_id: nomenclatureId })
-    // Берем results, а не весь response
-    return res.data?.results || res.data || []
-  } catch (e) {
-    error.value = e.message
-    console.error('Failed to fetch images:', e)
-    return []
-  } finally {
-    loading.value = false
+  async function updateNomenclatureImage(imageId, data) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.images.update(imageId, data)
+      return res.data
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to update image:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
   }
-}
+
+  async function fetchNomenclatureImages(nomenclatureId) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.images.list({ nomenclature_id: nomenclatureId })
+      return res.data?.results || res.data || []
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to fetch images:', e)
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
 
   // --- Files ---
   async function uploadFile(nomenclatureId, file, name = '', description = '') {
@@ -228,22 +261,21 @@ async function fetchNomenclatureImages(nomenclatureId) {
       loading.value = false
     }
   }
-// ---- Получение файлов номенклатуры ----
-async function fetchNomenclatureFiles(nomenclatureId) {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await supplyApi.files.list({ nomenclature_id: nomenclatureId })
-    // Берем results, а не весь response
-    return res.data?.results || res.data || []
-  } catch (e) {
-    error.value = e.message
-    console.error('Failed to fetch files:', e)
-    return []
-  } finally {
-    loading.value = false
+
+  async function fetchNomenclatureFiles(nomenclatureId) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.files.list({ nomenclature_id: nomenclatureId })
+      return res.data?.results || res.data || []
+    } catch (e) {
+      error.value = e.message
+      console.error('Failed to fetch files:', e)
+      return []
+    } finally {
+      loading.value = false
+    }
   }
-}
 
   return {
     // State
@@ -255,21 +287,25 @@ async function fetchNomenclatureFiles(nomenclatureId) {
     // Actions
     fetchFactories,
     createFactory,
+    
+    // Nomenclatures
     fetchNomenclatures,
     searchNomenclatures,
     createNomenclature,
+    updateNomenclature,
     getNomenclature,
     
     // Images
     uploadImage,
     deleteImage,
     setMainImage,
-    fetchNomenclatureImages, // <-- добавить
+    updateNomenclatureImage,
+    fetchNomenclatureImages,
     
     // Files
     uploadFile,
     deleteFile,
     updateFile,
-    fetchNomenclatureFiles, // <-- добавить
+    fetchNomenclatureFiles,
   }
 })

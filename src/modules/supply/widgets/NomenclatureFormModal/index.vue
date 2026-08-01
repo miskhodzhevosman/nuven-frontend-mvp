@@ -112,7 +112,6 @@
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
 import { useSupplyStore } from '../../store'
-import { useProjectsStore } from '@/modules/projects/store'
 import { storeToRefs } from 'pinia'
 import FactoryFormModal from '../FactoryFormModal/index.vue'
 import ImageUploader from '../ImageUploader/index.vue'
@@ -129,12 +128,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'created', 'factory-created', 'updated'])
 
 const supplyStore = useSupplyStore()
-const projectsStore = useProjectsStore()
-
 const { factories, loading, error } = storeToRefs(supplyStore)
-const { factories: projectFactories } = storeToRefs(projectsStore)
 
-const factoriesList = computed(() => projectFactories.value || [])
+const factoriesList = computed(() => factories.value || [])
 
 const formRef = ref(null)
 const showFactoryModal = ref(false)
@@ -168,16 +164,13 @@ watch(() => props.nomenclatureId, async (newId) => {
 // Загружаем фабрики при открытии модалки
 watch(() => props.modelValue, async (newVal) => {
   if (newVal) {
-    await Promise.all([
-      supplyStore.fetchFactories(),
-      projectsStore.fetchFactories()
-    ])
+    await supplyStore.fetchFactories()
   }
 }, { immediate: true })
 
 async function loadNomenclatureData(id) {
   try {
-    const data = await projectsStore.getNomenclature(id)
+    const data = await supplyStore.getNomenclature(id)
     form.name = data.name
     form.technical_name = data.technical_name || ''
     form.type = data.type
@@ -202,10 +195,6 @@ async function loadNomenclatureData(id) {
   }
 }
 
-// modules/supply/widgets/NomenclatureFormModal/index.vue
-
-// Замените метод submit:
-
 async function submit() {
   if (!formRef.value?.checkValidity()) return
   
@@ -227,12 +216,12 @@ async function submit() {
     
     if (isEdit.value) {
       console.log('✏️ Updating nomenclature...')
-      result = await projectsStore.updateNomenclature(props.nomenclatureId, payload)
+      result = await supplyStore.updateNomenclature(props.nomenclatureId, payload)
       console.log('✅ Updated:', result)
       emit('updated', result)
     } else {
       console.log('➕ Creating new nomenclature...')
-      result = await projectsStore.createNomenclature(payload)
+      result = await supplyStore.createNomenclature(payload)
       console.log('✅ Created:', result)
       const newId = result.id
       console.log('🆕 New ID:', newId)
@@ -242,7 +231,7 @@ async function submit() {
         console.log('📸 Uploading images:', images.value.length)
         for (const image of images.value) {
           if (image.file) {
-            await projectsStore.uploadNomenclatureImage(
+            await supplyStore.uploadImage(
               newId,
               image.file,
               image.is_main || false,
@@ -257,7 +246,7 @@ async function submit() {
         console.log('📄 Uploading files:', files.value.length)
         for (const file of files.value) {
           if (file.file) {
-            await projectsStore.uploadNomenclatureFile(
+            await supplyStore.uploadFile(
               newId,
               file.file,
               file.name || '',
@@ -269,7 +258,6 @@ async function submit() {
       
       console.log('🔄 Refreshing stores...')
       await supplyStore.fetchNomenclatures()
-      await projectsStore.fetchNomenclatures()
       
       console.log('📤 Emitting created event')
       emit('created', result)
@@ -287,10 +275,7 @@ function openFactoryModal() {
 
 async function onFactoryCreated(factory) {
   form.factory = factory.id
-  await Promise.all([
-    supplyStore.fetchFactories(),
-    projectsStore.fetchFactories()
-  ])
+  await supplyStore.fetchFactories()
   emit('factory-created', factory)
 }
 
