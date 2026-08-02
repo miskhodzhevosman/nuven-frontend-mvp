@@ -14,10 +14,10 @@
     <div v-if="loading" class="state">Загрузка…</div>
     <div v-else-if="project" class="info-grid">
       <div><span class="label">ID</span><span>{{ project.id }}</span></div>
-      <div><span class="label">Клиент</span><span>{{ clientName }}</span></div>
-      <div><span class="label">Статус</span><span>{{ statusName }}</span></div>
+      <div><span class="label">Клиент</span><span>{{ project.client_name }}</span></div>
+      <div><span class="label">Статус</span><span>{{ project.status.name }}</span></div>
       <div><span class="label">Локация</span><span>{{ project.full_location_name || '—' }}</span></div>
-      <div><span class="label">Тех. менеджер</span><span>{{ managerName }}</span></div>
+      <div><span class="label">Тех. менеджер</span><span>{{ project.tech_manager_name }}</span></div>
       <div><span class="label">Создан</span><span>{{ formatDate(project.created_at) }}</span></div>
       <div><span class="label">Обновлен</span><span>{{ formatDate(project.updated_at) }}</span></div>
     </div>

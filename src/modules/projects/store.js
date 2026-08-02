@@ -38,7 +38,7 @@ export const useProjectsStore = defineStore('projects', {
     },
     managerName: (state) => (id) => {
       const m = state.managers.find((x) => x.id === Number(id))
-      return m ? m.full_name : '—'
+      return m ? m.first_name : '—'
     },
     nomenclatureName: (state) => (id) => {
       const n = state.nomenclatures.find((x) => x.id === Number(id))

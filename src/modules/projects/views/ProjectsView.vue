@@ -9,11 +9,9 @@ const store = useProjectsStore()
 const { projects, loading, error, count, statuses, clients, managers, locations } = storeToRefs(store)
 
 import OnboardingMenu from '@/components/OnboardingMenu.vue'
-
-  import { onboarding as projectCreateOnboarding } from '@/onboardings/ProjectsCreateOnboarding'
+import { onboarding as projectCreateOnboarding } from '@/onboardings/ProjectsCreateOnboarding'
 import { nextOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
 import { goToOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
-
 import { nextTick } from 'vue'
 
 function startTour() {
@@ -68,6 +66,41 @@ const filteredClients = computed(() => {
   return clients.value.filter(c => c.type === 'CLIENT')
 })
 
+// Computed - форматирование полного имени менеджера для отображения
+const getManagerFullName = (manager) => {
+  if (!manager) return ''
+  const parts = []
+  if (manager.last_name) parts.push(manager.last_name)
+  if (manager.first_name) parts.push(manager.first_name)
+  if (manager.patronymic) parts.push(manager.patronymic)
+  return parts.join(' ') || manager.username || 'Без имени'
+}
+
+const getManagerShortName = (manager) => {
+  if (!manager) return ''
+  if (manager.first_name && manager.patronymic) {
+    return `${manager.first_name} ${manager.patronymic}`
+  }
+  if (manager.first_name) return manager.first_name
+  return manager.username || 'Без имени'
+}
+
+const getManagerInitials = (manager) => {
+  if (!manager) return ''
+  const initials = []
+  if (manager.first_name) initials.push(`${manager.first_name[0]}.`)
+  if (manager.patronymic) initials.push(`${manager.patronymic[0]}.`)
+  return initials.join('') || ''
+}
+
+const getManagerFullWithInitials = (manager) => {
+  if (!manager) return ''
+  if (manager.last_name) {
+    return `${manager.last_name} ${getManagerInitials(manager)}`
+  }
+  return getManagerFullName(manager)
+}
+
 // Modal state
 const showCreateProjectForm = ref(false)
 const createFormRef = ref(null)
@@ -96,8 +129,28 @@ const clientForm = reactive({
 
 // Manager form
 const managerForm = reactive({
-  full_name: '',
-  contacts: '',
+  // Основная информация (ФИО по частям)
+  last_name: '',
+  first_name: '',
+  patronymic: '',
+  
+  // Учетные данные
+  username: '',
+  email: '',
+  password: '',
+  password2: '',
+  
+  // Контакты
+  phone: '',
+  telegram: '',
+  wechat: '',
+  whatsapp: '',
+  
+  // Дополнительные настройки
+  is_active: true,
+  is_staff: true,
+  position: '',
+  department: '',
 })
 
 // Location autocomplete state
@@ -160,8 +213,21 @@ function resetClientForm() {
 }
 
 function resetManagerForm() {
-  managerForm.full_name = ''
-  managerForm.contacts = ''
+  managerForm.last_name = ''
+  managerForm.first_name = ''
+  managerForm.patronymic = ''
+  managerForm.username = ''
+  managerForm.email = ''
+  managerForm.password = ''
+  managerForm.password2 = ''
+  managerForm.phone = ''
+  managerForm.telegram = ''
+  managerForm.wechat = ''
+  managerForm.whatsapp = ''
+  managerForm.is_active = true
+  managerForm.is_staff = true
+  managerForm.position = ''
+  managerForm.department = ''
 }
 
 // Location autocomplete methods
@@ -282,9 +348,12 @@ const onManagerBlur = () => {
   setTimeout(() => {
     showManagerSuggestions.value = false
     if (managerSearch.value && !selectedManager.value) {
-      const found = managerSuggestions.value.find(m => 
-        (m.full_name || m.name || '').toLowerCase() === managerSearch.value.toLowerCase().trim()
-      )
+      // Ищем по полному имени или username
+      const found = managerSuggestions.value.find(m => {
+        const fullName = getManagerFullName(m)
+        return fullName.toLowerCase() === managerSearch.value.toLowerCase().trim() ||
+               (m.username && m.username.toLowerCase() === managerSearch.value.toLowerCase().trim())
+      })
       if (found) {
         selectManager(found)
       }
@@ -294,7 +363,8 @@ const onManagerBlur = () => {
 
 const selectManager = (manager) => {
   selectedManager.value = manager
-  managerSearch.value = manager.full_name || manager.name
+  // Отображаем полное имя в поле поиска
+  managerSearch.value = getManagerFullName(manager) || manager.username
   createForm.tech_manager = manager.id
   showManagerSuggestions.value = false
 }
@@ -405,30 +475,102 @@ function closeCreateManagerForm() {
 }
 
 async function submitCreateManager() {
-  if (!managerForm.full_name) {
-    error.value = 'ФИО менеджера обязательно'
+  // Валидация ФИО
+  if (!managerForm.last_name?.trim()) {
+    error.value = 'Фамилия обязательна'
+    return
+  }
+  if (!managerForm.first_name?.trim()) {
+    error.value = 'Имя обязательно'
     return
   }
   
+  // Валидация учетных данных
+  if (!managerForm.username?.trim()) {
+    error.value = 'Username обязателен'
+    return
+  }
+  
+  if (!managerForm.email?.trim()) {
+    error.value = 'Email обязателен'
+    return
+  }
+  
+  if (managerForm.password.length < 8) {
+    error.value = 'Пароль должен содержать минимум 8 символов'
+    return
+  }
+  
+  if (managerForm.password !== managerForm.password2) {
+    error.value = 'Пароли не совпадают'
+    return
+  }
+  
+  loading.value = true
+  error.value = null
+  
   const payload = {
-    full_name: managerForm.full_name,
-    contacts: managerForm.contacts || '',
+    last_name: managerForm.last_name.trim(),
+    first_name: managerForm.first_name.trim(),
+    patronymic: managerForm.patronymic?.trim() || '',
+    username: managerForm.username.trim().toLowerCase(),
+    email: managerForm.email.trim().toLowerCase(),
+    password: managerForm.password,
+    password2: managerForm.password2,
+    phone: managerForm.phone?.trim() || '',
+    telegram: managerForm.telegram?.trim() || '',
+    wechat: managerForm.wechat?.trim() || '',
+    whatsapp: managerForm.whatsapp?.trim() || '',
+    is_active: managerForm.is_active,
+    is_staff: managerForm.is_staff,
+    position: managerForm.position?.trim() || '',
+    department: managerForm.department?.trim() || '',
   }
   
   try {
+    // Создаем пользователя
     const created = await store.createTechnicalManager(payload)
+    
+    // Обновляем список менеджеров
     await store.fetchManagers()
     
+    // Выбираем созданного менеджера
     createForm.tech_manager = created.id
-    managerSearch.value = created.full_name || created.name
+    managerSearch.value = getManagerFullName(created) || created.username
     selectedManager.value = created
     managerSuggestions.value = []
     showManagerSuggestions.value = false
     
+    // Закрываем модалку
     closeCreateManagerForm()
+    
   } catch (e) {
     console.error('Failed to create manager:', e)
-    error.value = 'Ошибка создания менеджера'
+    
+    // Обработка ошибок от сервера
+    if (e.response?.data) {
+      const errors = e.response.data
+      
+      if (errors.username) {
+        error.value = `Username: ${errors.username.join(', ')}`
+      } else if (errors.email) {
+        error.value = `Email: ${errors.email.join(', ')}`
+      } else if (errors.password) {
+        error.value = `Пароль: ${errors.password.join(', ')}`
+      } else if (errors.non_field_errors) {
+        error.value = errors.non_field_errors.join(', ')
+      } else if (typeof errors === 'object') {
+        const messages = Object.values(errors).flat().join(', ')
+        error.value = messages || 'Ошибка создания менеджера'
+      } else {
+        error.value = errors.detail || 'Ошибка создания менеджера'
+      }
+    } else {
+      error.value = 'Ошибка создания менеджера'
+    }
+    
+  } finally {
+    loading.value = false
   }
 }
 
@@ -472,7 +614,10 @@ function getFieldDisplayValue(field, value) {
   
   if (field === 'tech_manager_id') {
     const manager = managers.value.find(m => m.id === Number(value))
-    return manager ? (manager.full_name || manager.name) : `Менеджер #${value}`
+    if (manager) {
+      return getManagerFullName(manager) || manager.username || `Менеджер #${value}`
+    }
+    return `Менеджер #${value}`
   }
   
   if (field === 'location_id') {
@@ -557,7 +702,6 @@ function open(id) {
   router.push({ name: 'project-detail', params: { id } })
 }
 </script>
-
 <template>
   <section class="page">
     <header class="page-header">
@@ -726,12 +870,12 @@ function open(id) {
               :key="manager.id"
               @mousedown.prevent="selectManager(manager)"
             >
-              {{ manager.full_name || manager.name }}
+              {{ manager.first_name}} {{ manager.last_name }} {{ manager.patronymic }}
             </li>
           </ul>
         </div>
         <small v-if="selectedManager" class="hint success">
-          Выбран менеджер: {{ selectedManager.full_name || selectedManager.name }}
+          Выбран менеджер: {{ selectedManager.first_name}} {{ selectedManager.last_name }} {{ selectedManager.patronymic }}
         </small>
         <button type="button" id="add-new-tech-manager-btn" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
           + Создать нового менеджера
@@ -811,26 +955,175 @@ function open(id) {
     </div>
 
     <!-- Модалка: Создание менеджера -->
-    <div v-if="showCreateManagerForm" class="modal-backdrop" @click.self="closeCreateManagerForm">
-      <div class="modal modal-sm">
-        <h2>Новый технический менеджер</h2>
-        <form @submit.prevent="submitCreateManager">
-          <label class="field">
-            <span>ФИО *</span>
-            <input v-model="managerForm.full_name" type="text" required maxlength="255" placeholder="Введите ФИО менеджера" />
-          </label>
-          <label class="field">
-            <span>Контакты</span>
-            <input v-model="managerForm.contacts" type="text" placeholder="Телефон, email" />
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-ghost" @click="closeCreateManagerForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
-          </div>
-          <div v-if="error" class="alert alert-error">{{ error }}</div>
-        </form>
+<!-- Модалка: Создание менеджера -->
+<div v-if="showCreateManagerForm" class="modal-backdrop" @click.self="closeCreateManagerForm">
+  <div class="modal modal-md">
+    <h2>Новый технический менеджер</h2>
+    <form @submit.prevent="submitCreateManager">
+      <!-- Основная информация -->
+      <div class="form-section">
+        <h3>Основная информация</h3>
+        
+        <label class="field required">
+          <span>Фамилия</span>
+          <input 
+            v-model="managerForm.first_name" 
+            type="text" 
+            required 
+            maxlength="255" 
+            placeholder="Введите Фамилию менеджера" 
+          />
+        </label>
+
+                <label class="field required">
+          <span>Имя</span>
+          <input 
+            v-model="managerForm.last_name" 
+            type="text" 
+            required 
+            maxlength="255" 
+            placeholder="Введите Имя менеджера" 
+          />
+        </label>
+
+                <label class="field">
+          <span>Отчество</span>
+          <input 
+            v-model="managerForm.patronymic" 
+            type="text" 
+            required 
+            maxlength="255" 
+            placeholder="Введите Отчество менеджера" 
+          />
+        </label>
+        
+        <label class="field required">
+          <span>Username *</span>
+          <input 
+            v-model="managerForm.username" 
+            type="text" 
+            required 
+            maxlength="150" 
+            placeholder="Введите username (логин)" 
+          />
+          <small class="hint">Уникальное имя пользователя для входа</small>
+        </label>
+        
+        <label class="field required">
+          <span>Email *</span>
+          <input 
+            v-model="managerForm.email" 
+            type="email" 
+            required 
+            maxlength="254" 
+            placeholder="Введите email" 
+          />
+        </label>
+        
+        <label class="field required">
+          <span>Пароль *</span>
+          <input 
+            v-model="managerForm.password" 
+            type="password" 
+            required 
+            minlength="8" 
+            placeholder="Минимум 8 символов" 
+          />
+          <small class="hint">Пароль должен содержать минимум 8 символов</small>
+        </label>
+        
+        <label class="field required">
+          <span>Подтверждение пароля *</span>
+          <input 
+            v-model="managerForm.password2" 
+            type="password" 
+            required 
+            placeholder="Повторите пароль" 
+          />
+        </label>
       </div>
-    </div>
+
+      <!-- Контактная информация -->
+      <div class="form-section">
+        <h3>Контактная информация</h3>
+        
+        <label class="field">
+          <span>Телефон</span>
+          <input 
+            v-model="managerForm.phone" 
+            type="tel" 
+            maxlength="20" 
+            placeholder="+7 (123) 456-78-90" 
+          />
+        </label>
+        
+        <label class="field">
+          <span>Telegram</span>
+          <input 
+            v-model="managerForm.telegram" 
+            type="text" 
+            maxlength="100" 
+            placeholder="@username или ID" 
+          />
+        </label>
+        
+        <label class="field">
+          <span>WeChat</span>
+          <input 
+            v-model="managerForm.wechat" 
+            type="text" 
+            maxlength="100" 
+            placeholder="WeChat ID" 
+          />
+        </label>
+        
+        <label class="field">
+          <span>WhatsApp</span>
+          <input 
+            v-model="managerForm.whatsapp" 
+            type="text" 
+            maxlength="20" 
+            placeholder="+7 (123) 456-78-90" 
+          />
+        </label>
+      </div>
+
+      <!-- Дополнительные настройки -->
+      <div class="form-section">
+        <h3>Дополнительные настройки</h3>
+        
+        <div class="checkbox-group">
+          <label class="checkbox">
+            <input 
+              v-model="managerForm.is_active" 
+              type="checkbox" 
+            />
+            <span>Активен</span>
+          </label>
+          
+          <label class="checkbox">
+            <input 
+              v-model="managerForm.is_staff" 
+              type="checkbox" 
+            />
+            <span>Доступ в админку</span>
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Кнопки -->
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" @click="closeCreateManagerForm">Отмена</button>
+        <button type="submit" class="btn btn-primary" :disabled="loading">
+          {{ loading ? 'Создание...' : 'Создать менеджера' }}
+        </button>
+      </div>
+      
+      <div v-if="error" class="alert alert-error">{{ error }}</div>
+    </form>
+  </div>
+</div>
 
     <!-- Модалка: История изменений -->
     <div v-if="showHistoryModal" class="modal-backdrop" @click.self="closeHistory">
