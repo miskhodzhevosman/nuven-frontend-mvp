@@ -59,17 +59,22 @@ export const userApi = {
 
   // Добавить пользователя в группу
   addUserToGroup(userId, groupId) {
-    return api.post(`${API_URL}/${userId}/groups/`, { group_id: groupId })
+    return api.post(`/users/${userId}/groups/`, { group_id: groupId })
   },
 
   // Удалить пользователя из группы
   removeUserFromGroup(userId, groupId) {
-    return api.delete(`${API_URL}/${userId}/groups/${groupId}/`)
+    return api.delete(`/users/${userId}/groups/?group_id=${groupId}`)
+  },
+    getUserGroups(userId) {
+    return api.get(`/users/${userId}/groups/`)
   },
 
   // Обновить группы пользователя (заменить все)
-  setUserGroups(userId, groupIds) {
-    return api.put(`${API_URL}/${userId}/groups/`, { group_ids: groupIds })
+ setUserGroups(userId, groupIds) {
+    return api.put(`/users/${userId}/groups/`, { 
+      group_ids: groupIds 
+    })
   },
 
   // Получить все доступные группы

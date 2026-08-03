@@ -105,6 +105,49 @@ export const useUserStore = defineStore('users', {
     // ========================================
 
     // Загрузка списка пользователей
+    async updateUserGroups(userId, groupIds) {
+  console.log(`🔄 updateUserGroups вызван для пользователя ${userId}`, groupIds)
+  this.isUpdating = true
+  this.error = null
+  
+  try {
+    // Используем метод manage_groups с PUT
+    const response = await userApi.setUserGroups(userId, groupIds)
+    console.log(`✅ Группы пользователя ${userId} обновлены:`, response.data)
+    
+    // Обновляем пользователя в списке
+    const user = this.users.find(u => u.id === userId)
+    if (user) {
+      // Получаем данные групп из ответа
+      const groupsData = response.data || []
+      user.groups = groupsData.map(g => g.name)
+      user.groups_detail = groupsData
+    }
+    
+    // Обновляем в кеше
+    if (this.cache.users[userId]) {
+      const groupsData = response.data || []
+      this.cache.users[userId].groups = groupsData.map(g => g.name)
+      this.cache.users[userId].groups_detail = groupsData
+    }
+    
+    // Обновляем selectedUser
+    if (this.selectedUser?.id === userId) {
+      const groupsData = response.data || []
+      this.selectedUser.groups = groupsData.map(g => g.name)
+      this.selectedUser.groups_detail = groupsData
+    }
+    
+    return response.data
+    
+  } catch (error) {
+    this.error = error.response?.data || 'Ошибка обновления групп'
+    console.error('❌ updateUserGroups error:', this.error)
+    throw error
+  } finally {
+    this.isUpdating = false
+  }
+},
     async fetchUsers(params = {}) {
       console.log('🔄 fetchUsers вызван')
       this.isLoading = true

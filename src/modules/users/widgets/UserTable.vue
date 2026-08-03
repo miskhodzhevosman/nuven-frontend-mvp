@@ -1,13 +1,13 @@
 <template>
   <el-table :data="users" v-loading="loading" stripe>
-    <el-table-column prop="id" label="ID" width="80" />
+    
     <el-table-column prop="username" label="Имя пользователя" min-width="150" />
 
     <el-table-column prop="first_name" label="Имя" min-width="120" />
     <el-table-column prop="last_name" label="Фамилия" min-width="120" />
     
     <!-- Новая колонка: Группы -->
-    <el-table-column label="Группы" min-width="200">
+    <el-table-column label="Группы" min-width="120">
       <template #default="{ row }">
         <div v-if="row.groups && row.groups.length > 0" class="groups-container">
           <el-tag
@@ -27,6 +27,10 @@
 
     <el-table-column prop="is_active" label="Статус" width="100" align="center">
       <template #default="{ row }">
+        <el-button size="small" type="info" @click="$emit('view', row.id)">
+          <el-icon><View /></el-icon>
+          Просмотр
+        </el-button>
         <el-tag :type="row.is_active ? 'success' : 'danger'">
           {{ row.is_active ? 'Активен' : 'Заблокирован' }}
         </el-tag>
@@ -57,7 +61,7 @@
 </template>
 
 <script setup>
-import { Edit, Delete, Switch } from '@element-plus/icons-vue'
+import { Edit, Delete, Switch, View } from '@element-plus/icons-vue'
 
 defineProps({
   users: {
@@ -70,7 +74,7 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'delete', 'toggle-active'])
+defineEmits(['edit', 'delete', 'toggle-active', 'view'])
 
 const formatDate = (dateString) => {
   if (!dateString) return '—'

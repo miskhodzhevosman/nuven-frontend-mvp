@@ -126,6 +126,48 @@ export const useGroupStore = defineStore('groups', {
       } finally {
         this.isLoading = false
       }
+    },
+    async updateUserGroups(userId, groupIds) {
+      console.log(`🔄 updateUserGroups вызван для пользователя ${userId}`, groupIds)
+      this.isUpdating = true
+      this.error = null
+      
+      try {
+        // Используем метод manage_groups с PUT
+        const response = await userApi.setUserGroups(userId, groupIds)
+        console.log(`✅ Группы пользователя ${userId} обновлены:`, response.data)
+        
+        // Обновляем пользователя в списке
+        const user = this.users.find(u => u.id === userId)
+        if (user) {
+          // Получаем имена групп
+          const groupNames = response.data.map(g => g.name) || []
+          user.groups = groupNames
+          // Если есть groups_detail, тоже обновляем
+          if (user.groups_detail) {
+            user.groups_detail = response.data
+          }
+        }
+        
+        // Обновляем в кеше
+        if (this.cache.users[userId]) {
+          const groupNames = response.data.map(g => g.name) || []
+          this.cache.users[userId].groups = groupNames
+          if (this.cache.users[userId].groups_detail) {
+            this.cache.users[userId].groups_detail = response.data
+          }
+        }
+        
+        return response.data
+        
+      } catch (error) {
+        this.error = error.response?.data || 'Ошибка обновления групп'
+        console.error('❌ updateUserGroups error:', this.error)
+        throw error
+      } finally {
+        this.isUpdating = false
+      }
     }
+  
   }
 })
