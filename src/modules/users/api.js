@@ -61,6 +61,9 @@ export const userApi = {
   addUserToGroup(userId, groupId) {
     return api.post(`/users/${userId}/groups/`, { group_id: groupId })
   },
+  getAllPermissions() {
+    return api.get('users/permissions/')
+  },
 
   // Удалить пользователя из группы
   removeUserFromGroup(userId, groupId) {

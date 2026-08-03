@@ -5,21 +5,36 @@ import { userApi } from '../api'
 export const useGroupStore = defineStore('groups', {
   state: () => ({
     groups: [],
+    permissions: [],
     isLoading: false,
     error: null
   }),
 
   getters: {
-    getGroupById: (state) => (id) => {
-      return state.groups.find(g => g.id === id)
+    // Группировка прав по приложениям
+    permissionsByApp: (state) => {
+      const grouped = {}
+      state.permissions.forEach(perm => {
+        const app = perm.app_label || 'other'
+        if (!grouped[app]) grouped[app] = []
+        grouped[app].push(perm)
+      })
+      return grouped
     },
-    
-    getGroupNames: (state) => {
-      return state.groups.map(g => g.name)
+
+    // Права для конкретной модели
+    getPermissionsForModel: (state) => (model) => {
+      return state.permissions.filter(p => p.model === model)
+    },
+
+    // Права для конкретного приложения
+    getPermissionsForApp: (state) => (app) => {
+      return state.permissions.filter(p => p.app_label === app)
     }
   },
 
   actions: {
+    // Загрузка групп
     async fetchGroups() {
       this.isLoading = true
       this.error = null
@@ -35,48 +50,25 @@ export const useGroupStore = defineStore('groups', {
         this.isLoading = false
       }
     },
-    
-    // Добавляем метод для получения групп с количеством пользователей
-    async fetchGroupsWithCounts() {
+
+    // Загрузка прав
+    async fetchPermissions() {
       this.isLoading = true
       this.error = null
       
       try {
-        const response = await userApi.getAllGroups()
-        const groups = response.data.results || response.data
-        
-        // Для каждой группы получаем количество пользователей
-        const groupsWithCounts = await Promise.all(
-          groups.map(async (group) => {
-            try {
-              const usersResponse = await userApi.getUsers({ 
-                group: group.name,
-                page_size: 1 
-              })
-              return {
-                ...group,
-                user_count: usersResponse.data.count || 0
-              }
-            } catch {
-              return {
-                ...group,
-                user_count: 0
-              }
-            }
-          })
-        )
-        
-        this.groups = groupsWithCounts
-        return this.groups
+        const response = await userApi.getAllPermissions()
+        this.permissions = response.data.results || response.data
+        return this.permissions
       } catch (error) {
-        this.error = error.response?.data || 'Ошибка загрузки групп'
+        this.error = error.response?.data || 'Ошибка загрузки прав'
         throw error
       } finally {
         this.isLoading = false
       }
     },
 
-
+    // Создание группы
     async createGroup(data) {
       this.isLoading = true
       this.error = null
@@ -93,6 +85,7 @@ export const useGroupStore = defineStore('groups', {
       }
     },
 
+    // Обновление группы
     async updateGroup(id, data) {
       this.isLoading = true
       this.error = null
@@ -112,6 +105,7 @@ export const useGroupStore = defineStore('groups', {
       }
     },
 
+    // Удаление группы
     async deleteGroup(id) {
       this.isLoading = true
       this.error = null
@@ -126,48 +120,6 @@ export const useGroupStore = defineStore('groups', {
       } finally {
         this.isLoading = false
       }
-    },
-    async updateUserGroups(userId, groupIds) {
-      console.log(`🔄 updateUserGroups вызван для пользователя ${userId}`, groupIds)
-      this.isUpdating = true
-      this.error = null
-      
-      try {
-        // Используем метод manage_groups с PUT
-        const response = await userApi.setUserGroups(userId, groupIds)
-        console.log(`✅ Группы пользователя ${userId} обновлены:`, response.data)
-        
-        // Обновляем пользователя в списке
-        const user = this.users.find(u => u.id === userId)
-        if (user) {
-          // Получаем имена групп
-          const groupNames = response.data.map(g => g.name) || []
-          user.groups = groupNames
-          // Если есть groups_detail, тоже обновляем
-          if (user.groups_detail) {
-            user.groups_detail = response.data
-          }
-        }
-        
-        // Обновляем в кеше
-        if (this.cache.users[userId]) {
-          const groupNames = response.data.map(g => g.name) || []
-          this.cache.users[userId].groups = groupNames
-          if (this.cache.users[userId].groups_detail) {
-            this.cache.users[userId].groups_detail = response.data
-          }
-        }
-        
-        return response.data
-        
-      } catch (error) {
-        this.error = error.response?.data || 'Ошибка обновления групп'
-        console.error('❌ updateUserGroups error:', this.error)
-        throw error
-      } finally {
-        this.isUpdating = false
-      }
     }
-  
   }
 })

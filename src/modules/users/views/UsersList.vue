@@ -64,6 +64,7 @@
       :is-edit="isEditMode"
       @saved="onUserSaved"
     />
+    <GroupManager />
   </div>
 </template>
 
@@ -76,6 +77,7 @@ import { useUserStore } from '../store'
 import UserTable from '../widgets/UserTable.vue'
 import GroupFilter from '../components/GroupFilter.vue'
 import UserModal from '../components/UserModal.vue'
+import GroupManager from '../components/GroupManager.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
