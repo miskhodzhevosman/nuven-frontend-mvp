@@ -5,6 +5,7 @@ const API_URL = '/users'
 export const userApi = {
   // Получить список пользователей
   getUsers(params = {}) {
+    // params может содержать: page, page_size, search, group, is_active, etc.
     return api.get(API_URL, { params })
   },
 
@@ -51,5 +52,43 @@ export const userApi = {
   // Активировать/деактивировать пользователя
   setUserActive(id, isActive) {
     return api.post(`${API_URL}/${id}/set-active/`, { is_active: isActive })
+  },
+   getUserGroups(userId) {
+    return api.get(`${API_URL}/${userId}/groups/`)
+  },
+
+  // Добавить пользователя в группу
+  addUserToGroup(userId, groupId) {
+    return api.post(`${API_URL}/${userId}/groups/`, { group_id: groupId })
+  },
+
+  // Удалить пользователя из группы
+  removeUserFromGroup(userId, groupId) {
+    return api.delete(`${API_URL}/${userId}/groups/${groupId}/`)
+  },
+
+  // Обновить группы пользователя (заменить все)
+  setUserGroups(userId, groupIds) {
+    return api.put(`${API_URL}/${userId}/groups/`, { group_ids: groupIds })
+  },
+
+  // Получить все доступные группы
+  getAllGroups() {
+    return api.get('/users/groups/')
+  },
+
+  // Создать группу
+  createGroup(data) {
+    return api.post('/users/groups/', data)
+  },
+
+  // Обновить группу
+  updateGroup(id, data) {
+    return api.patch(`/users/groups/${id}/`, data)
+  },
+
+  // Удалить группу
+  deleteGroup(id) {
+    return api.delete(`/users/groups/${id}/`)
   }
 }

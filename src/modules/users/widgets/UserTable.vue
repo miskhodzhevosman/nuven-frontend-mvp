@@ -2,35 +2,28 @@
   <el-table :data="users" v-loading="loading" stripe>
     <el-table-column prop="id" label="ID" width="80" />
     <el-table-column prop="username" label="Имя пользователя" min-width="150" />
-    <el-table-column prop="email" label="Email" min-width="200" />
+
     <el-table-column prop="first_name" label="Имя" min-width="120" />
     <el-table-column prop="last_name" label="Фамилия" min-width="120" />
     
-    <!-- Новая колонка: последний вход -->
-    <el-table-column label="Последний вход" min-width="180">
+    <!-- Новая колонка: Группы -->
+    <el-table-column label="Группы" min-width="200">
       <template #default="{ row }">
-        <!-- ОТЛАДКА: посмотрим что в row -->
-        {{ console.log('Row data:', row) }}
-        {{ console.log('Row last_login:', row?.last_login) }}
-        {{ console.log('Row keys:', Object.keys(row)) }}
-        
-        <span v-if="row?.last_login">
-          {{ formatDate(row.last_login) }}
-        </span>
-        <el-tag v-else type="info" size="small">Никогда</el-tag>
+        <div v-if="row.groups && row.groups.length > 0" class="groups-container">
+          <el-tag
+            v-for="group in row.groups"
+            :key="group"
+            size="small"
+            type="primary"
+            style="margin: 2px;"
+          >
+            {{ group }}
+          </el-tag>
+        </div>
+        <el-tag v-else type="info" size="small">Нет групп</el-tag>
       </template>
     </el-table-column>
 
-    <!-- Новая колонка: дата регистрации -->
-    <el-table-column label="Дата регистрации" min-width="180">
-      <template #default="{ row }">
-        {{ console.log('Row date_joined:', row?.date_joined) }}
-        <span v-if="row?.date_joined">
-          {{ formatDate(row.date_joined) }}
-        </span>
-        <el-tag v-else type="info" size="small">Нет данных</el-tag>
-      </template>
-    </el-table-column>
 
     <el-table-column prop="is_active" label="Статус" width="100" align="center">
       <template #default="{ row }">
@@ -98,3 +91,11 @@ const formatDate = (dateString) => {
   }
 }
 </script>
+
+<style scoped>
+.groups-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+</style>

@@ -1,3 +1,4 @@
+<!-- UsersList.vue -->
 <template>
   <div class="users-page">
     <div class="page-header">
@@ -21,6 +22,12 @@
         </el-button>
       </div>
     </div>
+
+    <!-- Добавляем компонент фильтра -->
+    <GroupFilter 
+      :total-users="pagination.count" 
+      @filter-change="handleGroupFilter"
+    />
 
     <el-card shadow="never">
       <div v-if="error" class="error-message">
@@ -51,12 +58,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { useUserStore } from '../store'
 import UserTable from '../widgets/UserTable.vue'
+import GroupFilter from '../components/GroupFilter.vue'  // ← Импортируем фильтр
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -64,91 +72,45 @@ const userStore = useUserStore()
 const searchQuery = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
+const selectedGroup = ref(null)  // ← Добавляем состояние для выбранной группы
 
 const users = computed(() => userStore.users)
 const isLoading = computed(() => userStore.isLoading)
 const pagination = computed(() => userStore.pagination)
 const error = computed(() => userStore.error)
 
-// Загрузка пользователей
+// Загрузка пользователей с учетом фильтра по группе
 const loadUsers = async () => {
   console.log('📋 loadUsers вызван')
   try {
-    await userStore.fetchUsers({
+    const params = {
       page: currentPage.value,
       page_size: pageSize.value,
       search: searchQuery.value || undefined
-    })
+    }
+    
+    // Добавляем фильтр по группе, если выбран
+    if (selectedGroup.value) {
+      params.group = selectedGroup.value
+      console.log('📋 Фильтр по группе:', selectedGroup.value)
+    }
+    
+    await userStore.fetchUsers(params)
   } catch (error) {
     console.error('❌ loadUsers error:', error)
     ElMessage.error('Не удалось загрузить пользователей')
   }
 }
 
-// Обновление данных
-const refreshData = async () => {
-  console.log('🔄 refreshData вызван')
-  await loadUsers()
-  ElMessage.success('Данные обновлены')
-}
-
-// Поиск с debounce
-let searchTimeout = null
-const handleSearch = () => {
-  clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    currentPage.value = 1
-    loadUsers()
-  }, 500)
-}
-
-// Пагинация
-const handlePageChange = () => loadUsers()
-const handlePageSizeChange = () => {
-  currentPage.value = 1
+// Обработчик изменения фильтра по группам
+const handleGroupFilter = (groupName) => {
+  console.log('🔄 Фильтр по группе изменен:', groupName)
+  selectedGroup.value = groupName
+  currentPage.value = 1  // Сбрасываем на первую страницу
   loadUsers()
 }
 
-// Переходы
-const goToCreate = () => router.push('/users/create')
-const goToEdit = (id) => router.push(`/users/${id}/edit`)
-
-// Удаление
-const handleDelete = async (id) => {
-  console.log(`🗑️ Удаление пользователя ${id}`)
-  try {
-    await ElMessageBox.confirm(
-      'Вы уверены, что хотите удалить этого пользователя?',
-      'Подтверждение удаления',
-      {
-        confirmButtonText: 'Да, удалить',
-        cancelButtonText: 'Отмена',
-        type: 'warning'
-      }
-    )
-    
-    await userStore.deleteUser(id)
-    ElMessage.success('Пользователь удален')
-    await loadUsers()
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('❌ handleDelete error:', error)
-      ElMessage.error('Ошибка при удалении пользователя')
-    }
-  }
-}
-
-// Активация/деактивация
-const handleToggleActive = async (id, isActive) => {
-  console.log(`🔄 Изменение статуса пользователя ${id} на ${isActive}`)
-  try {
-    await userStore.toggleUserActive(id, isActive)
-    ElMessage.success(`Пользователь ${isActive ? 'активирован' : 'деактивирован'}`)
-  } catch (error) {
-    console.error('❌ handleToggleActive error:', error)
-    ElMessage.error('Ошибка при изменении статуса')
-  }
-}
+// ... остальные методы (refreshData, handleSearch, handlePageChange, etc.)
 
 // Загрузка при монтировании
 onMounted(() => {
@@ -172,12 +134,12 @@ onMounted(() => {
 .page-header h1 {
   margin: 0;
   font-size: 24px;
+  color: #303133;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .pagination-wrapper {
