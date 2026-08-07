@@ -34,11 +34,23 @@ const routes = [
         meta: { title: 'Проекты' }
       },
       {
-      path: '/projects/:id',
-      name: 'project-detail',
-      component: () => import('@/modules/projects/views/DetailView.vue'),
-      props: true,
-    },
+        path: 'projects/:id',
+        name: 'project-detail',
+        component: () => import('@/modules/projects/views/DetailView.vue'),
+        props: true,
+        meta: { title: 'Детали проекта' }
+      },
+      // 👇 НОВЫЙ МАРШРУТ ДЛЯ СТРАНИЦЫ СТАТУСОВ ПРОЕКТА
+      {
+        path: 'projects/:id/statuses',
+        name: 'project-statuses',
+        component: () => import('@/modules/projects/views/ProjectStatusesPage.vue'),
+        props: true,
+        meta: { 
+          title: 'Статусы проекта',
+          requiresAuth: true 
+        }
+      },
       {
         path: 'finance',
         name: 'finance',
@@ -46,30 +58,53 @@ const routes = [
         meta: { title: 'Финансы' }
       },
       {
-    path: '/users',
-    name: 'Users',
-    component: () => import('@/modules/users/views/UsersList.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/users/create',
-    name: 'UserCreate',
-    component: () => import('@/modules/users/views/UserCreate.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/users/:id/edit',
-    name: 'UserEdit',
-    component: () => import('@/modules/users/views/UserEdit.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/profile',
-    name: 'UserProfile',
-    component: () => import('@/modules/users/views/UserProfile.vue'),
-    meta: { requiresAuth: true }
-  }
+        path: 'users',
+        name: 'Users',
+        component: () => import('@/modules/users/views/UsersList.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'users/create',
+        name: 'UserCreate',
+        component: () => import('@/modules/users/views/UserCreate.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
+        path: 'users/:id/edit',
+        name: 'UserEdit',
+        component: () => import('@/modules/users/views/UserEdit.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
+        path: 'profile',
+        name: 'UserProfile',
+        component: () => import('@/modules/users/views/UserProfile.vue'),
+        meta: { requiresAuth: true }
+      }
     ]
+  },
+  // Отдельный маршрут для клиентского кабинета (без DashboardLayout)
+  {
+    path: '/client-cabinet',
+    name: 'client-cabinet',
+    component: () => import('@/modules/users/views/ClientCabinet.vue'),
+    meta: { 
+      requiresAuth: true, 
+      title: 'Клиентский кабинет',
+      layout: 'empty' // Опционально: метка для использования пустого layout
+    }
+  },
+  // Детальный просмотр проекта (тоже без layout)
+  {
+    path: '/client-cabinet/project/:id',
+    name: 'client-project-detail',
+    component: () => import('@/modules/users/views/ClientProjectDetail.vue'),
+    props: true,
+    meta: { 
+      requiresAuth: true, 
+      title: 'Детали проекта',
+      layout: 'empty'
+    }
   }
 ]
 

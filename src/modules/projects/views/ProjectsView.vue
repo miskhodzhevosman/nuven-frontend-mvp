@@ -1,21 +1,621 @@
+<template>
+  <section class="page">
+    <header class="page-header">
+      <div>
+        <h1>Проекты</h1>
+        <p class="muted">Всего: {{ count }}</p>
+      </div>
+      <button class="btn btn-primary" id="add-project-btn" @click="openCreateProject">+ Создать проект</button>
+    </header>
+
+    <div v-if="error" class="alert alert-error">
+      <strong>Ошибка:</strong> <span>{{ error }}</span>
+    </div>
+
+    <div class="projects-layout">
+      <!-- Боковая панель со статусами -->
+      <aside class="status-sidebar">
+        <div class="sidebar-header">
+          <h3 class="sidebar-title">Статусы проектов</h3>
+          <span class="sidebar-count">{{ statusesWithCount.length }}</span>
+        </div>
+        
+        <div class="status-list">
+          <!-- Все проекты -->
+          <div 
+            class="status-item"
+            :class="{ active: !selectedStatusId }"
+            @click="clearFilters"
+          >
+            <div class="status-item-content">
+              <span class="status-dot all-dot"></span>
+              <span class="status-name">Все проекты</span>
+              <span class="status-count-badge">{{ projects.length }}</span>
+            </div>
+          </div>
+
+          <!-- Статусы -->
+          <div 
+            v-for="status in statusesWithCount" 
+            :key="status.id"
+            class="status-item"
+            :class="{ 
+              active: selectedStatusId === status.id,
+              disabled: status.count === 0 
+            }"
+            @click="status.count > 0 && selectStatus(status.id)"
+          >
+            <div class="status-item-content">
+              <span class="status-dot" :style="{ backgroundColor: status.color || '#16181C' }"></span>
+              <span class="status-name">{{ status.name }}</span>
+              <span class="status-count-badge">{{ status.count }}</span>
+            </div>
+            <!-- Ссылка на страницу статусов -->
+            <router-link 
+              :to="{ name: 'project-statuses', params: { id: status.id } }"
+              class="status-link"
+              title="Посмотреть все проекты в этом статусе"
+              @click.stop
+            >
+              <span class="link-icon">📊</span>
+            </router-link>
+          </div>
+        </div>
+
+        <!-- Кнопка "Управление статусами" -->
+        <div class="sidebar-footer">
+          <router-link 
+            to="/project-statuses" 
+            class="btn btn-ghost btn-sm sidebar-action"
+          >
+            ⚙️ Управление статусами
+          </router-link>
+        </div>
+      </aside>
+
+      <!-- Основной контент -->
+      <div class="main-content">
+        <!-- Информация о фильтре -->
+        <div v-if="selectedStatusId" class="filter-info">
+          <span>Показаны проекты со статусом: 
+            <strong>{{ statuses.find(s => s.id === selectedStatusId)?.name }}</strong>
+          </span>
+          <span class="filter-info-count">({{ filteredProjects.length }} проектов)</span>
+          <button class="btn btn-ghost btn-sm" @click="clearFilters">✕ Сбросить</button>
+        </div>
+
+        <div v-if="loading && !projects.length" class="state">Загрузка…</div>
+        <div v-else-if="!filteredProjects.length && !error" class="state muted">
+          {{ selectedStatusId ? 'Нет проектов с выбранным статусом.' : 'Нет проектов.' }}
+        </div>
+
+        <div v-else class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Клиент</th>
+                <th>Статус</th>
+                <th>Локация</th>
+                <th>Создан</th>
+                <th class="actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in filteredProjects" :key="p.id" @click="open(p.id)" class="clickable">
+                <td>{{ p.id }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ store.clientName(p.client) }}</td>
+                <td>
+                  <span class="status-badge" :style="{ backgroundColor: p.status_color || '#16181C' }">
+                    {{ store.statusName(p.status) }}
+                  </span>
+                </td>
+                <td>{{ p.full_location_name || '—' }}</td>
+                <td>{{ p.created_at?.slice(0, 10) }}</td>
+                <td class="actions">
+                  <button class="btn btn-ghost btn-sm" @click.stop="open(p.id)">Открыть</button>
+                  <button class="btn btn-ghost btn-sm" @click.stop="openHistory(p)" title="История изменений">
+                    📜
+                  </button>
+                  <router-link 
+                    :to="{ name: 'project-statuses', params: { id: p.id } }"
+                    class="btn btn-ghost btn-sm"
+                    title="Статусы проекта"
+                    @click.stop
+                  >
+                    📊
+                  </router-link>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модалка: Создание проекта -->
+    <div v-if="showCreateProjectForm" class="modal-backdrop" @click.self="closeCreateProjectForm">
+      <div class="modal">
+        <h2>Создать проект</h2>
+        <form ref="createFormRef" @submit.prevent="submitCreateProject">
+          <label class="field" id="project-name-field">
+            <span>Название проекта *</span>
+            <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
+          </label>
+          
+          <label class="field" id="project-date-field">
+            <span>Дата создания</span>
+            <input 
+              v-model="createForm.created_at" 
+              type="date"
+              @focus="$event.target.showPicker?.()"
+              @click="$event.target.showPicker?.()"
+            />
+            <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
+          </label>
+          
+          <!-- Поле клиента с автокомплитом -->
+          <label class="field" id="project-client-field">
+            <span>Клиент</span>
+            <div class="combobox-wrapper">
+              <input
+                v-model="clientSearch"
+                type="text"
+                placeholder="Введите название клиента"
+                @input="onClientInput"
+                @focus="clientSearch.length >= 2 && onClientInput()"
+                @blur="onClientBlur"
+                autocomplete="off"
+                id="client-list"
+              />
+              <div v-if="isClientLoading" class="combobox-loading">⏳</div>
+              <ul v-if="showClientSuggestions && clientSuggestions.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="client in clientSuggestions" 
+                  :key="client.id"
+                  @mousedown.prevent="selectClient(client)"
+                >
+                  {{ client.name }}
+                </li>
+              </ul>
+            </div>
+            <small v-if="selectedClient" class="hint success">
+              Выбран клиент: {{ selectedClient.name }}
+            </small>
+            <button id="add-new-client-btn" type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
+              + Создать нового клиента
+            </button>
+          </label>
+          
+          <label class="field" id="project-status-field">
+            <span>Статус</span>
+            <select v-model="createForm.status" id="status-list">
+              <option value="">— не выбран —</option>
+              <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          
+          <!-- Поле тех. менеджера с автокомплитом -->
+          <label class="field" id="tech-manager-field">
+            <span>Технический менеджер</span>
+            <div class="combobox-wrapper">
+              <input
+                v-model="managerSearch"
+                type="text"
+                placeholder="Введите ФИО менеджера"
+                @input="onManagerInput"
+                @focus="managerSearch.length >= 2 && onManagerInput()"
+                @blur="onManagerBlur"
+                autocomplete="off"
+                id="tech-manager-list"
+              />
+              <div v-if="isManagerLoading" class="combobox-loading">⏳</div>
+              <ul v-if="showManagerSuggestions && managerSuggestions.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="manager in managerSuggestions" 
+                  :key="manager.id"
+                  @mousedown.prevent="selectManager(manager)"
+                >
+                  {{ getManagerFullName(manager) }}
+                </li>
+              </ul>
+            </div>
+            <small v-if="selectedManager" class="hint success">
+              Выбран менеджер: {{ getManagerFullName(selectedManager) }}
+            </small>
+            <button type="button" id="add-new-tech-manager-btn" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
+              + Создать нового менеджера
+            </button>
+          </label>
+          
+          <!-- Поле локации с автокомплитом -->
+          <label class="field" id="project-location-field">
+            <span>Локация</span>
+            <div class="combobox-wrapper">
+              <input
+                v-model="locationSearch"
+                type="text"
+                placeholder="Введите название локации"
+                @input="onLocationInput"
+                @focus="locationSearch.length >= 2 && onLocationInput()"
+                @blur="onLocationBlur"
+                autocomplete="off"
+              />
+              <div v-if="isLocationLoading" class="combobox-loading">⏳</div>
+              <ul v-if="showLocationSuggestions && locationSuggestions.length > 0" class="combobox-suggestions">
+                <li 
+                  v-for="location in locationSuggestions" 
+                  :key="location.id"
+                  @mousedown.prevent="selectLocation(location)"
+                >
+                  {{ location.full_name }}
+                </li>
+              </ul>
+            </div>
+            <small v-if="selectedLocation" class="hint success">
+              Выбрана локация: {{ selectedLocation.name }}
+            </small>
+            <small v-else-if="locationSearch && !selectedLocation" class="hint">
+              Начните вводить название для поиска
+            </small>
+          </label>
+          
+          <label class="field" id="project-location-full-name">
+            <span>Полное название локации</span>
+            <input v-model="createForm.full_location_name" disabled type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
+          </label>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" @click="closeCreateProjectForm">Отмена</button>
+            <button type="submit" class="btn btn-primary" id="project-create-btn" :disabled="loading">Создать</button>
+          </div>
+          <div v-if="error" class="alert alert-error">{{ error }}</div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модалка: Создание клиента -->
+    <div v-if="showCreateClientForm" class="modal-backdrop" @click.self="closeCreateClientForm">
+      <div class="modal modal-sm">
+        <h2>Новый клиент</h2>
+        <form @submit.prevent="submitCreateClient">
+          <label class="field">
+            <span>Название *</span>
+            <input v-model="clientForm.name" type="text" required maxlength="255" placeholder="Введите название клиента" />
+          </label>
+          <label class="field">
+            <span>Контакты</span>
+            <input v-model="clientForm.contacts" type="text" placeholder="Телефон, email" />
+          </label>
+          <label class="field">
+            <span>Адрес</span>
+            <input v-model="clientForm.address" type="text" placeholder="Адрес клиента" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" @click="closeCreateClientForm">Отмена</button>
+            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
+          </div>
+          <div v-if="error" class="alert alert-error">{{ error }}</div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модалка: Создание менеджера -->
+    <div v-if="showCreateManagerForm" class="modal-backdrop" @click.self="closeCreateManagerForm">
+      <div class="modal modal-md">
+        <h2>Новый технический менеджер</h2>
+        <form @submit.prevent="submitCreateManager">
+          <!-- Основная информация -->
+          <div class="form-section">
+            <h3>Основная информация</h3>
+            
+            <label class="field required">
+              <span>Фамилия *</span>
+              <input 
+                v-model="managerForm.last_name" 
+                type="text" 
+                required 
+                maxlength="255" 
+                placeholder="Введите фамилию менеджера" 
+              />
+            </label>
+
+            <label class="field required">
+              <span>Имя *</span>
+              <input 
+                v-model="managerForm.first_name" 
+                type="text" 
+                required 
+                maxlength="255" 
+                placeholder="Введите имя менеджера" 
+              />
+            </label>
+
+            <label class="field">
+              <span>Отчество</span>
+              <input 
+                v-model="managerForm.patronymic" 
+                type="text" 
+                maxlength="255" 
+                placeholder="Введите отчество менеджера" 
+              />
+            </label>
+            
+            <label class="field required">
+              <span>Username *</span>
+              <input 
+                v-model="managerForm.username" 
+                type="text" 
+                required 
+                maxlength="150" 
+                placeholder="Введите username (логин)" 
+              />
+              <small class="hint">Уникальное имя пользователя для входа</small>
+            </label>
+            
+            <label class="field required">
+              <span>Email *</span>
+              <input 
+                v-model="managerForm.email" 
+                type="email" 
+                required 
+                maxlength="254" 
+                placeholder="Введите email" 
+              />
+            </label>
+            
+            <label class="field required">
+              <span>Пароль *</span>
+              <input 
+                v-model="managerForm.password" 
+                type="password" 
+                required 
+                minlength="8" 
+                placeholder="Минимум 8 символов" 
+              />
+              <small class="hint">Пароль должен содержать минимум 8 символов</small>
+            </label>
+            
+            <label class="field required">
+              <span>Подтверждение пароля *</span>
+              <input 
+                v-model="managerForm.password2" 
+                type="password" 
+                required 
+                placeholder="Повторите пароль" 
+              />
+            </label>
+          </div>
+
+          <!-- Контактная информация -->
+          <div class="form-section">
+            <h3>Контактная информация</h3>
+            
+            <label class="field">
+              <span>Телефон</span>
+              <input 
+                v-model="managerForm.phone" 
+                type="tel" 
+                maxlength="20" 
+                placeholder="+7 (123) 456-78-90" 
+              />
+            </label>
+            
+            <label class="field">
+              <span>Telegram</span>
+              <input 
+                v-model="managerForm.telegram" 
+                type="text" 
+                maxlength="100" 
+                placeholder="@username или ID" 
+              />
+            </label>
+            
+            <label class="field">
+              <span>WeChat</span>
+              <input 
+                v-model="managerForm.wechat" 
+                type="text" 
+                maxlength="100" 
+                placeholder="WeChat ID" 
+              />
+            </label>
+            
+            <label class="field">
+              <span>WhatsApp</span>
+              <input 
+                v-model="managerForm.whatsapp" 
+                type="text" 
+                maxlength="20" 
+                placeholder="+7 (123) 456-78-90" 
+              />
+            </label>
+          </div>
+
+          <!-- Дополнительные настройки -->
+          <div class="form-section">
+            <h3>Дополнительные настройки</h3>
+            
+            <div class="checkbox-group">
+              <label class="checkbox">
+                <input 
+                  v-model="managerForm.is_active" 
+                  type="checkbox" 
+                />
+                <span>Активен</span>
+              </label>
+              
+              <label class="checkbox">
+                <input 
+                  v-model="managerForm.is_staff" 
+                  type="checkbox" 
+                />
+                <span>Доступ в админку</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Кнопки -->
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" @click="closeCreateManagerForm">Отмена</button>
+            <button type="submit" class="btn btn-primary" :disabled="loading">
+              {{ loading ? 'Создание...' : 'Создать менеджера' }}
+            </button>
+          </div>
+          
+          <div v-if="error" class="alert alert-error">{{ error }}</div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модалка: История изменений -->
+    <div v-if="showHistoryModal" class="modal-backdrop" @click.self="closeHistory">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h2>История изменений</h2>
+          <button class="btn btn-ghost btn-sm" @click="closeHistory">✕</button>
+        </div>
+        
+        <div v-if="historyProject" class="history-project-info">
+          <strong>{{ historyProject.name }}</strong>
+          <span class="muted">ID: {{ historyProject.id }}</span>
+        </div>
+        
+        <div v-if="historyLoading" class="state">Загрузка истории...</div>
+        
+        <div v-else-if="historyData.length === 0" class="state muted">
+          История изменений отсутствует
+        </div>
+        
+        <div v-else class="history-timeline">
+          <div 
+            v-for="(record, index) in historyData" 
+            :key="record.history_id"
+            class="history-item"
+            :class="getHistoryTypeClass(record.history_type)"
+          >
+            <div class="history-header">
+              <span class="history-type" :class="getHistoryTypeClass(record.history_type)">
+                {{ getHistoryTypeLabel(record.history_type) }}
+              </span>
+              <span class="history-date">{{ new Date(record.history_date).toLocaleString('ru-RU') }}</span>
+              <span class="history-user" v-if="record.history_user">
+                {{ record.history_user }}
+              </span>
+            </div>
+            
+            <div class="history-changes">
+              <!-- Создание -->
+              <div v-if="record.history_type === '+'" class="history-change">
+                <div class="history-change-title">Создан проект</div>
+                <div class="history-change-values">
+                  <div class="history-value">
+                    <span class="history-label">Название:</span>
+                    <span>{{ record.name }}</span>
+                  </div>
+                  <div class="history-value">
+                    <span class="history-label">Клиент:</span>
+                    <span>{{ getFieldDisplayValue('client_id', record.client_id) }}</span>
+                  </div>
+                  <div class="history-value">
+                    <span class="history-label">Статус:</span>
+                    <span>{{ getFieldDisplayValue('status_id', record.status_id) }}</span>
+                  </div>
+                  <div class="history-value" v-if="record.tech_manager_id">
+                    <span class="history-label">Менеджер:</span>
+                    <span>{{ getFieldDisplayValue('tech_manager_id', record.tech_manager_id) }}</span>
+                  </div>
+                  <div class="history-value" v-if="record.location_id">
+                    <span class="history-label">Локация:</span>
+                    <span>{{ getFieldDisplayValue('location_id', record.location_id) }}</span>
+                  </div>
+                  <div class="history-value" v-if="record.created_at">
+                    <span class="history-label">Дата создания:</span>
+                    <span>{{ getFieldDisplayValue('created_at', record.created_at) }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Изменение -->
+              <div v-else-if="record.history_type === '~'" class="history-change">
+                <div class="history-change-title">Изменены поля</div>
+                <div class="history-change-values">
+                  <template v-if="index < historyData.length - 1">
+                    <div 
+                      v-for="change in getChanges(record, historyData[index + 1])" 
+                      :key="change.field"
+                      class="history-change-item"
+                    >
+                      <div class="history-change-field">{{ change.label }}</div>
+                      <div class="history-change-diff">
+                        <span class="history-old-value">{{ change.oldValue }}</span>
+                        <span class="history-arrow">→</span>
+                        <span class="history-new-value">{{ change.newValue }}</span>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="history-value">
+                      <span class="history-label">Название:</span>
+                      <span>{{ record.name }}</span>
+                    </div>
+                    <div class="history-value">
+                      <span class="history-label">Клиент:</span>
+                      <span>{{ getFieldDisplayValue('client_id', record.client_id) }}</span>
+                    </div>
+                    <div class="history-value">
+                      <span class="history-label">Статус:</span>
+                      <span>{{ getFieldDisplayValue('status_id', record.status_id) }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              
+              <!-- Удаление -->
+              <div v-else-if="record.history_type === '-'" class="history-change">
+                <div class="history-change-title">Проект удален</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="closeHistory">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <OnboardingMenu>
+      <button 
+        class="onboarding-start-btn" 
+        @click="startTour"
+      >
+        <span class="btn-icon">📁</span>
+        Создать проект
+        <span class="btn-glow"></span>
+      </button>
+    </OnboardingMenu>
+  </section>
+</template>
+
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '../store'
+import { nextTick } from 'vue'
+import OnboardingMenu from '@/components/OnboardingMenu.vue'
+import { onboarding as projectCreateOnboarding } from '@/onboardings/ProjectsCreateOnboarding'
+import { nextOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
 
 const router = useRouter()
 const store = useProjectsStore()
 const { projects, loading, error, count, statuses, clients, managers, locations } = storeToRefs(store)
 
-import OnboardingMenu from '@/components/OnboardingMenu.vue'
-import { onboarding as projectCreateOnboarding } from '@/onboardings/ProjectsCreateOnboarding'
-import { nextOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
-import { goToOnboardingStep } from '@/onboardings/ProjectsCreateOnboarding'
-import { nextTick } from 'vue'
-
 function startTour() {
-    projectCreateOnboarding.drive();
+  projectCreateOnboarding.drive()
 }
 
 // Фильтр по статусу
@@ -53,13 +653,6 @@ const statusesWithCount = computed(() => {
   }))
 })
 
-// Computed - количество активных фильтров
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (selectedStatusId.value) count++
-  return count
-})
-
 // Computed - фильтруем клиентов только с типом CLIENT
 const filteredClients = computed(() => {
   if (!clients.value) return []
@@ -74,31 +667,6 @@ const getManagerFullName = (manager) => {
   if (manager.first_name) parts.push(manager.first_name)
   if (manager.patronymic) parts.push(manager.patronymic)
   return parts.join(' ') || manager.username || 'Без имени'
-}
-
-const getManagerShortName = (manager) => {
-  if (!manager) return ''
-  if (manager.first_name && manager.patronymic) {
-    return `${manager.first_name} ${manager.patronymic}`
-  }
-  if (manager.first_name) return manager.first_name
-  return manager.username || 'Без имени'
-}
-
-const getManagerInitials = (manager) => {
-  if (!manager) return ''
-  const initials = []
-  if (manager.first_name) initials.push(`${manager.first_name[0]}.`)
-  if (manager.patronymic) initials.push(`${manager.patronymic[0]}.`)
-  return initials.join('') || ''
-}
-
-const getManagerFullWithInitials = (manager) => {
-  if (!manager) return ''
-  if (manager.last_name) {
-    return `${manager.last_name} ${getManagerInitials(manager)}`
-  }
-  return getManagerFullName(manager)
 }
 
 // Modal state
@@ -129,24 +697,17 @@ const clientForm = reactive({
 
 // Manager form
 const managerForm = reactive({
-  // Основная информация (ФИО по частям)
   last_name: '',
   first_name: '',
   patronymic: '',
-  
-  // Учетные данные
   username: '',
   email: '',
   password: '',
   password2: '',
-  
-  // Контакты
   phone: '',
   telegram: '',
   wechat: '',
   whatsapp: '',
-  
-  // Дополнительные настройки
   is_active: true,
   is_staff: true,
   position: '',
@@ -184,21 +745,18 @@ function resetForm() {
   createForm.full_location_name = ''
   createForm.created_at = ''
   
-  // Сброс локации
   locationSearch.value = ''
   selectedLocation.value = null
   showLocationSuggestions.value = false
   locationSuggestions.value = []
   isLocationLoading.value = false
   
-  // Сброс клиента
   clientSearch.value = ''
   selectedClient.value = null
   clientSuggestions.value = []
   showClientSuggestions.value = false
   isClientLoading.value = false
   
-  // Сброс менеджера
   managerSearch.value = ''
   selectedManager.value = null
   managerSuggestions.value = []
@@ -348,7 +906,6 @@ const onManagerBlur = () => {
   setTimeout(() => {
     showManagerSuggestions.value = false
     if (managerSearch.value && !selectedManager.value) {
-      // Ищем по полному имени или username
       const found = managerSuggestions.value.find(m => {
         const fullName = getManagerFullName(m)
         return fullName.toLowerCase() === managerSearch.value.toLowerCase().trim() ||
@@ -363,7 +920,6 @@ const onManagerBlur = () => {
 
 const selectManager = (manager) => {
   selectedManager.value = manager
-  // Отображаем полное имя в поле поиска
   managerSearch.value = getManagerFullName(manager) || manager.username
   createForm.tech_manager = manager.id
   showManagerSuggestions.value = false
@@ -410,7 +966,7 @@ async function submitCreateProject() {
     tech_manager: createForm.tech_manager ? Number(createForm.tech_manager) : null,
     location: createForm.location ? Number(createForm.location) : null,
     full_location_name: createForm.full_location_name || '',
-    created_at: createForm.created_at || null, 
+    created_at: createForm.created_at || null,
   }
   
   try {
@@ -475,7 +1031,6 @@ function closeCreateManagerForm() {
 }
 
 async function submitCreateManager() {
-  // Валидация ФИО
   if (!managerForm.last_name?.trim()) {
     error.value = 'Фамилия обязательна'
     return
@@ -485,7 +1040,6 @@ async function submitCreateManager() {
     return
   }
   
-  // Валидация учетных данных
   if (!managerForm.username?.trim()) {
     error.value = 'Username обязателен'
     return
@@ -528,26 +1082,19 @@ async function submitCreateManager() {
   }
   
   try {
-    // Создаем пользователя
     const created = await store.createTechnicalManager(payload)
-    
-    // Обновляем список менеджеров
     await store.fetchManagers()
     
-    // Выбираем созданного менеджера
     createForm.tech_manager = created.id
     managerSearch.value = getManagerFullName(created) || created.username
     selectedManager.value = created
     managerSuggestions.value = []
     showManagerSuggestions.value = false
     
-    // Закрываем модалку
     closeCreateManagerForm()
-    
   } catch (e) {
     console.error('Failed to create manager:', e)
     
-    // Обработка ошибок от сервера
     if (e.response?.data) {
       const errors = e.response.data
       
@@ -568,7 +1115,6 @@ async function submitCreateManager() {
     } else {
       error.value = 'Ошибка создания менеджера'
     }
-    
   } finally {
     loading.value = false
   }
@@ -584,7 +1130,6 @@ async function openHistory(project) {
   try {
     const data = await store.fetchProjectHistory(project.id)
     historyData.value = data || []
-    console.log('History data loaded:', data)
   } catch (e) {
     console.error('Failed to fetch history:', e)
     error.value = 'Ошибка загрузки истории'
@@ -702,559 +1247,332 @@ function open(id) {
   router.push({ name: 'project-detail', params: { id } })
 }
 </script>
-<template>
-  <section class="page">
-    <header class="page-header">
-      <div>
-        <h1>Проекты</h1>
-        <p class="muted">Всего: {{ count }}</p>
-      </div>
-      <button class="btn btn-primary" id="add-project-btn" @click="openCreateProject">+ Создать проект</button>
-    </header>
 
-    <div v-if="error" class="alert alert-error">
-      <strong>Ошибка:</strong> <span>{{ error }}</span>
-    </div>
+<style scoped>
+/* Стили для боковой панели */
+.projects-layout {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+}
 
-    <!-- Фильтры по статусам в виде плиток -->
-    <div v-if="statusesWithCount.length" class="status-filters">
-      <div class="status-filters-header">
-        <span class="status-filters-title">Фильтр по статусу:</span>
-        <button v-if="activeFilterCount > 0" class="btn btn-ghost btn-sm" @click="clearFilters">
-          ✕ Сбросить фильтр
-        </button>
-      </div>
-      <div class="status-tiles">
-        <div 
-          v-for="status in statusesWithCount" 
-          :key="status.id"
-          class="status-tile"
-          :class="{ active: selectedStatusId === status.id, disabled: status.count === 0 }"
-          @click="status.count > 0 && selectStatus(status.id)"
-        >
-          <span class="status-name">{{ status.name }}</span>
-          <span class="status-count">{{ status.count }}</span>
-        </div>
-      </div>
-    </div>
+.status-sidebar {
+  flex: 0 0 280px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  height: fit-content;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  position: sticky;
+  top: 20px;
+}
 
-    <!-- Информация о фильтре -->
-    <div v-if="selectedStatusId" class="filter-info">
-      <span>Показаны проекты со статусом: 
-        <strong>{{ statuses.find(s => s.id === selectedStatusId)?.name }}</strong>
-      </span>
-      <span class="filter-info-count">({{ filteredProjects.length }} проектов)</span>
-    </div>
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
 
-    <div v-if="loading && !projects.length" class="state">Загрузка…</div>
-    <div v-else-if="!filteredProjects.length && !error" class="state muted">
-      {{ selectedStatusId ? 'Нет проектов с выбранным статусом.' : 'Нет проектов.' }}
-    </div>
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+}
 
-    <div v-else class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Название</th>
-            <th>Клиент</th>
-            <th>Статус</th>
-            <th>Локация</th>
-            <th>Создан</th>
-            <th class="actions"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in filteredProjects" :key="p.id" @click="open(p.id)" class="clickable">
-            <td>{{ p.id }}</td>
-            <td>{{ p.name }}</td>
-            <td>{{ store.clientName(p.client) }}</td>
-            <td>
-              <span class="status-badge" :style="{ backgroundColor: p.status_color || '#16181C' }">
-                {{ store.statusName(p.status) }}
-              </span>
-            </td>
-            <td>{{ p.full_location_name || '—' }}</td>
-            <td>{{ p.created_at?.slice(0, 10) }}</td>
-            <td class="actions">
-              <button class="btn btn-ghost btn-sm" @click.stop="open(p.id)">Открыть</button>
-              <button class="btn btn-ghost btn-sm" @click.stop="openHistory(p)" title="История изменений">
-                📜
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+.sidebar-count {
+  background: #edf2f7;
+  color: #4a5568;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
 
-    <!-- Модалка: Создание проекта -->
-<div v-if="showCreateProjectForm" class="modal-backdrop" @click.self="closeCreateProjectForm">
-  <div class="modal">
-    <h2>Создать проект</h2>
-    <form ref="createFormRef" @submit.prevent="submitCreateProject">
-      <label class="field" id="project-name-field">
-        <span>Название проекта *</span>
-        <input v-model="createForm.name" type="text" required maxlength="255" placeholder="Введите название проекта" />
-      </label>
-      
-      <label class="field" id="project-date-field">
-        <span>Дата создания</span>
-        <input 
-          v-model="createForm.created_at" 
-          type="date"
-          @focus="$event.target.showPicker?.()"
-          @click="$event.target.showPicker?.()"
-        />
-        <small class="hint">Укажите дату для старых проектов. Если не заполнено - будет установлена текущая</small>
-      </label>
-      
-      <!-- Поле клиента с автокомплитом -->
-      <label class="field" id="project-client-field">
-        <span>Клиент</span>
-        <div class="combobox-wrapper">
-          <input
-            v-model="clientSearch"
-            type="text"
-            placeholder="Введите название клиента"
-            @input="onClientInput"
-            @focus="clientSearch.length >= 2 && onClientInput()"
-            @blur="onClientBlur"
-            autocomplete="off"
-            id="client-list"
-          />
-          <div v-if="isClientLoading" class="combobox-loading">⏳</div>
-          <ul v-if="showClientSuggestions && clientSuggestions.length > 0" class="combobox-suggestions">
-            <li 
-              v-for="client in clientSuggestions" 
-              :key="client.id"
-              @mousedown.prevent="selectClient(client)"
-            >
-              {{ client.name }}
-            </li>
-          </ul>
-        </div>
-        <small v-if="selectedClient" class="hint success">
-          Выбран клиент: {{ selectedClient.name }}
-        </small>
-        <button id="add-new-client-btn" type="button" class="btn btn-ghost btn-sm" @click="openCreateClient" style="margin-top: 4px;">
-          + Создать нового клиента
-        </button>
-      </label>
-      
-      <label class="field" id="project-status-field">
-        <span>Статус</span>
-        <select v-model="createForm.status" id="status-list">
-          <option value="">— не выбран —</option>
-          <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
-      </label>
-      
-      <!-- Поле тех. менеджера с автокомплитом -->
-      <label class="field" id="tech-manager-field">
-        <span>Технический менеджер</span>
-        <div class="combobox-wrapper">
-          <input
-            v-model="managerSearch"
-            type="text"
-            placeholder="Введите ФИО менеджера"
-            @input="onManagerInput"
-            @focus="managerSearch.length >= 2 && onManagerInput()"
-            @blur="onManagerBlur"
-            autocomplete="off"
-            id="tech-manager-list"
-          />
-          <div v-if="isManagerLoading" class="combobox-loading">⏳</div>
-          <ul v-if="showManagerSuggestions && managerSuggestions.length > 0" class="combobox-suggestions">
-            <li 
-              v-for="manager in managerSuggestions" 
-              :key="manager.id"
-              @mousedown.prevent="selectManager(manager)"
-            >
-              {{ manager.first_name}} {{ manager.last_name }} {{ manager.patronymic }}
-            </li>
-          </ul>
-        </div>
-        <small v-if="selectedManager" class="hint success">
-          Выбран менеджер: {{ selectedManager.first_name}} {{ selectedManager.last_name }} {{ selectedManager.patronymic }}
-        </small>
-        <button type="button" id="add-new-tech-manager-btn" class="btn btn-ghost btn-sm" @click="openCreateManager" style="margin-top: 4px;">
-          + Создать нового менеджера
-        </button>
-      </label>
-      
-      <!-- Поле локации с автокомплитом -->
-      <label class="field" id="project-location-field">
-        <span>Локация</span>
-        <div class="combobox-wrapper">
-          <input
-            v-model="locationSearch"
-            type="text"
-            placeholder="Введите название локации"
-            @input="onLocationInput"
-            @focus="locationSearch.length >= 2 && onLocationInput()"
-            @blur="onLocationBlur"
-            autocomplete="off"
-          />
-          <div v-if="isLocationLoading" class="combobox-loading">⏳</div>
-          <ul v-if="showLocationSuggestions && locationSuggestions.length > 0" class="combobox-suggestions">
-            <li 
-              v-for="location in locationSuggestions" 
-              :key="location.id"
-              @mousedown.prevent="selectLocation(location)"
-            >
-              {{ location.full_name }}
-            </li>
-          </ul>
-        </div>
-        <small v-if="selectedLocation" class="hint success">
-          Выбрана локация: {{ selectedLocation.name }}
-        </small>
-        <small v-else-if="locationSearch && !selectedLocation" class="hint">
-          Начните вводить название для поиска
-        </small>
-      </label>
-      
-      <label class="field" id="project-locatin-full-name">
-        <span>Полное название локации</span>
-        <input v-model="createForm.full_location_name" disabled type="text" maxlength="255" placeholder="Например: Москва, ул. Тверская, д. 1" />
-      </label>
-      
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" @click="closeCreateProjectForm">Отмена</button>
-        <button type="submit" class="btn btn-primary" id="project-create-btn" :disabled="loading">Создать</button>
-      </div>
-      <div v-if="error" class="alert alert-error">{{ error }}</div>
-    </form>
-  </div>
-</div>
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-    <!-- Модалка: Создание клиента -->
-    <div v-if="showCreateClientForm" class="modal-backdrop" @click.self="closeCreateClientForm">
-      <div class="modal modal-sm">
-        <h2>Новый клиент</h2>
-        <form @submit.prevent="submitCreateClient">
-          <label class="field">
-            <span>Название *</span>
-            <input v-model="clientForm.name" type="text" required maxlength="255" placeholder="Введите название клиента" />
-          </label>
-          <label class="field">
-            <span>Контакты</span>
-            <input v-model="clientForm.contacts" type="text" placeholder="Телефон, email" />
-          </label>
-          <label class="field">
-            <span>Адрес</span>
-            <input v-model="clientForm.address" type="text" placeholder="Адрес клиента" />
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-ghost" @click="closeCreateClientForm">Отмена</button>
-            <button type="submit" class="btn btn-primary" :disabled="loading">Создать</button>
-          </div>
-          <div v-if="error" class="alert alert-error">{{ error }}</div>
-        </form>
-      </div>
-    </div>
+.status-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
 
-    <!-- Модалка: Создание менеджера -->
-<!-- Модалка: Создание менеджера -->
-<div v-if="showCreateManagerForm" class="modal-backdrop" @click.self="closeCreateManagerForm">
-  <div class="modal modal-md">
-    <h2>Новый технический менеджер</h2>
-    <form @submit.prevent="submitCreateManager">
-      <!-- Основная информация -->
-      <div class="form-section">
-        <h3>Основная информация</h3>
-        
-        <label class="field required">
-          <span>Фамилия</span>
-          <input 
-            v-model="managerForm.first_name" 
-            type="text" 
-            required 
-            maxlength="255" 
-            placeholder="Введите Фамилию менеджера" 
-          />
-        </label>
+.status-item:hover:not(.disabled) {
+  background: #f7fafc;
+}
 
-                <label class="field required">
-          <span>Имя</span>
-          <input 
-            v-model="managerForm.last_name" 
-            type="text" 
-            required 
-            maxlength="255" 
-            placeholder="Введите Имя менеджера" 
-          />
-        </label>
+.status-item.active {
+  background: #ebf8ff;
+  border-color: #4299e1;
+}
 
-                <label class="field">
-          <span>Отчество</span>
-          <input 
-            v-model="managerForm.patronymic" 
-            type="text" 
-            required 
-            maxlength="255" 
-            placeholder="Введите Отчество менеджера" 
-          />
-        </label>
-        
-        <label class="field required">
-          <span>Username *</span>
-          <input 
-            v-model="managerForm.username" 
-            type="text" 
-            required 
-            maxlength="150" 
-            placeholder="Введите username (логин)" 
-          />
-          <small class="hint">Уникальное имя пользователя для входа</small>
-        </label>
-        
-        <label class="field required">
-          <span>Email *</span>
-          <input 
-            v-model="managerForm.email" 
-            type="email" 
-            required 
-            maxlength="254" 
-            placeholder="Введите email" 
-          />
-        </label>
-        
-        <label class="field required">
-          <span>Пароль *</span>
-          <input 
-            v-model="managerForm.password" 
-            type="password" 
-            required 
-            minlength="8" 
-            placeholder="Минимум 8 символов" 
-          />
-          <small class="hint">Пароль должен содержать минимум 8 символов</small>
-        </label>
-        
-        <label class="field required">
-          <span>Подтверждение пароля *</span>
-          <input 
-            v-model="managerForm.password2" 
-            type="password" 
-            required 
-            placeholder="Повторите пароль" 
-          />
-        </label>
-      </div>
+.status-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-      <!-- Контактная информация -->
-      <div class="form-section">
-        <h3>Контактная информация</h3>
-        
-        <label class="field">
-          <span>Телефон</span>
-          <input 
-            v-model="managerForm.phone" 
-            type="tel" 
-            maxlength="20" 
-            placeholder="+7 (123) 456-78-90" 
-          />
-        </label>
-        
-        <label class="field">
-          <span>Telegram</span>
-          <input 
-            v-model="managerForm.telegram" 
-            type="text" 
-            maxlength="100" 
-            placeholder="@username или ID" 
-          />
-        </label>
-        
-        <label class="field">
-          <span>WeChat</span>
-          <input 
-            v-model="managerForm.wechat" 
-            type="text" 
-            maxlength="100" 
-            placeholder="WeChat ID" 
-          />
-        </label>
-        
-        <label class="field">
-          <span>WhatsApp</span>
-          <input 
-            v-model="managerForm.whatsapp" 
-            type="text" 
-            maxlength="20" 
-            placeholder="+7 (123) 456-78-90" 
-          />
-        </label>
-      </div>
+.status-item-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
 
-      <!-- Дополнительные настройки -->
-      <div class="form-section">
-        <h3>Дополнительные настройки</h3>
-        
-        <div class="checkbox-group">
-          <label class="checkbox">
-            <input 
-              v-model="managerForm.is_active" 
-              type="checkbox" 
-            />
-            <span>Активен</span>
-          </label>
-          
-          <label class="checkbox">
-            <input 
-              v-model="managerForm.is_staff" 
-              type="checkbox" 
-            />
-            <span>Доступ в админку</span>
-          </label>
-        </div>
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
-      </div>
+.status-dot.all-dot {
+  background: #a0aec0;
+  border: 2px solid #a0aec0;
+}
 
-      <!-- Кнопки -->
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" @click="closeCreateManagerForm">Отмена</button>
-        <button type="submit" class="btn btn-primary" :disabled="loading">
-          {{ loading ? 'Создание...' : 'Создать менеджера' }}
-        </button>
-      </div>
-      
-      <div v-if="error" class="alert alert-error">{{ error }}</div>
-    </form>
-  </div>
-</div>
+.status-item.active .status-dot.all-dot {
+  border-color: #4299e1;
+}
 
-    <!-- Модалка: История изменений -->
-    <div v-if="showHistoryModal" class="modal-backdrop" @click.self="closeHistory">
-      <div class="modal modal-lg">
-        <div class="modal-header">
-          <h2>История изменений</h2>
-          <button class="btn btn-ghost btn-sm" @click="closeHistory">✕</button>
-        </div>
-        
-        <div v-if="historyProject" class="history-project-info">
-          <strong>{{ historyProject.name }}</strong>
-          <span class="muted">ID: {{ historyProject.id }}</span>
-        </div>
-        
-        <div v-if="historyLoading" class="state">Загрузка истории...</div>
-        
-        <div v-else-if="historyData.length === 0" class="state muted">
-          История изменений отсутствует
-        </div>
-        
-        <div v-else class="history-timeline">
-          <div 
-            v-for="(record, index) in historyData" 
-            :key="record.history_id"
-            class="history-item"
-            :class="getHistoryTypeClass(record.history_type)"
-          >
-            <div class="history-header">
-              <span class="history-type" :class="getHistoryTypeClass(record.history_type)">
-                {{ getHistoryTypeLabel(record.history_type) }}
-              </span>
-              <span class="history-date">{{ new Date(record.history_date).toLocaleString('ru-RU') }}</span>
-              <span class="history-user" v-if="record.history_user">
-                {{ record.history_user }}
-              </span>
-            </div>
-            
-            <div class="history-changes">
-              <!-- Создание -->
-              <div v-if="record.history_type === '+'" class="history-change">
-                <div class="history-change-title">Создан проект</div>
-                <div class="history-change-values">
-                  <div class="history-value">
-                    <span class="history-label">Название:</span>
-                    <span>{{ record.name }}</span>
-                  </div>
-                  <div class="history-value">
-                    <span class="history-label">Клиент:</span>
-                    <span>{{ getFieldDisplayValue('client_id', record.client_id) }}</span>
-                  </div>
-                  <div class="history-value">
-                    <span class="history-label">Статус:</span>
-                    <span>{{ getFieldDisplayValue('status_id', record.status_id) }}</span>
-                  </div>
-                  <div class="history-value" v-if="record.tech_manager_id">
-                    <span class="history-label">Менеджер:</span>
-                    <span>{{ getFieldDisplayValue('tech_manager_id', record.tech_manager_id) }}</span>
-                  </div>
-                  <div class="history-value" v-if="record.location_id">
-                    <span class="history-label">Локация:</span>
-                    <span>{{ getFieldDisplayValue('location_id', record.location_id) }}</span>
-                  </div>
-                  <div class="history-value" v-if="record.created_at">
-                    <span class="history-label">Дата создания:</span>
-                    <span>{{ getFieldDisplayValue('created_at', record.created_at) }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Изменение -->
-              <div v-else-if="record.history_type === '~'" class="history-change">
-                <div class="history-change-title">Изменены поля</div>
-                <div class="history-change-values">
-                  <template v-if="index < historyData.length - 1">
-                    <div 
-                      v-for="change in getChanges(record, historyData[index + 1])" 
-                      :key="change.field"
-                      class="history-change-item"
-                    >
-                      <div class="history-change-field">{{ change.label }}</div>
-                      <div class="history-change-diff">
-                        <span class="history-old-value">{{ change.oldValue }}</span>
-                        <span class="history-arrow">→</span>
-                        <span class="history-new-value">{{ change.newValue }}</span>
-                      </div>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="history-value">
-                      <span class="history-label">Название:</span>
-                      <span>{{ record.name }}</span>
-                    </div>
-                    <div class="history-value">
-                      <span class="history-label">Клиент:</span>
-                      <span>{{ getFieldDisplayValue('client_id', record.client_id) }}</span>
-                    </div>
-                    <div class="history-value">
-                      <span class="history-label">Статус:</span>
-                      <span>{{ getFieldDisplayValue('status_id', record.status_id) }}</span>
-                    </div>
-                  </template>
-                </div>
-              </div>
-              
-              <!-- Удаление -->
-              <div v-else-if="record.history_type === '-'" class="history-change">
-                <div class="history-change-title">Проект удален</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="modal-actions">
-          <button class="btn btn-primary" @click="closeHistory">Закрыть</button>
-        </div>
-      </div>
-    </div>
+.status-name {
+  font-size: 14px;
+  color: #2d3748;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-    <OnboardingMenu>
-      <!-- Все ваши кнопки запуска инструкций -->
-      <button 
-        class="onboarding-start-btn" 
-        @click="startTour"
-      >
-        <span class="btn-icon">📁</span>
-        Создать проект
-        <span class="btn-glow"></span>
-      </button>
-    </OnboardingMenu>
-  </section>
-</template>
+.status-item.active .status-name {
+  font-weight: 500;
+  color: #2b6cb0;
+}
+
+.status-count-badge {
+  background: #edf2f7;
+  color: #4a5568;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.status-item.active .status-count-badge {
+  background: #bee3f8;
+  color: #2b6cb0;
+}
+
+.status-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #a0aec0;
+  text-decoration: none;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.status-link:hover {
+  background: #e2e8f0;
+  color: #4299e1;
+}
+
+.status-item.active .status-link {
+  color: #4299e1;
+}
+
+.status-item.active .status-link:hover {
+  background: #bee3f8;
+}
+
+.link-icon {
+  font-size: 14px;
+}
+
+.sidebar-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.sidebar-action {
+  width: 100%;
+  justify-content: center;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Фильтр информация */
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ebf8ff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-info-count {
+  color: #4a5568;
+  font-size: 14px;
+}
+
+/* Таблица */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f7fafc;
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 13px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+  color: #2d3748;
+}
+
+.table tr.clickable {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.table tr.clickable:hover {
+  background: #f7fafc;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.actions .btn {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-ghost:hover {
+  background: #f7fafc;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.btn-primary {
+  background: #4299e1;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #3182ce;
+}
+
+.muted {
+  color: #718096;
+}
+
+.state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #4a5568;
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+  .status-sidebar {
+    flex: 0 0 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .projects-layout {
+    flex-direction: column;
+  }
+
+  .status-sidebar {
+    flex: 1 1 auto;
+    position: static;
+    max-height: none;
+    padding: 12px;
+  }
+
+  .status-item {
+    padding: 6px 10px;
+  }
+
+  .status-name {
+    font-size: 13px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+</style>
 
 <style scoped>
 /* Стили для истории */
