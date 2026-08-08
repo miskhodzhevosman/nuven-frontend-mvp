@@ -20,47 +20,47 @@
           <span class="sidebar-count">{{ statusesWithCount.length }}</span>
         </div>
         
-        <div class="status-list">
-          <!-- Все проекты -->
-          <div 
-            class="status-item"
-            :class="{ active: !selectedStatusId }"
-            @click="clearFilters"
-          >
-            <div class="status-item-content">
-              <span class="status-dot all-dot"></span>
-              <span class="status-name">Все проекты</span>
-              <span class="status-count-badge">{{ projects.length }}</span>
-            </div>
-          </div>
+<div class="status-list">
+  <!-- Все проекты -->
+  <div 
+    class="status-item"
+    :class="{ active: !selectedStatusId }"
+    @click="clearFilters"
+  >
+    <div class="status-item-content">
+      <span class="status-dot all-dot"></span>
+      <span class="status-name">Все проекты</span>
+      <span class="status-count-badge">{{ projects.length }}</span>
+    </div>
+  </div>
 
-          <!-- Статусы -->
-          <div 
-            v-for="status in statusesWithCount" 
-            :key="status.id"
-            class="status-item"
-            :class="{ 
-              active: selectedStatusId === status.id,
-              disabled: status.count === 0 
-            }"
-            @click="status.count > 0 && selectStatus(status.id)"
-          >
-            <div class="status-item-content">
-              <span class="status-dot" :style="{ backgroundColor: status.color || '#16181C' }"></span>
-              <span class="status-name">{{ status.name }}</span>
-              <span class="status-count-badge">{{ status.count }}</span>
-            </div>
-            <!-- Ссылка на страницу статусов -->
-            <router-link 
-              :to="{ name: 'project-statuses', params: { id: status.id } }"
-              class="status-link"
-              title="Посмотреть все проекты в этом статусе"
-              @click.stop
-            >
-              <span class="link-icon">📊</span>
-            </router-link>
-          </div>
-        </div>
+  <!-- Статусы -->
+  <div 
+    v-for="status in statusesWithCount" 
+    :key="status.id"
+    class="status-item"
+    :class="{ 
+      active: selectedStatusId === status.id,
+      disabled: status.count === 0 
+    }"
+    @click="status.count > 0 && selectStatus(status.id)"
+  >
+    <div class="status-item-content">
+      <span class="status-dot" :style="{ backgroundColor: status.color || '#16181C' }"></span>
+      <span class="status-name">{{ status.name }}</span>
+      <span class="status-count-badge">{{ status.count }}</span>
+    </div>
+    <!-- Ссылка на страницу со списком проектов по статусу -->
+    <router-link 
+      :to="{ name: 'projects-by-status', params: { statusId: status.id } }"
+      class="status-link"
+      title="Посмотреть все проекты в этом статусе"
+      @click.stop
+    >
+      <span class="link-icon">📊</span>
+    </router-link>
+  </div>
+</div>
 
         <!-- Кнопка "Управление статусами" -->
         <div class="sidebar-footer">
@@ -120,7 +120,7 @@
                     📜
                   </button>
                   <router-link 
-                    :to="{ name: 'project-statuses', params: { id: p.id } }"
+                    :to="{ name: 'project-statuses', params: { hash_id: p.hash_id } }"
                     class="btn btn-ghost btn-sm"
                     title="Статусы проекта"
                     @click.stop

@@ -42,7 +42,7 @@ const routes = [
       },
       // 👇 НОВЫЙ МАРШРУТ ДЛЯ СТРАНИЦЫ СТАТУСОВ ПРОЕКТА
       {
-        path: 'projects/:id/statuses',
+        path: 'projects/:hash_id/statuses',
         name: 'project-statuses',
         component: () => import('@/modules/projects/views/ProjectStatusesPage.vue'),
         props: true,
