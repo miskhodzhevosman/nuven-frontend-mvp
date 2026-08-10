@@ -13,6 +13,33 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['open', 'history'])
+
+// Генерируем ссылку для отслеживания
+const getTrackLink = (hashid) => {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/track/${hashid}`
+}
+
+// Копируем ссылку
+const copyTrackLink = async (hashid, event) => {
+  event.stopPropagation()
+  const link = getTrackLink(hashid)
+  
+  try {
+    await navigator.clipboard.writeText(link)
+    // Можно показать уведомление
+    alert('Ссылка скопирована!')
+  } catch (err) {
+    // fallback
+    const textarea = document.createElement('textarea')
+    textarea.value = link
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    alert('Ссылка скопирована!')
+  }
+}
 </script>
 
 <template>
@@ -26,11 +53,12 @@ const emit = defineEmits(['open', 'history'])
           <th>Статус</th>
           <th>Локация</th>
           <th>Создан</th>
+          <th>Ссылка для клиента</th>
           <th class="actions"></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="p in projects" :key="p.id" @click="emit('open', p.id)" class="clickable">
+        <tr v-for="p in projects" :key="p.id">
           <td>{{ p.id }}</td>
           <td>{{ p.name }}</td>
           <td>{{ store.clientName(p.client) }}</td>
@@ -41,6 +69,18 @@ const emit = defineEmits(['open', 'history'])
           </td>
           <td>{{ p.full_location_name || '—' }}</td>
           <td>{{ p.created_at?.slice(0, 10) }}</td>
+          <td>
+            <div class="track-link-cell">
+              <code class="hash-preview">{{ p.hashid }}</code>
+              <button 
+                class="btn btn-ghost btn-sm btn-copy" 
+                @click.stop="copyTrackLink(p.hashid, $event)"
+                title="Скопировать ссылку для клиента"
+              >
+                📋
+              </button>
+            </div>
+          </td>
           <td class="actions">
             <button class="btn btn-ghost btn-sm" @click.stop="emit('open', p.id)">Открыть</button>
             <button class="btn btn-ghost btn-sm" @click.stop="emit('history', p)" title="История изменений">
@@ -53,8 +93,45 @@ const emit = defineEmits(['open', 'history'])
   </div>
 </template>
 
-
 <style scoped>
+.track-link-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hash-preview {
+  font-family: monospace;
+  font-size: 12px;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #666;
+  letter-spacing: 0.5px;
+}
+
+.btn-copy {
+  padding: 2px 6px;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.btn-copy:hover {
+  opacity: 1;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: #f9f9f9;
+}
+
+
+
+
 /* ============================================
    ТАБЛИЦА ПРОЕКТОВ
    ============================================ */

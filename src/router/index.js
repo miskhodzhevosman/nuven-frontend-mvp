@@ -9,6 +9,15 @@ const routes = [
     component: () => import('@/views/Login.vue'),
     meta: { requiresGuest: true }
   },
+  // ⭐ Публичный маршрут - НА ВЕРХНЕМ УРОВНЕ (вне DashboardLayout)
+  {
+    path: '/track/:hashid',
+    name: 'public-project-status',
+    component: () => import('@/modules/projects/views/PublicProjectStatus.vue'),
+    meta: { 
+      requiresAuth: false
+    }
+  },
   {
     path: '/',
     component: DashboardLayout,
@@ -34,11 +43,12 @@ const routes = [
         meta: { title: 'Проекты' }
       },
       {
-      path: '/projects/:id',
-      name: 'project-detail',
-      component: () => import('@/modules/projects/views/DetailView.vue'),
-      props: true,
-    },
+        path: '/projects/:id',
+        name: 'project-detail',
+        component: () => import('@/modules/projects/views/DetailView.vue'),
+        props: true,
+        meta: { requiresAuth: true }
+      },
       {
         path: 'finance',
         name: 'finance',
@@ -46,40 +56,46 @@ const routes = [
         meta: { title: 'Финансы' }
       },
       {
-    path: '/users',
-    name: 'Users',
-    component: () => import('@/modules/users/views/UsersList.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/users/create',
-    name: 'UserCreate',
-    component: () => import('@/modules/users/views/UserCreate.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/users/:id/edit',
-    name: 'UserEdit',
-    component: () => import('@/modules/users/views/UserEdit.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/profile',
-    name: 'UserProfile',
-    component: () => import('@/modules/users/views/UserProfile.vue'),
-    meta: { requiresAuth: true }
-  }
+        path: '/users',
+        name: 'Users',
+        component: () => import('@/modules/users/views/UsersList.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: '/users/create',
+        name: 'UserCreate',
+        component: () => import('@/modules/users/views/UserCreate.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
+        path: '/users/:id/edit',
+        name: 'UserEdit',
+        component: () => import('@/modules/users/views/UserEdit.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
+        path: '/profile',
+        name: 'UserProfile',
+        component: () => import('@/modules/users/views/UserProfile.vue'),
+        meta: { requiresAuth: true }
+      }
     ]
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes // <-- Убедись, что здесь именно этот массив
+  routes
 })
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('access_token')
+  
+  // Для публичных страниц пропускаем проверку
+  if (to.meta.requiresAuth === false) {
+    next()
+    return
+  }
   
   if (to.meta.requiresAuth && !token) {
     next('/login')
