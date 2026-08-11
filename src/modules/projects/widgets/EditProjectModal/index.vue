@@ -3,6 +3,29 @@
   <div v-if="modelValue" class="modal-backdrop" @click.self="close">
     <div class="modal">
       <h2>Редактировать проект</h2>
+      
+      <!-- === ДЕБАГ-ПАНЕЛЬ === -->
+      <div v-if="isDebugMode" class="debug-panel">
+        <details open>
+          <summary>🐛 Debug: Переданные данные</summary>
+          <div class="debug-content">
+            <div><strong>props.project:</strong></div>
+            <pre>{{ JSON.stringify(props.project, null, 2) }}</pre>
+            
+            <div style="margin-top: 8px;"><strong>props.projectId:</strong> {{ props.projectId }}</div>
+            <div><strong>props.modelValue:</strong> {{ props.modelValue }}</div>
+            
+            <div style="margin-top: 8px;"><strong>form (реактивный):</strong></div>
+            <pre>{{ JSON.stringify(form, null, 2) }}</pre>
+            
+            <div style="margin-top: 8px;"><strong>selectedClient:</strong> {{ selectedClient ? selectedClient.name : 'null' }}</div>
+            <div><strong>selectedManager:</strong> {{ selectedManager ? (selectedManager.full_name || selectedManager.name) : 'null' }}</div>
+            <div><strong>selectedLocation:</strong> {{ selectedLocation ? selectedLocation.name : 'null' }}</div>
+          </div>
+        </details>
+      </div>
+      
+      <!-- Остальная форма -->
       <form ref="formRef" @submit.prevent="submit">
         <!-- Название проекта -->
         <label class="field" id="project-name-field">
@@ -21,7 +44,7 @@
           <span>Дата создания</span>
           <input 
             v-model="form.created_at" 
-            type="datetime-local" 
+            type="date" 
             @focus="$event.target.showPicker?.()"
             @click="$event.target.showPicker?.()"
           />
@@ -210,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useProjectsStore } from '../../store'
 import { storeToRefs } from 'pinia'
 
@@ -233,6 +256,15 @@ const emit = defineEmits(['update:modelValue', 'updated'])
 
 const store = useProjectsStore()
 const { loading, error } = storeToRefs(store)
+
+// === ДЕБАГ-РЕЖИМ ===
+// Включить/выключить через URL параметр ?debug=true
+const isDebugMode = computed(() => {
+  return new URLSearchParams(window.location.search).get('debug') === 'true'
+})
+
+// Или можно включить через переменную окружения
+// const isDebugMode = import.meta.env.DEV
 
 const formRef = ref(null)
 const form = reactive({
@@ -526,59 +558,66 @@ function resetForm() {
   isManagerLoading.value = false
 }
 
+// === ДЕБАГ-ЛОГИ ===
+function debugLog(message, data) {
+  if (isDebugMode.value) {
+    console.log(`🐛 [EditProjectModal] ${message}`, data)
+  }
+}
+
 // --- Load project data when modal opens ---
 watch(() => props.modelValue, (open) => {
   if (open && props.project) {
     const p = props.project
     
+    // Название - без изменений
     form.name = p.name || ''
-    form.client = p.client || ''
-    form.status = p.status || ''
-    form.tech_manager = p.tech_manager || ''
-    form.location = p.location || ''
+    
+    // ⚠️ Берем ID из объектов
+    form.client = p.client?.id || ''      // вместо p.client
+    form.status = p.status?.id || ''      // вместо p.status
+    form.tech_manager = p.tech_manager?.id || ''  // вместо p.tech_manager
+    form.location = p.location?.id || ''  // вместо p.location
     form.created_at = p.created_at ? p.created_at.slice(0, 16) : ''
     
-    // Загружаем клиента
+    // Для автокомплита - используем объекты напрямую
     if (p.client) {
-      const client = store.clients.find(c => c.id === p.client)
-      if (client) {
-        selectedClient.value = client
-        clientSearch.value = client.name
-      }
-    } else {
-      clientSearch.value = ''
-      selectedClient.value = null
+      selectedClient.value = p.client
+      clientSearch.value = p.client.name
     }
     
-    // Загружаем менеджера
     if (p.tech_manager) {
-      const manager = store.managers.find(m => m.id === p.tech_manager)
-      if (manager) {
-        selectedManager.value = manager
-        managerSearch.value = manager.full_name || manager.name
-      }
-    } else {
-      managerSearch.value = ''
-      selectedManager.value = null
+      selectedManager.value = p.tech_manager
+      managerSearch.value = p.tech_manager.full_name || p.tech_manager.username
     }
     
-    // Загружаем локацию
     if (p.location) {
-      const loc = store.locations.find(l => l.id === p.location)
-      if (loc) {
-        selectedLocation.value = loc
-        locationSearch.value = loc.name
-      }
-    } else {
-      locationSearch.value = ''
-      selectedLocation.value = null
+      selectedLocation.value = p.location
+      locationSearch.value = p.location.name
     }
   }
 }, { immediate: true })
 
+// Дополнительный watch для отслеживания изменений проекта
+watch(() => props.project, (newProject, oldProject) => {
+  if (props.modelValue && newProject) {
+    debugLog('🔄 Проект изменился:', {
+      old: oldProject?.name,
+      new: newProject?.name,
+      oldId: oldProject?.id,
+      newId: newProject?.id
+    })
+  }
+}, { deep: true })
+
 // --- Submit ---
 async function submit() {
-  if (!formRef.value?.checkValidity()) return
+  debugLog('📤 Отправка формы...')
+  
+  if (!formRef.value?.checkValidity()) {
+    debugLog('❌ Форма невалидна')
+    return
+  }
   
   const payload = {
     name: form.name,
@@ -589,22 +628,36 @@ async function submit() {
     created_at: form.created_at || null,
   }
   
+  debugLog('📤 Payload для отправки:', payload)
+  
   try {
     await store.updateProject(props.projectId, payload)
     await store.fetchProject(props.projectId)
+    debugLog('✅ Проект обновлен!')
     emit('updated')
     close()
   } catch (e) {
-    console.error('Failed to update project:', e)
+    console.error('❌ Failed to update project:', e)
+    debugLog('❌ Ошибка обновления:', e)
   }
 }
 
 function close() {
+  debugLog('🔒 Закрытие модалки')
   emit('update:modelValue', false)
   resetForm()
   showCreateClientForm.value = false
   showCreateManagerForm.value = false
 }
+
+// --- Mounted ---
+onMounted(() => {
+  if (isDebugMode.value) {
+    console.log('🐛 [EditProjectModal] Дебаг-режим включен')
+    console.log('📊 Текущий проект:', props.project)
+    console.log('📊 Текущий projectId:', props.projectId)
+  }
+})
 </script>
 
 <style scoped>
@@ -645,6 +698,64 @@ function close() {
 
 .modal-sm {
   max-width: 400px;
+}
+
+/* ============================================
+   ДЕБАГ-ПАНЕЛЬ
+   ============================================ */
+.debug-panel {
+  background: #1a1a1a;
+  color: #00ff41;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.debug-panel details {
+  color: #00ff41;
+}
+
+.debug-panel summary {
+  cursor: pointer;
+  color: #00ff41;
+  font-weight: bold;
+  padding: 4px 0;
+}
+
+.debug-panel summary:hover {
+  color: #66ff88;
+}
+
+.debug-content {
+  padding: 8px 0 4px 12px;
+  border-left: 2px solid #00ff41;
+  margin-top: 8px;
+}
+
+.debug-content div {
+  margin-bottom: 4px;
+  color: #aaffaa;
+}
+
+.debug-content strong {
+  color: #66ff88;
+}
+
+.debug-content pre {
+  background: #0a0a0a;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 4px 0;
+  overflow-x: auto;
+  color: #00ff41;
+  border: 1px solid #2a2a2a;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 /* ============================================
