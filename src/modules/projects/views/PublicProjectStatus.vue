@@ -215,9 +215,9 @@ onMounted(() => {
   const hashid = route.params.hashid
   if (hashid) {
     fetchProjectStatus(hashid)
-    refreshInterval = setInterval(() => {
-      fetchProjectStatus(hashid)
-    }, 30000)
+    // refreshInterval = setInterval(() => {
+    //   fetchProjectStatus(hashid)
+    // }, 30000)
   } else {
     error.value = 'Не указан идентификатор заказа'
     loading.value = false
