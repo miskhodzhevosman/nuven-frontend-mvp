@@ -1,6 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '../store'
+import { ref } from 'vue'
 
 const store = useProjectsStore()
 const { statuses } = storeToRefs(store)
@@ -13,6 +14,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['open', 'history'])
+
+// Состояние для уведомлений о копировании
+const copiedStates = ref({})
 
 // Генерируем ссылку для отслеживания
 const getTrackLink = (hashid) => {
@@ -27,8 +31,7 @@ const copyTrackLink = async (hashid, event) => {
   
   try {
     await navigator.clipboard.writeText(link)
-    // Можно показать уведомление
-    alert('Ссылка скопирована!')
+    showCopiedFeedback(hashid)
   } catch (err) {
     // fallback
     const textarea = document.createElement('textarea')
@@ -37,8 +40,19 @@ const copyTrackLink = async (hashid, event) => {
     textarea.select()
     document.execCommand('copy')
     document.body.removeChild(textarea)
-    alert('Ссылка скопирована!')
+    showCopiedFeedback(hashid)
   }
+}
+
+// Показываем уведомление о копировании
+const showCopiedFeedback = (hashid) => {
+  // Устанавливаем состояние для конкретного проекта
+  copiedStates.value[hashid] = true
+  
+  // Автоматически скрываем через 2 секунды
+  setTimeout(() => {
+    copiedStates.value[hashid] = false
+  }, 2000)
 }
 </script>
 
@@ -53,7 +67,7 @@ const copyTrackLink = async (hashid, event) => {
           <th>Статус</th>
           <th>Локация</th>
           <th>Создан</th>
-          <th>Ссылка для клиента</th>
+          <th></th>
           <th class="actions"></th>
         </tr>
       </thead>
@@ -71,13 +85,23 @@ const copyTrackLink = async (hashid, event) => {
           <td>{{ p.created_at?.slice(0, 10) }}</td>
           <td>
             <div class="track-link-cell">
-              <code class="hash-preview">{{ p.hashid }}</code>
               <button 
                 class="btn btn-ghost btn-sm btn-copy" 
                 @click.stop="copyTrackLink(p.hashid, $event)"
+                :class="{ 'copied': copiedStates[p.hashid] }"
                 title="Скопировать ссылку для клиента"
               >
-                📋
+                <span class="btn-content">
+                  <svg v-if="!copiedStates[p.hashid]" class="icon-share" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <polyline points="16 6 12 2 8 6"/>
+                    <line x1="12" y1="2" x2="12" y2="15"/>
+                  </svg>
+                  <svg v-else class="icon-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  {{ copiedStates[p.hashid] ? 'Скопировано!' : 'Поделиться проектом' }}
+                </span>
               </button>
             </div>
           </td>
@@ -94,43 +118,77 @@ const copyTrackLink = async (hashid, event) => {
 </template>
 
 <style scoped>
+/* ============================================
+   КНОПКА ПОДЕЛИТЬСЯ ПРОЕКТОМ
+   ============================================ */
 .track-link-cell {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.hash-preview {
-  font-family: monospace;
-  font-size: 12px;
-  background: #f5f5f5;
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #666;
-  letter-spacing: 0.5px;
-}
-
 .btn-copy {
-  padding: 2px 6px;
-  font-size: 14px;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.btn-copy:hover {
-  opacity: 1;
-}
-
-.clickable {
+  position: relative;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: #F8F9FA;
+  color: #2C3E50;
   cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  min-width: 140px;
+  justify-content: center;
 }
 
-.clickable:hover {
-  background: #f9f9f9;
+.btn-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
 }
 
+.btn-copy .icon-share,
+.btn-copy .icon-check {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
 
+.btn-copy:hover:not(.copied) {
+  background: #E8ECF0;
+  border-color: rgba(44, 62, 80, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
 
+.btn-copy:active:not(.copied) {
+  transform: translateY(0);
+}
+
+.btn-copy.copied {
+  background: #10B981;
+  border-color: #10B981;
+  color: white;
+  transform: scale(0.95);
+}
+
+.btn-copy.copied .icon-check {
+  animation: checkmark 0.4s ease;
+}
+
+@keyframes checkmark {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 
 /* ============================================
    ТАБЛИЦА ПРОЕКТОВ
