@@ -26,7 +26,7 @@ const getTrackLink = (hashid) => {
 
 // Копируем ссылку
 const copyTrackLink = async (hashid, event) => {
-  event.stopPropagation()
+  event.stopPropagation() // Останавливаем всплытие, чтобы не открывать проект
   const link = getTrackLink(hashid)
   
   try {
@@ -46,13 +46,16 @@ const copyTrackLink = async (hashid, event) => {
 
 // Показываем уведомление о копировании
 const showCopiedFeedback = (hashid) => {
-  // Устанавливаем состояние для конкретного проекта
   copiedStates.value[hashid] = true
   
-  // Автоматически скрываем через 2 секунды
   setTimeout(() => {
     copiedStates.value[hashid] = false
   }, 2000)
+}
+
+// Открываем проект по клику на строку
+const openProject = (projectId) => {
+  emit('open', projectId)
 }
 </script>
 
@@ -72,7 +75,12 @@ const showCopiedFeedback = (hashid) => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="p in projects" :key="p.id">
+        <tr 
+          v-for="p in projects" 
+          :key="p.id"
+          class="project-row"
+          @click="openProject(p.id)"
+        >
           <td>{{ p.id }}</td>
           <td>{{ p.name }}</td>
           <td>{{ store.clientName(p.client) }}</td>
@@ -106,7 +114,7 @@ const showCopiedFeedback = (hashid) => {
             </div>
           </td>
           <td class="actions">
-            <button class="btn btn-ghost btn-sm" @click.stop="emit('open', p.id)">Открыть</button>
+            <button class="btn btn-ghost btn-sm" @click.stop="openProject(p.id)">Открыть</button>
             <button class="btn btn-ghost btn-sm" @click.stop="emit('history', p)" title="История изменений">
               📜
             </button>
@@ -118,6 +126,24 @@ const showCopiedFeedback = (hashid) => {
 </template>
 
 <style scoped>
+/* ============================================
+   СТРОКА ТАБЛИЦЫ - КЛИКАБЕЛЬНАЯ
+   ============================================ */
+.project-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.project-row:hover td {
+  background: rgba(44, 62, 80, 0.03);
+}
+
+/* Кнопки в строке не должны перехватывать клик */
+.project-row .btn {
+  position: relative;
+  z-index: 1;
+}
+
 /* ============================================
    КНОПКА ПОДЕЛИТЬСЯ ПРОЕКТОМ
    ============================================ */
@@ -227,14 +253,6 @@ const showCopiedFeedback = (hashid) => {
 
 .table tr {
   transition: background 0.15s;
-}
-
-.table tr:hover td {
-  background: rgba(44, 62, 80, 0.03);
-}
-
-.table .clickable {
-  cursor: pointer;
 }
 
 .actions {
