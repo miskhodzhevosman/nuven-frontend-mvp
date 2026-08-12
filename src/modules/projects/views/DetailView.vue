@@ -14,50 +14,97 @@
     </div>
     <div v-if="loading && !currentProject" class="state">Загрузка…</div>
 
-    <template v-if="currentProject">
-      <h1>{{ currentProject.name }}</h1>
+<template v-if="currentProject">
 
-      <!-- Виджет: Информация о проекте -->
-      <ProjectInfo 
-        :project-id="projectId" 
-        @edit="openEditProject"
-      />
+  <h1>{{ currentProject.name }}</h1>
 
-      <!-- Виджет: Позиции проекта -->
-      <ProjectItems
-        :project-id="projectId"
-        @refresh="refreshAllData"
-        @payFactory="openPayFactory"
-      />
+  <!-- Табы -->
+  <div class="project-tabs">
+    <button
+      class="project-tab"
+      :class="{ active: activeTab === 'overview' }"
+      @click="activeTab = 'overview'"
+    >
+      Обзор
+    </button>
 
-      <div class="main-layout">
-        <div class="left-column">
-          <!-- Виджет: Проектные расходы -->
-          <ProjectExpenses
-            :project-id="projectId"
-            @refresh="refreshAllData"
-          />
+    <button
+      class="project-tab"
+      :class="{ active: activeTab === 'files' }"
+      @click="activeTab = 'files'"
+    >
+      Файлы
+    </button>
+  </div>
 
-          <!-- Виджет: Оплаты клиентов -->
-          <ClientPayments
-            :project-id="projectId"
-            @refresh="refreshAllData"
-          />
+  <!-- ===================== -->
+  <!-- ОБЗОР -->
+  <!-- ===================== -->
 
-          <!-- Виджет: Оплаты фабрикам -->
-          <FactoryPayments
-            ref="factoryPaymentsRef"
-            :project-id="projectId"
-            @refresh="refreshAllData"
-          />
-        </div>
+  <template v-if="activeTab === 'overview'">
 
-        <!-- Правая колонка - Финансовый отчет -->
-        <div class="right-column">
-          <ProjectReport :project-id="projectId" />
-        </div>
+    <!-- Виджет: Информация о проекте -->
+    <ProjectInfo
+      :project-id="projectId"
+      @edit="openEditProject"
+    />
+
+    <!-- Виджет: Позиции проекта -->
+    <ProjectItems
+      :project-id="projectId"
+      @refresh="refreshAllData"
+      @payFactory="openPayFactory"
+    />
+
+    <div class="main-layout">
+
+      <div class="left-column">
+
+        <!-- Проектные расходы -->
+        <ProjectExpenses
+          :project-id="projectId"
+          @refresh="refreshAllData"
+        />
+
+        <!-- Оплаты клиентов -->
+        <ClientPayments
+          :project-id="projectId"
+          @refresh="refreshAllData"
+        />
+
+        <!-- Оплаты фабрикам -->
+        <FactoryPayments
+          ref="factoryPaymentsRef"
+          :project-id="projectId"
+          @refresh="refreshAllData"
+        />
+
       </div>
-    </template>
+
+      <!-- Финансовый отчет -->
+      <div class="right-column">
+        <ProjectReport
+          :project-id="projectId"
+        />
+      </div>
+
+    </div>
+
+  </template>
+
+  <!-- ===================== -->
+  <!-- ФАЙЛЫ -->
+  <!-- ===================== -->
+
+  <template v-else-if="activeTab === 'files'">
+
+    <ProjectFiles
+      :project-id="projectId"
+    />
+
+  </template>
+
+</template>
 
     <!-- Модалка: Оплата фабрике (из supply) -->
     <FactoryPaymentModal
@@ -174,6 +221,8 @@ import ProjectExpenses from '@/modules/projects/widgets/ProjectExpenses/index.vu
 import NomenclatureModal from '@/modules/supply/widgets/NomenclatureFormModal/index.vue'
 import FactoryFormModal from '@/modules/supply/widgets/FactoryFormModal/index.vue'
 
+import ProjectFiles from '../widgets/ProjectFiles/index.vue'
+
 // Компоненты
 import OnboardingMenu from '@/components/OnboardingMenu.vue'
 
@@ -192,6 +241,8 @@ const route = useRoute()
 const router = useRouter()
 const store = useProjectsStore()
 const financeStore = useFinanceStore()
+
+const activeTab = ref('overview')
 
 // --- Store refs ---
 const { 
@@ -341,5 +392,46 @@ onMounted(loadAll)
 </script>
 
 <style scoped>
-/* ... ваши стили ... */
+.project-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 24px 0;
+  padding: 4px;
+
+  width: fit-content;
+
+  background: var(--card-bg, #f3f4f6);
+  border-radius: 10px;
+}
+
+.project-tab {
+  border: none;
+  background: transparent;
+
+  padding: 9px 18px;
+
+  border-radius: 7px;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  color: inherit;
+  opacity: 0.65;
+
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.project-tab:hover {
+  opacity: 1;
+}
+
+.project-tab.active {
+  background: var(--active-tab-bg, #fff);
+  opacity: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
 </style>

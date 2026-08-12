@@ -148,6 +148,30 @@ export const projectsApi = {
   async deleteFactory(id) {
     await api.delete(`${SUPPLIES}/factories/${id}/`)
   },
+  // ---- Project files ----
+
+async getProjectFiles(projectId) {
+  const res = await api.get(`${CRM}/projects/${projectId}/files/`)
+  return res.data
+},
+
+async uploadProjectFile(projectId, data) {
+  const res = await api.post(
+    `${CRM}/projects/${projectId}/files/`,
+    data,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  )
+
+  return res.data
+},
+
+async deleteProjectFile(projectId, fileId) {
+  await api.delete(`${CRM}/projects/${projectId}/files/${fileId}/`)
+},
 
   // ---- Supplies: locations ----
   async getLocations(params = {}) {

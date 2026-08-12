@@ -15,6 +15,8 @@ export const useProjectsStore = defineStore('projects', {
     factories: [],
     locations: [],
 
+    projectFiles: [],
+
     clientPayments: [],
     factoryPayments: [],
     projectExpenses: [],
@@ -59,6 +61,81 @@ export const useProjectsStore = defineStore('projects', {
     setError(e) {
       this.error = e?.response?.data ?? e?.message ?? String(e)
     },
+    // ---- Project files ----
+
+async fetchProjectFiles(projectId) {
+  try {
+    const data = await projectsApi.getProjectFiles(projectId)
+
+    this.projectFiles = data.results ?? data ?? []
+
+    return this.projectFiles
+  } catch (e) {
+    this.setError(e)
+    throw e
+  }
+},
+
+async uploadProjectFile(
+  projectId,
+  file,
+  name = '',
+  description = ''
+) {
+  this.loading = true
+  this.error = null
+
+  try {
+    const formData = new FormData()
+
+    formData.append('file', file)
+
+    if (name) {
+      formData.append('name', name)
+    }
+
+    if (description) {
+      formData.append('description', description)
+    }
+
+    const created = await projectsApi.uploadProjectFile(
+      projectId,
+      formData
+    )
+
+    this.projectFiles.unshift(created)
+
+    return created
+  } catch (e) {
+    this.setError(e)
+    throw e
+  } finally {
+    this.loading = false
+  }
+},
+
+async deleteProjectFile(projectId, fileId) {
+  this.loading = true
+  this.error = null
+
+  try {
+    await projectsApi.deleteProjectFile(
+      projectId,
+      fileId
+    )
+
+    this.projectFiles = this.projectFiles.filter(
+      file => file.id !== fileId
+    )
+
+    return true
+  } catch (e) {
+    this.setError(e)
+    throw e
+  } finally {
+    this.loading = false
+  }
+},
 
     // ---- Projects ----
     async fetchProjects(params = {}) {
