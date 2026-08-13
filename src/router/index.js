@@ -55,6 +55,46 @@ const routes = [
         component: () => import('@/modules/finance/views/FinanceView.vue'),
         meta: { title: 'Финансы' }
       },
+      // ========== НОВЫЕ МАРШРУТЫ ДЛЯ ОПЕРАЦИОННЫХ РАСХОДОВ ==========
+      {
+        path: 'finance/operation-expenses',
+        name: 'operation-expenses',
+        component: () => import('@/modules/finance/views/OperationExpensesList.vue'),
+        meta: { 
+          title: 'Операционные расходы',
+          requiresAuth: true 
+        }
+      },
+      {
+        path: 'finance/operation-expenses/create',
+        name: 'operation-expense-create',
+        component: () => import('@/modules/finance/views/OperationExpenseCreate.vue'),
+        meta: { 
+          title: 'Добавить операционный расход',
+          requiresAuth: true 
+        }
+      },
+      {
+        path: 'finance/operation-expenses/:id/edit',
+        name: 'operation-expense-edit',
+        component: () => import('@/modules/finance/views/OperationExpenseCreate.vue'),
+        props: true,
+        meta: { 
+          title: 'Редактировать операционный расход',
+          requiresAuth: true 
+        }
+      },
+      {
+        path: 'finance/operation-expenses/:id',
+        name: 'operation-expense-detail',
+        component: () => import('@/modules/finance/views/OperationExpenseDetail.vue'),
+        props: true,
+        meta: { 
+          title: 'Детали операционного расхода',
+          requiresAuth: true 
+        }
+      },
+      // ========== КОНЕЦ НОВЫХ МАРШРУТОВ ==========
       {
         path: '/users',
         name: 'Users',

@@ -20,12 +20,18 @@
           💰 Финансы
         </router-link>
 
+        <!-- ===== НОВАЯ ССЫЛКА НА ОПЕРАЦИОННЫЕ РАСХОДЫ ===== -->
+        <router-link to="/finance/operation-expenses" class="nav-item">
+          💳 Операционные расходы
+        </router-link>
+        <!-- ===== КОНЕЦ НОВОЙ ССЫЛКИ ===== -->
+
         <router-link to="/profile" class="nav-item">
-          Профиль
+          👤 Профиль
         </router-link>
         
         <router-link to="/users" class="nav-item">
-          Пользователи
+          👥 Пользователи
         </router-link>
       </nav>
     </aside>
