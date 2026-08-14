@@ -392,46 +392,416 @@ onMounted(loadAll)
 </script>
 
 <style scoped>
+/* ============================================
+   ОСНОВНЫЕ СТИЛИ СТРАНИЦЫ ПРОЕКТА
+   Белая схема, полная ширина
+   ============================================ */
+
+.page {
+  padding: 20px 24px 32px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  background: #F8F9FA;
+}
+
+/* ============================================
+   TOPBAR - Верхняя панель с кнопками
+   ============================================ */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 14px 24px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid rgba(44, 62, 80, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+
+.topbar .btn {
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #5B6778;
+}
+
+.btn-ghost:hover {
+  background: #F0F2F5;
+  color: #1A1A1A;
+}
+
+.btn-primary {
+  background: #2C3E50;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.12);
+}
+
+.btn-primary:hover {
+  background: #1a2a3a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.2);
+}
+
+/* ============================================
+   ALERTS & STATES
+   ============================================ */
+.alert {
+  padding: 14px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.alert-error {
+  background: #FEF2F2;
+  border-left: 4px solid #DC2626;
+  color: #991B1B;
+}
+
+.alert-error strong {
+  color: #7F1D1D;
+}
+
+.state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #5B6778;
+  font-size: 16px;
+}
+
+/* ============================================
+   ЗАГОЛОВОК ПРОЕКТА
+   ============================================ */
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.3px;
+}
+
+/* ============================================
+   ТАБЫ
+   ============================================ */
 .project-tabs {
   display: flex;
   gap: 4px;
-  margin: 24px 0;
+  margin: 20px 0 28px 0;
   padding: 4px;
-
   width: fit-content;
-
-  background: var(--card-bg, #f3f4f6);
+  background: #F1F3F6;
   border-radius: 10px;
+  border: 1px solid rgba(44, 62, 80, 0.04);
 }
 
 .project-tab {
   border: none;
   background: transparent;
-
-  padding: 9px 18px;
-
+  padding: 9px 22px;
   border-radius: 7px;
-
   font-size: 14px;
   font-weight: 500;
-
   cursor: pointer;
-
-  color: inherit;
-  opacity: 0.65;
-
-  transition:
-    background 0.15s ease,
-    opacity 0.15s ease;
+  color: #5B6778;
+  transition: all 0.2s ease;
 }
 
 .project-tab:hover {
-  opacity: 1;
+  color: #1A1A1A;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .project-tab.active {
-  background: var(--active-tab-bg, #fff);
+  background: #FFFFFF;
+  color: #2C3E50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
+/* ============================================
+   ОСНОВНАЯ СЕТКА (2 колонки) - полная ширина
+   ============================================ */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  margin-top: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0; /* Предотвращает переполнение */
+}
+
+.right-column {
+  position: sticky;
+  top: 24px;
+}
+
+/* ============================================
+   ВИДЖЕТЫ / КАРТОЧКИ
+   ============================================ */
+.left-column > *,
+.right-column > * {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px 24px;
+  border: 1px solid rgba(44, 62, 80, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.2s ease;
+  width: 100%;
+}
+
+.left-column > *:hover,
+.right-column > *:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+/* Специальный стиль для ProjectItems (без отступа в карточке) */
+:deep(.ProjectItems) {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 0 !important;
+  border: 1px solid rgba(44, 62, 80, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Стиль для вложенных компонентов внутри виджетов */
+:deep(.ProjectInfo),
+:deep(.ProjectItems),
+:deep(.ProjectExpenses),
+:deep(.ClientPayments),
+:deep(.FactoryPayments),
+:deep(.ProjectReport),
+:deep(.ProjectFiles) {
+  width: 100%;
+}
+
+/* ============================================
+   КНОПКИ ОНБОРДИНГА
+   ============================================ */
+.onboarding-start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2C3E50 0%, #1a2a3a 100%);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.2);
+}
+
+.onboarding-start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(44, 62, 80, 0.3);
+}
+
+.onboarding-start-btn:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  font-size: 18px;
+}
+
+.btn-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.onboarding-start-btn:hover .btn-glow {
   opacity: 1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
+
+/* Планшеты и маленькие ноутбуки */
+@media (max-width: 1200px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .right-column {
+    position: static;
+  }
+}
+
+/* Мобильные устройства */
+@media (max-width: 768px) {
+  .page {
+    padding: 16px 16px 24px;
+  }
+  
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 16px;
+    border-radius: 10px;
+  }
+  
+  .topbar .btn {
+    justify-content: center;
+    padding: 10px 16px;
+  }
+  
+  h1 {
+    font-size: 24px;
+  }
+  
+  .project-tabs {
+    width: 100%;
+    justify-content: stretch;
+    gap: 2px;
+  }
+  
+  .project-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .left-column > *,
+  .right-column > * {
+    padding: 16px 18px;
+    border-radius: 10px;
+  }
+  
+  .main-layout {
+    gap: 16px;
+    margin-top: 16px;
+  }
+  
+  .left-column {
+    gap: 16px;
+  }
+  
+  .onboarding-start-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+}
+
+/* Маленькие телефоны */
+@media (max-width: 480px) {
+  .page {
+    padding: 12px 12px 20px;
+  }
+  
+  h1 {
+    font-size: 20px;
+  }
+  
+  .topbar {
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  
+  .topbar .btn {
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+  
+  .project-tab {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .left-column > *,
+  .right-column > * {
+    padding: 12px 14px;
+    border-radius: 8px;
+  }
+  
+  .btn-icon {
+    font-size: 16px;
+  }
+}
+
+/* ============================================
+   ДОПОЛНИТЕЛЬНО: АНИМАЦИИ
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.left-column > *,
+.right-column > * {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Задержка для карточек (эффект каскада) */
+.left-column > *:nth-child(1) { animation-delay: 0.05s; }
+.left-column > *:nth-child(2) { animation-delay: 0.1s; }
+.left-column > *:nth-child(3) { animation-delay: 0.15s; }
+.right-column > *:nth-child(1) { animation-delay: 0.1s; }
+
+/* ============================================
+   КАСТОМНЫЙ СКРОЛЛ ДЛЯ КОНТЕНТА
+   ============================================ */
+.page::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.page::-webkit-scrollbar-thumb {
+  background: rgba(44, 62, 80, 0.15);
+  border-radius: 3px;
+}
+
+.page::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 62, 80, 0.25);
 }
 </style>

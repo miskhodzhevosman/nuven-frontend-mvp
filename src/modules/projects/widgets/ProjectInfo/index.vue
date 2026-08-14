@@ -3,12 +3,7 @@
   <section class="card">
     <div class="card-header">
       <h2>Информация о проекте</h2>
-      <button 
-        class="btn btn-ghost" 
-        @click="$emit('edit')"
-      >
-        ✎ Редактировать
-      </button>
+      
     </div>
     
     <div v-if="loading" class="state">Загрузка…</div>
