@@ -6,7 +6,20 @@ export const supplyApi = {
     list: (params) => api.get('/supplies/factories/', { params }),
     create: (data) => api.post('/supplies/factories/', data),
     update: (id, data) => api.put(`/supplies/factories/${id}/`, data),
-    delete: (id) => api.delete(`/supplies/factories/${id}/`)
+    delete: (id) => api.delete(`/supplies/factories/${id}/`),
+    get: (id) => api.get(`/supplies/factories/${id}/`) // Добавляем get метод
+  },
+  
+  // Файлы фабрик
+  factoryFiles: {
+    list: (params) => api.get('/supplies/factory-files/', { params }),
+    create: (data) => {
+      return api.post('/supplies/factory-files/', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    },
+    delete: (id) => api.delete(`/supplies/factory-files/${id}/`),
+    update: (id, data) => api.patch(`/supplies/factory-files/${id}/`, data)
   },
   
   // Номенклатура
@@ -16,7 +29,6 @@ export const supplyApi = {
     create: (data) => api.post('/supplies/nomenclatures/', data),
     update: (id, data) => api.put(`/supplies/nomenclatures/${id}/`, data),
     delete: (id) => api.delete(`/supplies/nomenclatures/${id}/`),
-    // Получить номенклатуру с изображениями и файлами
     get: (id) => api.get(`/supplies/nomenclatures/${id}/`)
   },
 
@@ -33,7 +45,6 @@ export const supplyApi = {
   images: {
     list: (params) => api.get('/supplies/images/', { params }),
     create: (data) => {
-      // Для FormData нужно передавать правильные заголовки
       return api.post('/supplies/images/', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
@@ -43,7 +54,7 @@ export const supplyApi = {
     setMain: (id) => api.post(`/supplies/images/${id}/set_main/`)
   },
 
-  // Файлы
+  // Файлы номенклатуры
   files: {
     list: (params) => api.get('/supplies/files/', { params }),
     create: (data) => {

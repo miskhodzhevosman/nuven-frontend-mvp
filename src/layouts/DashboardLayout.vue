@@ -9,7 +9,7 @@
         </router-link>
 
         <router-link to="/supply" class="nav-item">
-          📦 Поставки
+          📦 Фабрики
         </router-link>
 
         <router-link to="/projects" class="nav-item">

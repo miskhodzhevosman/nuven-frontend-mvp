@@ -1,47 +1,77 @@
 <!-- src/modules/supply/components/FactoryEditModal.vue -->
 <template>
   <div class="modal-overlay" @click.self="close">
-    <div class="modal">
+    <div class="modal modal--large">
       <div class="modal__header">
         <h2 class="modal__title">Редактирование фабрики</h2>
         <button @click="close" class="modal__close-btn">×</button>
       </div>
 
+      <div class="modal__tabs">
+        <button
+          class="tab-btn"
+          :class="{ 'tab-btn--active': activeTab === 'info' }"
+          @click="activeTab = 'info'"
+        >
+          Основная информация
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ 'tab-btn--active': activeTab === 'files' }"
+          @click="activeTab = 'files'"
+        >
+          Файлы
+        </button>
+      </div>
+
       <form @submit.prevent="handleSubmit" class="modal__form">
         <div class="modal__body">
-          <div class="form-group">
-            <label for="name" class="form-label">Название *</label>
-            <input
-              id="name"
-              v-model="form.name"
-              type="text"
-              class="form-input"
-              :class="{ 'form-input--error': errors.name }"
-              required
-              placeholder="Введите название фабрики"
-            />
-            <span v-if="errors.name" class="form-error">{{ errors.name }}</span>
+          <!-- Вкладка "Основная информация" -->
+          <div v-if="activeTab === 'info'">
+            <div class="form-group">
+              <label for="name" class="form-label">Название *</label>
+              <input
+                id="name"
+                v-model="form.name"
+                type="text"
+                class="form-input"
+                :class="{ 'form-input--error': errors.name }"
+                required
+                placeholder="Введите название фабрики"
+              />
+              <span v-if="errors.name" class="form-error">{{ errors.name }}</span>
+            </div>
+
+            <div class="form-group">
+              <label for="address" class="form-label">Адрес</label>
+              <input
+                id="address"
+                v-model="form.address"
+                type="text"
+                class="form-input"
+                placeholder="Введите адрес"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="contacts" class="form-label">Контакты</label>
+              <input
+                id="contacts"
+                v-model="form.contacts"
+                type="text"
+                class="form-input"
+                placeholder="Введите контактную информацию"
+              />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="address" class="form-label">Адрес</label>
-            <input
-              id="address"
-              v-model="form.address"
-              type="text"
-              class="form-input"
-              placeholder="Введите адрес"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="contacts" class="form-label">Контакты</label>
-            <input
-              id="contacts"
-              v-model="form.contacts"
-              type="text"
-              class="form-input"
-              placeholder="Введите контактную информацию"
+          <!-- Вкладка "Файлы" -->
+          <div v-if="activeTab === 'files'" class="files-tab">
+            <FactoryFileManager
+              :factory-id="props.factory.id"
+              @file-uploaded="onFilesChange"
+              @file-deleted="onFilesChange"
+              @file-updated="onFilesChange"
             />
           </div>
         </div>
@@ -62,6 +92,7 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import { useSupplyStore } from '@/modules/supply/store'
+import FactoryFileManager from './FactoryFileManager.vue'
 
 const props = defineProps({
   factory: {
@@ -72,6 +103,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated'])
 const store = useSupplyStore()
+
+const activeTab = ref('info')
 
 const form = reactive({
   name: '',
@@ -125,10 +158,15 @@ const close = () => {
     emit('close')
   }
 }
+
+const onFilesChange = () => {
+  // Файлы обновлены - можно обновить данные фабрики если нужно
+  console.log('Files changed')
+}
 </script>
 
 <style scoped>
-/* Те же стили, что и в FactoryCreateModal */
+/* Обновленные стили */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -147,11 +185,15 @@ const close = () => {
   background: white;
   border-radius: 8px;
   width: 90%;
-  max-width: 500px;
+  max-width: 700px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s;
+}
+
+.modal--large {
+  max-width: 700px;
 }
 
 .modal__header {
@@ -182,6 +224,33 @@ const close = () => {
   color: #333;
 }
 
+.modal__tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tab-btn {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  transition: all 0.3s;
+}
+
+.tab-btn:hover {
+  color: #1890ff;
+}
+
+.tab-btn--active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+}
+
 .modal__body {
   padding: 24px;
   overflow-y: auto;
@@ -194,6 +263,10 @@ const close = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.files-tab {
+  min-height: 200px;
 }
 
 .form-group {

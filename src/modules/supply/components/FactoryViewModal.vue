@@ -1,31 +1,58 @@
 <!-- src/modules/supply/components/FactoryViewModal.vue -->
 <template>
   <div class="modal-overlay" @click.self="close">
-    <div class="modal modal--view">
+    <div class="modal modal--large">
       <div class="modal__header">
         <h2 class="modal__title">Просмотр фабрики</h2>
         <button @click="close" class="modal__close-btn">×</button>
       </div>
 
+      <div class="modal__tabs">
+        <button
+          class="tab-btn"
+          :class="{ 'tab-btn--active': activeTab === 'info' }"
+          @click="activeTab = 'info'"
+        >
+          Основная информация
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ 'tab-btn--active': activeTab === 'files' }"
+          @click="activeTab = 'files'"
+        >
+          Файлы
+        </button>
+      </div>
+
       <div class="modal__body">
-        <div class="view-item">
-          <label class="view-item__label">ID</label>
-          <div class="view-item__value">{{ factory.id }}</div>
+        <!-- Вкладка "Основная информация" -->
+        <div v-if="activeTab === 'info'">
+          <div class="view-item">
+            <label class="view-item__label">ID</label>
+            <div class="view-item__value">{{ factory.id }}</div>
+          </div>
+
+          <div class="view-item">
+            <label class="view-item__label">Название</label>
+            <div class="view-item__value">{{ factory.name }}</div>
+          </div>
+
+          <div class="view-item">
+            <label class="view-item__label">Адрес</label>
+            <div class="view-item__value">{{ factory.address || 'Не указан' }}</div>
+          </div>
+
+          <div class="view-item">
+            <label class="view-item__label">Контакты</label>
+            <div class="view-item__value">{{ factory.contacts || 'Не указаны' }}</div>
+          </div>
         </div>
 
-        <div class="view-item">
-          <label class="view-item__label">Название</label>
-          <div class="view-item__value">{{ factory.name }}</div>
-        </div>
-
-        <div class="view-item">
-          <label class="view-item__label">Адрес</label>
-          <div class="view-item__value">{{ factory.address || 'Не указан' }}</div>
-        </div>
-
-        <div class="view-item">
-          <label class="view-item__label">Контакты</label>
-          <div class="view-item__value">{{ factory.contacts || 'Не указаны' }}</div>
+        <!-- Вкладка "Файлы" -->
+        <div v-if="activeTab === 'files'" class="files-tab">
+          <FactoryFileManager
+            :factory-id="factory.id"
+          />
         </div>
       </div>
 
@@ -37,6 +64,9 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import FactoryFileManager from './FactoryFileManager.vue'
+
 const props = defineProps({
   factory: {
     type: Object,
@@ -45,6 +75,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+const activeTab = ref('info')
 
 const close = () => {
   emit('close')
@@ -70,11 +101,15 @@ const close = () => {
   background: white;
   border-radius: 8px;
   width: 90%;
-  max-width: 500px;
+  max-width: 700px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s;
+}
+
+.modal--large {
+  max-width: 700px;
 }
 
 .modal__header {
@@ -105,6 +140,33 @@ const close = () => {
   color: #333;
 }
 
+.modal__tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tab-btn {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  transition: all 0.3s;
+}
+
+.tab-btn:hover {
+  color: #1890ff;
+}
+
+.tab-btn--active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+}
+
 .modal__body {
   padding: 24px;
   overflow-y: auto;
@@ -117,6 +179,10 @@ const close = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.files-tab {
+  min-height: 200px;
 }
 
 .view-item {

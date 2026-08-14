@@ -112,6 +112,7 @@ const close = () => {
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .modal-overlay {
   position: fixed;
   top: 0;

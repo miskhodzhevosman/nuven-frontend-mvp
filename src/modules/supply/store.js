@@ -429,6 +429,73 @@ export const useSupplyStore = defineStore('supply', () => {
     }
   }
 
+  async function uploadFactoryFile(factoryId, file, name = '', description = '') {
+    loading.value = true
+    error.value = null
+    try {
+      const formData = new FormData()
+      formData.append('factory', factoryId)
+      formData.append('file', file)
+      if (name) formData.append('name', name)
+      if (description) formData.append('description', description)
+      
+      const res = await supplyApi.factoryFiles.create(formData)
+      return res.data
+    } catch (e) {
+      error.value = e.message || 'Failed to upload factory file'
+      console.error('Failed to upload factory file:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteFactoryFile(fileId) {
+    loading.value = true
+    error.value = null
+    try {
+      await supplyApi.factoryFiles.delete(fileId)
+      return true
+    } catch (e) {
+      error.value = e.message || 'Failed to delete factory file'
+      console.error('Failed to delete factory file:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateFactoryFile(fileId, data) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.factoryFiles.update(fileId, data)
+      return res.data
+    } catch (e) {
+      error.value = e.message || 'Failed to update factory file'
+      console.error('Failed to update factory file:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchFactoryFiles(factoryId) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await supplyApi.factoryFiles.list({ factory_id: factoryId })
+      return res.data?.results || res.data || []
+    } catch (e) {
+      error.value = e.message || 'Failed to fetch factory files'
+      console.error('Failed to fetch factory files:', e)
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+
   // Clear error
   function clearError() {
     error.value = null
@@ -466,6 +533,12 @@ export const useSupplyStore = defineStore('supply', () => {
     createNomenclature,
     updateNomenclature,
     getNomenclature,
+
+
+    uploadFactoryFile,
+    deleteFactoryFile,
+    updateFactoryFile,
+    fetchFactoryFiles,
     
     // Image actions
     uploadImage,
