@@ -317,7 +317,7 @@ const error = ref(null)
 const activeTab = ref('progress')
 let refreshInterval = null
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.nuven.space'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const currentStatusIndex = computed(() => {
   if (!project.value?.status || !allStatuses.value.length) return 0
