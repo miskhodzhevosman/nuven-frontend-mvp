@@ -1,107 +1,122 @@
 <!-- modules/projects/widgets/ProjectExpenses/components/ExpenseFormModal.vue -->
 <template>
-  <div v-if="modelValue" class="modal-backdrop" @click.self="close">
-    <div class="modal">
-      <h2>{{ isEditing ? 'Редактировать расход' : 'Новый расход' }}</h2>
-      <form ref="formRef" @submit.prevent="submit">
-        <label class="field">
-          <span>Дата *</span>
-          <input 
-            v-model="form.date" 
-            type="date" 
-            required 
-          />
-        </label>
-        
-        <label class="field">
-          <span>Сумма *</span>
-          <input 
-            v-model="form.amount" 
-            type="number" 
-            step="0.01" 
-            min="0" 
-            required 
-          />
-        </label>
-        
-        <label class="field">
-          <span>Тип расхода *</span>
-          <div class="combobox-wrapper">
-            <input
-              v-model="expenseTypeSearch"
-              type="text"
-              placeholder="Введите или выберите тип расхода"
-              @input="onExpenseTypeInput"
-              @focus="showExpenseTypeSuggestions = true"
-              @blur="onExpenseTypeBlur"
-              required
-              autocomplete="off"
-            />
-            <button 
-              type="button" 
-              class="combobox-toggle" 
-              @mousedown.prevent="toggleExpenseTypeSuggestions"
-            >
-              ▼
-            </button>
-            <ul 
-              v-if="showExpenseTypeSuggestions && filteredExpenseTypes.length > 0" 
-              class="combobox-suggestions"
-            >
-              <li 
-                v-for="type in filteredExpenseTypes" 
-                :key="type.id"
-                @mousedown.prevent="selectExpenseType(type)"
-              >
-                {{ type.name }}
-              </li>
-              <li 
-                v-if="expenseTypeSearch && !isExpenseTypeExists"
-                class="combobox-create-new"
-              >
-                ✚ Будет создан новый тип "{{ expenseTypeSearch }}"
-              </li>
-            </ul>
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="modelValue" class="modal-backdrop" @click.self="close">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>{{ isEditing ? 'Редактировать расход' : 'Новый расход' }}</h2>
+            <button class="btn-close" @click="close" type="button">✕</button>
           </div>
-          <small v-if="expenseTypeSearch && !isExpenseTypeExists" class="hint warning">
-            ✚ Будет создан новый тип расхода "{{ expenseTypeSearch }}"
-          </small>
-          <small v-else-if="selectedExpenseType" class="hint success">
-            ✓ Выбран тип: {{ selectedExpenseType.name }}
-          </small>
-          <small v-else class="hint">
-            Начните вводить название или выберите из списка
-          </small>
-        </label>
-        
-        <label class="field">
-          <span>Комментарий</span>
-          <textarea 
-            v-model="form.comment" 
-            rows="3"
-            placeholder="Дополнительная информация"
-          ></textarea>
-        </label>
-        
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" @click="close">Отмена</button>
-          <button 
-            type="submit" 
-            class="btn btn-primary" 
-            :disabled="loading || !expenseTypeSearch"
-          >
-            {{ loading ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать') }}
-          </button>
-        </div>
-        <div v-if="error" class="alert alert-error">{{ error }}</div>
-        <div v-if="validationErrors" class="alert alert-error">
-          <div v-for="(errors, field) in validationErrors" :key="field">
-            <strong>{{ field }}:</strong> {{ errors.join(', ') }}
+          
+          <div class="modal-body">
+            <form ref="formRef" @submit.prevent="submit">
+              <label class="field">
+                <span>Дата *</span>
+                <input 
+                  v-model="form.date" 
+                  type="date" 
+                  required 
+                />
+              </label>
+              
+              <label class="field">
+                <span>Сумма *</span>
+                <input 
+                  v-model="form.amount" 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  required 
+                  placeholder="0.00"
+                />
+              </label>
+              
+              <label class="field">
+                <span>Тип расхода *</span>
+                <div class="combobox-wrapper">
+                  <input
+                    v-model="expenseTypeSearch"
+                    type="text"
+                    placeholder="Введите или выберите тип расхода"
+                    @input="onExpenseTypeInput"
+                    @focus="showExpenseTypeSuggestions = true"
+                    @blur="onExpenseTypeBlur"
+                    required
+                    autocomplete="off"
+                  />
+                  <button 
+                    type="button" 
+                    class="combobox-toggle" 
+                    @mousedown.prevent="toggleExpenseTypeSuggestions"
+                  >
+                    ▼
+                  </button>
+                  <ul 
+                    v-if="showExpenseTypeSuggestions && filteredExpenseTypes.length > 0" 
+                    class="combobox-suggestions"
+                  >
+                    <li 
+                      v-for="type in filteredExpenseTypes" 
+                      :key="type.id"
+                      @mousedown.prevent="selectExpenseType(type)"
+                    >
+                      {{ type.name }}
+                    </li>
+                    <li 
+                      v-if="expenseTypeSearch && !isExpenseTypeExists"
+                      class="combobox-create-new"
+                    >
+                      ✚ Будет создан новый тип "{{ expenseTypeSearch }}"
+                    </li>
+                  </ul>
+                </div>
+                <small v-if="expenseTypeSearch && !isExpenseTypeExists" class="hint warning">
+                  ✚ Будет создан новый тип расхода "{{ expenseTypeSearch }}"
+                </small>
+                <small v-else-if="selectedExpenseType" class="hint success">
+                  ✓ Выбран тип: {{ selectedExpenseType.name }}
+                </small>
+                <small v-else class="hint">
+                  Начните вводить название или выберите из списка
+                </small>
+              </label>
+              
+              <label class="field">
+                <span>Комментарий</span>
+                <textarea 
+                  v-model="form.comment" 
+                  rows="3"
+                  placeholder="Дополнительная информация"
+                ></textarea>
+              </label>
+              
+              <div v-if="error" class="alert alert-error">{{ error }}</div>
+              <div v-if="validationErrors" class="alert alert-error">
+                <div v-for="(errors, field) in validationErrors" :key="field">
+                  <strong>{{ field }}:</strong> {{ errors.join(', ') }}
+                </div>
+              </div>
+            </form>
+          </div>
+          
+          <div class="modal-footer">
+            <div class="modal-actions">
+              <button type="button" class="btn btn-ghost" @click="close">Отмена</button>
+              <button 
+                type="submit" 
+                class="btn btn-primary" 
+                :disabled="loading || !expenseTypeSearch"
+                @click="submit"
+              >
+                {{ loading ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать') }}
+              </button>
+            </div>
           </div>
         </div>
-      </form>
-    </div>
-  </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -371,8 +386,11 @@ async function submit() {
 
 function close() {
   emit('update:modelValue', false)
-  resetForm()
   emit('closed')
+}
+
+function handleAfterLeave() {
+  resetForm()
 }
 
 // Watch for modal open
@@ -384,8 +402,6 @@ watch(() => props.modelValue, async (isOpen) => {
     }
     // Загружаем данные для редактирования
     await loadExpenseForEdit()
-  } else {
-    resetForm()
   }
 }, { immediate: true })
 
@@ -399,43 +415,125 @@ watch(() => props.editingId, async () => {
 
 <style scoped>
 /* ============================================
-   СВЕТЛЫЕ СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА
+   АНИМАЦИИ ПОЯВЛЕНИЯ/ИСЧЕЗНОВЕНИЯ
    ============================================ */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
 
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal,
+.modal-leave-active .modal {
+  transition: all 0.3s ease;
+}
+
+.modal-enter-from .modal {
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+}
+
+.modal-leave-to .modal {
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+}
+
+/* ============================================
+   МОДАЛЬНОЕ ОКНО - ПОЛНЫЙ ЭКРАН
+   ============================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
-  padding: 16px;
+  z-index: 99999;
+  padding: 20px;
 }
 
 .modal {
   background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
-  padding: 28px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
 }
 
-.modal h2 {
-  margin: 0 0 20px;
+/* ============================================
+   ЗАГОЛОВОК
+   ============================================ */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0 24px;
+  flex-shrink: 0;
+}
+
+.modal-header h2 {
+  margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: #2C3E50;
 }
 
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: rgba(26, 26, 26, 0.4);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.btn-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1A1A1A;
+}
+
+/* ============================================
+   ТЕЛО (СКРОЛЛИТСЯ)
+   ============================================ */
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ============================================
+   ФУТЕР С КНОПКАМИ
+   ============================================ */
+.modal-footer {
+  padding: 16px 24px 24px 24px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: #FFFFFF;
+}
+
+/* ============================================
+   ПОЛЯ ФОРМЫ
+   ============================================ */
 .field {
   display: block;
   margin-bottom: 16px;
+}
+
+.field:last-of-type {
+  margin-bottom: 0;
 }
 
 .field span {
@@ -483,7 +581,9 @@ watch(() => props.editingId, async () => {
   min-height: 60px;
 }
 
-/* Combobox styles */
+/* ============================================
+   COMBOBOX
+   ============================================ */
 .combobox-wrapper {
   position: relative;
   display: flex;
@@ -551,6 +651,9 @@ watch(() => props.editingId, async () => {
   background: transparent;
 }
 
+/* ============================================
+   ПОДСКАЗКИ
+   ============================================ */
 .hint {
   display: block;
   margin-top: 4px;
@@ -566,18 +669,20 @@ watch(() => props.editingId, async () => {
   color: #2C3E50;
 }
 
+/* ============================================
+   КНОПКИ
+   ============================================ */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
 }
 
 .btn {
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 8px 20px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
@@ -610,6 +715,9 @@ watch(() => props.editingId, async () => {
   border-color: rgba(0, 0, 0, 0.2);
 }
 
+/* ============================================
+   АЛЕРТЫ
+   ============================================ */
 .alert {
   padding: 12px 16px;
   border-radius: 8px;
@@ -627,11 +735,33 @@ watch(() => props.editingId, async () => {
   color: #DC2626;
 }
 
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
 @media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 10px;
+  }
+  
   .modal {
-    padding: 20px;
-    max-width: 100%;
-    margin: 8px;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+  
+  .modal-header {
+    padding: 16px 16px 0 16px;
+  }
+  
+  .modal-header h2 {
+    font-size: 18px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .modal-footer {
+    padding: 12px 16px 16px 16px;
   }
   
   .modal-actions {
@@ -645,8 +775,20 @@ watch(() => props.editingId, async () => {
 }
 
 @media (max-width: 480px) {
-  .modal {
-    padding: 16px;
+  .modal-backdrop {
+    padding: 8px;
+  }
+  
+  .modal-header h2 {
+    font-size: 16px;
+  }
+  
+  .modal-body {
+    padding: 12px;
+  }
+  
+  .modal-footer {
+    padding: 10px 12px 12px 12px;
   }
   
   .field {
@@ -658,6 +800,11 @@ watch(() => props.editingId, async () => {
   .field textarea {
     padding: 6px 8px;
     font-size: 13px;
+  }
+  
+  .btn {
+    padding: 10px;
+    font-size: 14px;
   }
 }
 </style>
