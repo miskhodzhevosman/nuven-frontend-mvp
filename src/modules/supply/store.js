@@ -209,23 +209,41 @@ export const useSupplyStore = defineStore('supply', () => {
   }
 
   async function searchNomenclatures(query) {
-    if (!query || query.trim().length < 3) {
-      return []
+  if (!query || query.trim().length < 3) {
+    return []
+  }
+  
+  loading.value = true
+  error.value = null
+  
+  try {
+    // Нормализуем запрос перед отправкой
+    const normalizedQuery = query.trim().toLowerCase()
+    const res = await supplyApi.nomenclatures.search(normalizedQuery)
+    
+    // Дополнительная фильтрация на клиенте (если нужно)
+    let results = res.data || []
+    
+    // Можно добавить клиентскую фильтрацию для повышения точности
+    if (results.length === 0) {
+      // Если бэкенд ничего не нашёл, пробуем поискать в кэше
+      const cached = nomenclatures.value || []
+      results = cached.filter(item => 
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        (item.article && item.article.toLowerCase().includes(normalizedQuery)) ||
+        (item.factory_name && item.factory_name.toLowerCase().includes(normalizedQuery))
+      )
     }
     
-    loading.value = true
-    error.value = null
-    try {
-      const res = await supplyApi.nomenclatures.search(query.trim())
-      return res.data || []
-    } catch (e) {
-      error.value = e.message || 'Failed to search nomenclatures'
-      console.error('Failed to search nomenclatures:', e)
-      return []
-    } finally {
-      loading.value = false
-    }
+    return results
+  } catch (e) {
+    error.value = e.message || 'Failed to search nomenclatures'
+    console.error('Failed to search nomenclatures:', e)
+    return []
+  } finally {
+    loading.value = false
   }
+}
 
   async function createNomenclature(data) {
     loading.value = true

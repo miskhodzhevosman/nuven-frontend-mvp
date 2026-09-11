@@ -25,7 +25,13 @@ export const supplyApi = {
   // Номенклатура
   nomenclatures: {
     list: (params) => api.get('/supplies/nomenclatures/', { params }),
-    search: (query) => api.get('/supplies/nomenclatures/search/', { params: { q: query } }),
+      search: (query) => {
+    // Нормализуем запрос: удаляем лишние пробелы, приводим к нижнему регистру
+    const normalizedQuery = query.trim().toLowerCase()
+    return api.get('/supplies/nomenclatures/search/', { 
+      params: { q: normalizedQuery } 
+    })
+  },
     create: (data) => api.post('/supplies/nomenclatures/', data),
     update: (id, data) => api.put(`/supplies/nomenclatures/${id}/`, data),
     delete: (id) => api.delete(`/supplies/nomenclatures/${id}/`),
